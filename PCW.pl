@@ -64,7 +64,8 @@ sub init()
         'mode=s'    => \$mode,
         'proxy=s'   => \$proxy_file,
         'ua=s'      => \$useragents,
-        'debug'     => \$debug,
+        'debug=i'   => \$debug,
+        #'debug'     => \$debug,
         'verbose'   => \$verbose,
         'help|?'    => \$help,
     );
@@ -140,7 +141,7 @@ Options:
     --proxy         Proxy file (default is '$proxy_file')
     --proxytype     Default proxy protocol (default is '$proxy_type')
     --ua            Userg agents list file (default is '$useragents')
-    --debug         Enable debug output
+    --debug         Debug level
     --verbose       Verbose output
     --help          Show this message and exit
 
