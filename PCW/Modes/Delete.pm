@@ -5,7 +5,7 @@ use autodie;
 use Carp;
 
 use Exporter 'import';
-our @EXPORT_OK = qw(delete);
+our @EXPORT_OK = qw(get_posts_for_del);
  
 #------------------------------------------------------------------------------------------------
 # Package Variables
@@ -47,7 +47,6 @@ sub show_stats()
 #------------------------------------------------------------------------------------------------
 #----------------------------------  DELETE POST  -----------------------------------------------
 #------------------------------------------------------------------------------------------------
- 
 #-- Coro callback
 my $cb_delete_post = sub
 {
@@ -109,7 +108,66 @@ sub get_thread($$$$)
 #------------------------------------------------------------------------------------------------
 #------------------------------------  MAIN DELETE  ---------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub delete($$%)
+sub get_posts_for_del($$%)
+{
+    my ($proxy, $engine, $chan, %cnf) =  @_;
+     
+    my @posts_for_del;
+    my $get_task = {
+        proxy    => $proxy,
+    };
+     
+    my %all_posts = ();
+    #-- Search posts in the threads
+    if ($cnf{delete_cnf}{thread})
+    {
+        for my $thread (@{ $cnf{delete_cnf}{thread} })
+        {
+            my %local_delete_cnf = %{ $cnf{delete_cnf} }; 
+            $local_delete_cnf{thread} = $thread;
+             
+            #-- Get the thread
+            my ($html, undef, $status) = get_thread($engine, $get_task, $chan, \%local_delete_cnf);
+            echo_msg("Thread $thread downloaded: $status");
+             
+            %all_posts = (%all_posts, $engine->find_all_replies($chan, html => $html));
+        }
+    }
+    #-- Search thread on the pages
+    if ($cnf{delete_cnf}{page})
+    {
+        for my $page (@{ $cnf{delete_cnf}{page} })
+        {
+            my %local_delete_cnf = %{ $cnf{delete_cnf} }; 
+            $local_delete_cnf{page} = $page;
+             
+            #-- Get the page
+            my ($html, undef, $status) = get_page($engine, $get_task, $chan, \%local_delete_cnf);
+            echo_msg("Page $page downloaded: $status");
+             
+            %all_posts = (%all_posts, $engine->find_all_threads($chan, html => $html));
+        }
+    }
+    unless ($cnf{delete_cnf}{page} || $cnf{delete_cnf}{thread})
+    {
+        Carp::croak("Options 'thread' or/and 'page' should be specified.");
+    }
+     
+    echo_msg(sprintf "%d posts and threads were found", scalar keys %all_posts);
+     
+    my $pattern = $cnf{delete_cnf}{find};
+    for (keys %all_posts)
+    {
+        if ($all_posts{$_} =~ /$pattern/mg)
+        {
+            push @posts_for_del, $_;
+        }
+    }
+    echo_msg(sprintf "%d posts and threads matched the pattern", scalar @posts_for_del);
+    return @posts_for_del;
+}
+ 
+sub delete($$$%)
 {
     my ($self, $engine, $chan, %cnf) =  @_;
      
@@ -124,57 +182,7 @@ sub delete($$%)
     }
     elsif ($cnf{delete_cnf}{find})
     {
-        my $get_task = {
-            proxy    => $proxy,
-        };
-         
-        my %all_posts = ();
-        #-- Search posts in the threads
-        if ($cnf{delete_cnf}{thread})
-        {
-            for my $thread (@{ $cnf{delete_cnf}{thread} })
-            {
-                my %local_delete_cnf = %{ $cnf{delete_cnf} }; 
-                $local_delete_cnf{thread} = $thread;
-                 
-                #-- Get the thread
-                my ($html, undef, $status) = get_thread($engine, $get_task, $chan, \%local_delete_cnf);
-                echo_msg("Thread $thread downloaded: $status");
-                 
-                %all_posts = (%all_posts, $engine->find_all_replies($chan, html => $html));
-            }
-        }
-        #-- Search thread on the pages
-        if ($cnf{delete_cnf}{page})
-        {
-            for my $page (@{ $cnf{delete_cnf}{page} })
-            {
-                my %local_delete_cnf = %{ $cnf{delete_cnf} }; 
-                $local_delete_cnf{page} = $page;
-                 
-                #-- Get the page
-                my ($html, undef, $status) = get_page($engine, $get_task, $chan, \%local_delete_cnf);
-                echo_msg("Page $page downloaded: $status");
-                 
-                %all_posts = (%all_posts, $engine->find_all_threads($chan, html => $html));
-            }
-        }
-        unless ($cnf{delete_cnf}{page} || $cnf{delete_cnf}{thread})
-        {
-            Carp::croak("Options 'thread' or/and 'page' should be specified.");
-        }
-         
-        echo_msg(sprintf "%d posts and threads were found", scalar keys %all_posts);
-         
-        my $pattern = $cnf{delete_cnf}{find};
-        for (keys %all_posts)
-        {
-            if ($all_posts{$_} =~ /$pattern/mg)
-            {
-                push @posts_for_del, $_;
-            }
-        }
-        echo_msg(sprintf "%d posts and threads matched the pattern", scalar @posts_for_del);
+        @posts_for_del = get_posts_for_del($proxy, $engine, $chan, %cnf);
     }
     else
     {
@@ -198,7 +206,7 @@ sub delete($$%)
     my $tw = AnyEvent->timer(after => 0.5, interval => 1, cb =>
         sub
         {
-            my @delete_coro  = grep { $_->desc =~ /delete/ } Coro::State::list;
+            my @delete_coro  = grep { $_->desc eq 'delete' } Coro::State::list;
              
             echo_msg_dbg($DEBUG, sprintf "run: %d; queue: %d", scalar @delete_coro, $delete_queue->size);
                        
@@ -214,11 +222,11 @@ sub delete($$%)
         }
     );
      
-	#-- Get watcher
-    my $gw = AnyEvent->timer(after => 0.5, interval => 2, cb =>
+	#-- Delete watcher
+    my $dw = AnyEvent->timer(after => 0.5, interval => 2, cb =>
         sub
         {
-            my @delete_coro  = grep { $_->desc =~ /delete/ } Coro::State::list;
+            my @delete_coro  = grep { $_->desc eq 'delete' } Coro::State::list;
             my $thrs_available = -1;
             #-- Max delete threads limit
             if ($cnf{max_del_thrs})
@@ -236,7 +244,7 @@ sub delete($$%)
     my $ew = AnyEvent->timer(after => 1, interval => 2, cb =>
         sub
         {
-            my @delete_coro  = grep { $_->desc =~ /delete/ } Coro::State::list;
+            my @delete_coro  = grep { $_->desc eq 'delete' } Coro::State::list;
             if (!@delete_coro && !$delete_queue->size)
             {
                 EV::break;
