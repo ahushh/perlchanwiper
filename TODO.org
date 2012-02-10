@@ -14,8 +14,10 @@
 ** TODO Рефакторинг response сообщений
 ** TODO Done Вынести загрузку engine из модов в PCW.pl
 ** TODO Done Отедельная папка configs
-** TODO Получение пустого списка coro
 ** TODO Debug сообщения
+** TODO Может загружить chan_cnf в engine?
+** TODO Добавить интерполяция в сообщении
+** TODO Заменить ф-ю get_time
 * Captcha
 ** GUI смотрелка капчи
 ** Постинг без капчи (для вакабы?)

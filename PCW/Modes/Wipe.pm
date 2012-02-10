@@ -228,9 +228,9 @@ sub wipe($$%)
     my $tw = AnyEvent->timer(after => 0.5, interval => 1, cb =>
         sub
         {
-            my @get_coro     = grep { $_->desc =~ /get/     } Coro::State::list;
-            my @prepare_coro = grep { $_->desc =~ /prepare/ } Coro::State::list;
-            my @post_coro    = grep { $_->desc =~ /post/    } Coro::State::list;
+            my @get_coro      = grep { $_->desc eq 'get'     } Coro::State::list;
+            my @prepare_coro  = grep { $_->desc eq 'prepare' } Coro::State::list;
+            my @post_coro     = grep { $_->desc eq 'post'    } Coro::State::list;
 
             echo_msg_dbg($DEBUG, sprintf "run: %d captcha, %d post, %d prepare coros.",
                 scalar @get_coro, scalar @post_coro, scalar @prepare_coro);
@@ -253,7 +253,7 @@ sub wipe($$%)
     my $gw = AnyEvent->timer(after => 0.5, interval => 2, cb =>
         sub
         {
-            my @get_coro = grep { $_->desc =~ /get/ } Coro::State::list;
+            my @get_coro      = grep { $_->desc eq 'get'     } Coro::State::list;
             my $thrs_available = $cnf{max_cap_thrs} - scalar @get_coro;
             wipe_get($engine, $get_queue->get, $chan, \%cnf)
                 while $get_queue->size && $thrs_available--;
@@ -264,7 +264,7 @@ sub wipe($$%)
     my $prw = AnyEvent->timer(after => 2, interval => 2, cb =>
         sub
         {
-            my @prepare_coro = grep { $_->desc =~ /prepare/ } Coro::State::list;
+            my @prepare_coro  = grep { $_->desc eq 'prepare' } Coro::State::list;
             my $thrs_available = -1;
             #-- Max post threads limit
             if ($cnf{max_prp_thrs})
@@ -282,9 +282,9 @@ sub wipe($$%)
     my $pw = AnyEvent->timer(after => 2, interval => 1, cb =>
         sub
         {
-            my @get_coro     = grep { $_->desc =~ /get/     } Coro::State::list;
-            my @prepare_coro = grep { $_->desc =~ /prepare/ } Coro::State::list;
-            my @post_coro    = grep { $_->desc =~ /post/    } Coro::State::list;
+            my @get_coro      = grep { $_->desc eq 'get'     } Coro::State::list;
+            my @prepare_coro  = grep { $_->desc eq 'prepare' } Coro::State::list;
+            my @post_coro     = grep { $_->desc eq 'post'    } Coro::State::list;
 
             my $thrs_available = -1;
             #-- Max post threads limit
@@ -316,9 +316,9 @@ sub wipe($$%)
     my $ew = AnyEvent->timer(after => 5, interval => 1, cb =>
         sub
         {
-            my @get_coro      = grep { $_->desc =~ /get/     } Coro::State::list;
-            my @prepare_coro  = grep { $_->desc =~ /prepare/ } Coro::State::list;
-            my @post_coro     = grep { $_->desc =~ /post/    } Coro::State::list;
+            my @get_coro      = grep { $_->desc eq 'get'     } Coro::State::list;
+            my @prepare_coro  = grep { $_->desc eq 'prepare' } Coro::State::list;
+            my @post_coro     = grep { $_->desc eq 'post'    } Coro::State::list;
             if (!(scalar @get_coro)      &&
                 !(scalar @post_coro)     &&
                 !(scalar @prepare_coro)  &&

@@ -99,7 +99,7 @@ sub checker($$$)
     my $tw = AnyEvent->timer(after => 0.5, interval => 1, cb =>
         sub
         {
-            my @checker_coro = grep { $_->desc =~ /check/ } Coro::State::list;
+            my @checker_coro = grep { $_->desc eq 'check' } Coro::State::list;
 
             echo_msg_dbg($DEBUG, sprintf "run: %d coros.", scalar @checker_coro);
             echo_msg_dbg($DEBUG, sprintf "queue: %d coros.", $queue->size);
@@ -120,7 +120,7 @@ sub checker($$$)
     my $w = AnyEvent->timer(after => 0.5, interval => 1, cb =>
         sub
         {
-            my @checker_coro = grep { $_->desc =~ /check/ } Coro::State::list;
+            my @checker_coro = grep { $_->desc eq 'check' } Coro::State::list;
             my $thrs_available = $cnf{max_thrs} - scalar @checker_coro;
             check($engine, $queue->get, $chan, \%cnf)
                 while $queue->size && $thrs_available--;
