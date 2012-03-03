@@ -73,6 +73,7 @@ my $cb_wipe_get = sub
     }
     else
     {
+        #-- WTF?! TODO: to find out
         $failed_proxy{ $task->{proxy} } = 0;
     }
 };
@@ -149,12 +150,12 @@ my $cb_wipe_post = sub
     my $new_task = {};
     if ($msg eq 'success') 
     {
-        #-- Move the recognized captcha in the specified dir 
-        #if ($cnf->{save_captcha} && $task->{path_to_captcha})
-        #{
-            #my ($name, $path, $suffix) = fileparse($task->{path_to_captcha}, 'png', 'jpeg', 'jpg', 'gif');
-            #move $task->{path_to_captcha}, "$CAPTCHA_DIR/". $chan->{content}->{ $chan->{captcha_field} } ."--$name$suffix";
-        #}
+        #-- Move successfully recognized captcha in the specified dir 
+        if ($cnf->{save_captcha} && $task->{path_to_captcha})
+        {
+            my ($name, $path, $suffix) = fileparse($task->{path_to_captcha}, 'png', 'jpeg', 'jpg', 'gif');
+            move $task->{path_to_captcha}, "$CAPTCHA_DIR/". $task->{captcha_text} ."--$name$suffix";
+        }
         $stats{posted}++;
 
         if ($cnf->{delay} && $cnf->{loop})
@@ -166,6 +167,10 @@ my $cb_wipe_post = sub
     {
         $stats{wrong_captcha}++;
         captcha_report_bad($cnf->{captcha_decode}, $task->{path_to_captcha});
+    }
+    elsif ($msg eq 'critical_error')
+    {
+        Carp::croak("Critical chan error. Going on is purposelessly.");
     }
     else
     {

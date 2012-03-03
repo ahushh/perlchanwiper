@@ -12,7 +12,7 @@ our $DEBUG;
 our $VERBOSE;
  
 #------------------------------------------------------------------------------------------------
-# Feature
+# Features
 #------------------------------------------------------------------------------------------------
 use feature qw(switch); 
  
@@ -26,10 +26,10 @@ use File::Copy qw(move);
 use HTTP::Headers;
  
 #------------------------------------------------------------------------------------------------
-# Importing internal PCW packages
+# Import internal PCW packages
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Utils          qw(merge_hashes parse_cookies html2text save_file);
-use PCW::Core::Captcha        qw(captcha_recognizer);
+use PCW::Core::Utils    qw(merge_hashes parse_cookies html2text save_file);
+use PCW::Core::Captcha  qw(captcha_recognizer);
 use PCW::Core::Net      qw(http_get http_post get_recaptcha);
 use PCW::Core::Log      qw(echo_msg echo_msg_dbg echo_proxy echo_proxy_dbg);
 use PCW::Data::Images   qw(make_pic);
@@ -48,6 +48,7 @@ sub new($%)
     $DEBUG   = $debug   || 0;
     $VERBOSE = $verbose || 0;
 
+    # TODO: check for errors in the chan-config file
     Carp::croak("Option 'agents' should be are set.")
         unless(@$agents);
      
@@ -116,7 +117,7 @@ sub get_thread_url($$%)
 #------------------------------------------------------------------------------------------------
 # HTML 
 #------------------------------------------------------------------------------------------------
-sub find_all_replies($$%)
+sub get_all_replies($$%)
 {
     my ($self, %config) = @_;
     Carp::croak("Html parameter is not set!")
@@ -132,7 +133,7 @@ sub find_all_replies($$%)
     return %posts;
 } 
 
-sub find_all_threads($$%)
+sub get_all_threads($$%)
 {
     my ($self, %config) = @_;
     Carp::croak("Html parameter is not set!")
@@ -162,7 +163,7 @@ sub find_all_threads($$%)
 #------------------------------------------------------------------------------------------------
 # headers
 #------------------------------------------------------------------------------------------------
-sub get_post_headers($$%)
+sub get_post_headers($%)
 {
     my ($self, %config) = @_;
     Carp::croak("Board is not set! at get_post_headers")
@@ -175,7 +176,7 @@ sub get_post_headers($$%)
     return \%h;
 }
 
-sub get_delete_headers($$%)
+sub get_delete_headers($%)
 {
     my ($self, %config) = @_;
     Carp::croak("Board is not set! at get_delete_headers")
@@ -183,7 +184,7 @@ sub get_delete_headers($$%)
     $self->get_post_headers(%config);
 }
 
-sub get_default_headers($$%)
+sub get_default_headers($%)
 {
     my ($self, %config) = @_;
     my $h = \%{ $self->{headers}{default} };
@@ -235,12 +236,23 @@ sub get_delete_content($$%)
 }
 
 #------------------------------------------------------------------------------------------------
-#------------------------------------ POST METHODS ----------------------------------------------
+#----------------------------- CREATE POST, DELETE POST -----------------------------------------
 #------------------------------------------------------------------------------------------------
+#-- Create a new post on the board:
+# 1. GET     (included captcha, cookies, headers and so on)
+# 2. PREPARE (create post-form data, recognize captcha, do another stuff)
+# 3. POST    (send request to server)
+# 4. ???
+# 5. PROFIT!
 
 #------------------------------------------------------------------------------------------------
 # GET
 #------------------------------------------------------------------------------------------------
+# task contains:
+# proxy           - proxy address
+# content         - content, который был получен при скачивании капчи
+# path_to_captcha - no comments
+# headers         - HTTP::Headers object
 sub get($$$$)
 {
     my ($self, $task, $cnf) = @_;
@@ -309,6 +321,14 @@ sub get($$$$)
 #------------------------------------------------------------------------------------------------
 # PREPARE
 #------------------------------------------------------------------------------------------------
+# task contains:
+# proxy           - proxy address
+# content         - content, который был получен при скачивании капчи
+# path_to_captcha - no comments
+# headers         - HTTP::Headers object
+#########
+# captcha_text    - recognized text
+# file_path       - путь до файла, который отправляется на сервер
 sub prepare($$$$)
 {
     my ($self, $task, $cnf) = @_;
@@ -321,6 +341,7 @@ sub prepare($$$$)
         echo_proxy('green', $task->{proxy}, 'PREPARE', "captcha was recognized: $captcha_text");
                  
         $content{ $self->{fields}{post}{captcha} } = $captcha_text;
+        $task->{captcha_text}                      = $captcha_text;
     } 
 
     #---- Form data
@@ -356,7 +377,7 @@ sub prepare($$$$)
      
  
 #------------------------------------------------------------------------------------------------
-# MAKE
+# POST
 #------------------------------------------------------------------------------------------------
 sub check_post_result($$$$$)
 {
@@ -367,9 +388,9 @@ sub check_post_result($$$$$)
         my $color;
         given ($type)
         {
-            when (/banned|net_error|wrong_captcha/) { $color = 'red'    }
-            when (/chan_error/)                     { $color = 'yellow' }
-            when (/success/)                        { $color = 'green'  }
+            when (/critical_error|banned|net_error|wrong_captcha/) { $color = 'red'    }
+            when (/flood|file_exist|bad_file/)                     { $color = 'yellow' }
+            when (/success/)                                       { $color = 'green'  }
         }
          
         for (@{ $self->{response}{post}{$type} })
@@ -400,73 +421,6 @@ sub post($$$$)
     $response = encode('utf-8', $response); #-- Для корректной работы кириллицы и рэгэкспов
 
     return $self->check_post_result($response, $code, $task, $cnf);
-}
- 
-#------------------------------------------------------------------------------------------------
-# PROXY CHECK
-#------------------------------------------------------------------------------------------------
-sub check_proxy_checker_result($$$$$)
-{
-    my ($self, $response, $code, $task, $cnf) = @_;
-     
-    for my $type (keys %{ $self->{response}{post} })
-    {
-        my $color;
-        given ($type)
-        {
-            when (/banned/)                          { $color = 'red'   }
-            when (/success|net_error|wrong_captcha/) { $color = 'green' }
-        }
-         
-        for (@{ $self->{response}{post}{$type} })
-        {
-            if ($response =~ /$_/ || $code =~ /$_/)
-            {
-                echo_proxy($color, $task->{proxy}, 'CHECK',
-                            sprintf("[%s](%d){%s}", uc($type), $code, ($VERBOSE ? html2text($response) : $_)));
-                return($type);
-            }
-        }
-    }
-     
-    echo_proxy('yellow', $task->{proxy}, 'CHECK',
-        sprintf("[%s](%d){%s}", 'UNKNOWN', $code, ($VERBOSE ? html2text($response) : 'unknown error')));
-    return('unknown');
-}
-sub check_proxy($$$$)
-{
-    my ($self, $task, $cnf) = @_;
-     
-    my %content = %{ merge_hashes( $self->get_post_content(%{ $cnf->{post_cnf} }), $self->{fields}{post}) };
-    #---- Form data
-    #-- Message
-    if ($cnf->{msg_data}{mode} ne 'no')
-    {
-        my $text = make_text( $cnf->{msg_data} );
-        $content{ $self->{fields}{post}{msg} } = $text;
-    }
-    #-- Image
-    if ($cnf->{img_data}{mode} ne 'no')
-    {
-        my $file_path = make_pic( $cnf->{img_data} );
-        $content{ $self->{fields}{post}{img} } = ( $file_path ? [$file_path] : undef);
-        $task->{file_path} = $file_path;
-    }
-    elsif (!$cnf->{post_cnf}{thread}) #-- New thread
-    {
-        $content{ $self->{fields}{post}{nofile} } = 'on';
-    }
-     
-    $task->{content} = \%content;
-     
-    #-- POSTING
-    my ($code, $response) =
-        http_post($task->{proxy},   $self->get_post_url(%{ $cnf->{post_cnf} }),
-                  $task->{headers}, $task->{content});
-         
-    $response = encode('utf-8', $response); #-- Для корректной работы кириллицы и рэгэкспов
-
-    return $self->check_proxy_checker_result($response, $code, $task, $cnf);
 }
  
 #------------------------------------------------------------------------------------------------
@@ -520,13 +474,80 @@ sub delete($$$$)
 }
  
 #------------------------------------------------------------------------------------------------
+#----------------------------------------- BAN CHECK --------------------------------------------
+#------------------------------------------------------------------------------------------------
+sub ban_check_result($$$$$)
+{
+    my ($self, $response, $code, $task, $cnf) = @_;
+     
+    for my $type (keys %{ $self->{response}{post} })
+    {
+        my $color;
+        given ($type)
+        {
+            when (/banned/)                          { $color = 'red'   }
+            when (/success|net_error|wrong_captcha/) { $color = 'green' }
+        }
+         
+        for (@{ $self->{response}{post}{$type} })
+        {
+            if ($response =~ /$_/ || $code =~ /$_/)
+            {
+                echo_proxy($color, $task->{proxy}, 'CHECK',
+                            sprintf("[%s](%d){%s}", uc($type), $code, ($VERBOSE ? html2text($response) : $_)));
+                return($type);
+            }
+        }
+    }
+     
+    echo_proxy('yellow', $task->{proxy}, 'CHECK',
+        sprintf("[%s](%d){%s}", 'UNKNOWN', $code, ($VERBOSE ? html2text($response) : 'unknown error')));
+    return('unknown');
+}
+sub ban_check($$$$)
+{
+    my ($self, $task, $cnf) = @_;
+     
+    my %content = %{ merge_hashes( $self->get_post_content(%{ $cnf->{post_cnf} }), $self->{fields}{post}) };
+    #---- Form data
+    #-- Message
+    if ($cnf->{msg_data}{mode} ne 'no')
+    {
+        my $text = make_text( $cnf->{msg_data} );
+        $content{ $self->{fields}{post}{msg} } = $text;
+    }
+    #-- Image
+    if ($cnf->{img_data}{mode} ne 'no')
+    {
+        my $file_path = make_pic( $cnf->{img_data} );
+        $content{ $self->{fields}{post}{img} } = ( $file_path ? [$file_path] : undef);
+        $task->{file_path} = $file_path;
+    }
+    elsif (!$cnf->{post_cnf}{thread}) #-- New thread
+    {
+        $content{ $self->{fields}{post}{nofile} } = 'on';
+    }
+     
+    $task->{content} = \%content;
+     
+    #-- POSTING
+    my ($code, $response) =
+        http_post($task->{proxy},   $self->get_post_url(%{ $cnf->{post_cnf} }),
+                  $task->{headers}, $task->{content});
+         
+    $response = encode('utf-8', $response); #-- Для корректной работы кириллицы и рэгэкспов
+
+    return $self->ban_check_result($response, $code, $task, $cnf);
+}
+ 
+#------------------------------------------------------------------------------------------------
 #----------------------------------  OTHER METHODS  ---------------------------------------------
 #------------------------------------------------------------------------------------------------
 sub get_page($$$$)
 {
     my ($self, $task, $cnf) = @_;
     #-- Set headers
-    my $headers = HTTP::Headers->new(%{ $self->get_default_headers($self) });
+    my $headers = HTTP::Headers->new(%{ $self->get_default_headers() });
     $headers->user_agent(rand_set(set => $self->{agents}));
     #-- Send request
     my ($response, $response_headers, $status_line) =
@@ -541,7 +562,7 @@ sub get_thread($$$$)
 {
     my ($self, $task, $cnf) = @_;
     #-- Set headers
-    my $headers = HTTP::Headers->new(%{ $self->get_default_headers($self) });
+    my $headers = HTTP::Headers->new(%{ $self->get_default_headers() });
     $headers->user_agent(rand_set(set => $self->{agents}));
     #-- Send request
     my ($response, $response_headers, $status_line) =
