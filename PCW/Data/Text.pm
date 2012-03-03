@@ -11,7 +11,7 @@ our @EXPORT_OK = qw(make_text);
 use List::Util qw(shuffle);
 use Data::Random qw(rand_set);
 
-use PCW::Utils qw(random);
+use PCW::Core::Utils qw(random);
  
 sub make_text($)
 {

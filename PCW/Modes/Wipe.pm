@@ -34,8 +34,8 @@ use File::Copy qw(move);
 # Importing internal PCW packages
 #------------------------------------------------------------------------------------------------
 use PCW::Core::Log qw(echo_msg echo_msg_dbg echo_proxy echo_proxy_dbg);
-use PCW::Utils     qw(with_coro_timeout);
-use PCW::Captcha   qw(captcha_report_bad);
+use PCW::Core::Utils     qw(with_coro_timeout);
+use PCW::Core::Captcha   qw(captcha_report_bad);
  
 #------------------------------------------------------------------------------------------------
 # Local package variables and procedures
@@ -62,7 +62,7 @@ sub show_stats
 #-- Coro callback
 my $cb_wipe_get = sub
 { 
-    my ($msg, $task, $chan, $cnf) = @_;
+    my ($msg, $task, $cnf) = @_;
     if ($msg eq 'success')
     {
         $prepare_queue->put($task);
@@ -77,9 +77,9 @@ my $cb_wipe_get = sub
     }
 };
 
-sub wipe_get($$$$)
+sub wipe_get($$$)
 {
-    my ($engine, $task, $chan, $cnf) = @_;
+    my ($engine, $task, $cnf) = @_;
     async {
         my $coro = $Coro::current;
         $coro->desc('get');
@@ -87,9 +87,9 @@ sub wipe_get($$$$)
         $coro->on_destroy($cb_wipe_get);
         my $status = 
         with_coro_timeout {
-            $engine->get($task, $chan, $cnf);
+            $engine->get($task, $cnf);
         } $coro, $cnf->{get_timeout};
-        $coro->cancel($status, $task, $chan, $cnf);
+        $coro->cancel($status, $task, $cnf);
     };
     cede;
 }
@@ -100,7 +100,7 @@ sub wipe_get($$$$)
 #-- Coro callback
 my $cb_wipe_prepare = sub 
 {
-    my ($msg, $task, $chan, $cnf) = @_;
+    my ($msg, $task, $cnf) = @_;
     if ($msg eq 'success')
     {
         $post_queue->put($task);
@@ -115,9 +115,9 @@ my $cb_wipe_prepare = sub
     }
 };
 
-sub wipe_prepare($$$$)
+sub wipe_prepare($$$)
 {
-    my ($engine, $task, $chan, $cnf) = @_;
+    my ($engine, $task, $cnf) = @_;
     async {
         my $coro = $Coro::current;
         $coro->desc('prepare');
@@ -125,9 +125,9 @@ sub wipe_prepare($$$$)
         $coro->on_destroy($cb_wipe_prepare);
         my $status =
         with_coro_timeout {
-            $engine->prepare($task, $chan, $cnf);
+            $engine->prepare($task, $cnf);
         } $coro, $cnf->{prepare_timeout};
-        $coro->cancel($status, $task, $chan, $cnf);
+        $coro->cancel($status, $task, $cnf);
     };
     cede;
 }
@@ -138,7 +138,7 @@ sub wipe_prepare($$$$)
 #-- Coro callback
 my $cb_wipe_post = sub 
 {
-    my ($msg, $task, $chan, $cnf) = @_;
+    my ($msg, $task, $cnf) = @_;
     #-- Delete temporary files
     unlink($task->{path_to_captcha})
         if !$cnf->{save_captcha} && $task->{path_to_captcha} && -e $task->{path_to_captcha};
@@ -188,9 +188,9 @@ my $cb_wipe_post = sub
     }
 };
 
-sub wipe_post($$$$)
+sub wipe_post($$$)
 {
-    my ($engine, $task, $chan, $cnf) = @_;
+    my ($engine, $task, $cnf) = @_;
     async
     {
         my $coro = $Coro::current;
@@ -207,9 +207,9 @@ sub wipe_post($$$$)
 
         my $status = 
         with_coro_timeout {
-            $engine->post($task, $chan, $cnf);
+            $engine->post($task, $cnf);
         } $coro, $cnf->{post_timeout};
-        $coro->cancel($status, $task, $chan, $cnf);
+        $coro->cancel($status, $task, $cnf);
     };
     cede;
 }
@@ -219,7 +219,7 @@ sub wipe_post($$$$)
 #------------------------------------------------------------------------------------------------
 sub wipe($$%)
 {
-    my ($self, $engine, $chan, %cnf) =  @_;
+    my ($self, $engine, %cnf) =  @_;
      
     #-- Initialization
     $get_queue->put({ proxy => $_ }) for (@{ $cnf{proxies} });
@@ -255,7 +255,7 @@ sub wipe($$%)
         {
             my @get_coro      = grep { $_->desc eq 'get'     } Coro::State::list;
             my $thrs_available = $cnf{max_cap_thrs} - scalar @get_coro;
-            wipe_get($engine, $get_queue->get, $chan, \%cnf)
+            wipe_get($engine, $get_queue->get, \%cnf)
                 while $get_queue->size && $thrs_available--;
         }
     );
@@ -273,7 +273,7 @@ sub wipe($$%)
                 $thrs_available = $n > 0 ? $n : 0;
             }
 
-            wipe_prepare($engine, $prepare_queue->get, $chan, \%cnf)
+            wipe_prepare($engine, $prepare_queue->get, \%cnf)
                 while $prepare_queue->size && $thrs_available--;
         }
     );
@@ -300,13 +300,13 @@ sub wipe($$%)
                     !@post_coro    && $post_queue->size)
                 {
                     echo_msg("Start posting.");
-                    wipe_post($engine, $post_queue->get, $chan, \%cnf) 
+                    wipe_post($engine, $post_queue->get, \%cnf) 
                         while $post_queue->size && $thrs_available--;
             }
         }
         else
         {
-            wipe_post($engine, $post_queue->get, $chan, \%cnf) 
+            wipe_post($engine, $post_queue->get, \%cnf) 
                 while $post_queue->size && $thrs_available--;
         }
         }

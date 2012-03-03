@@ -14,7 +14,7 @@ use File::Temp qw(tempfile tempdir);
 
 use List::Util qw(shuffle);
 use Data::Random qw(rand_set rand_image);
-use PCW::Utils qw(random);
+use PCW::Core::Utils qw(random);
 
 sub make_pic($)
 {
