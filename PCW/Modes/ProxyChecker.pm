@@ -25,8 +25,8 @@ use Time::HiRes;
 # Importing internal PCW packages
 #------------------------------------------------------------------------------------------------
 use PCW::Core::Log qw(echo_msg echo_msg_dbg echo_proxy echo_proxy_dbg);
-use PCW::Utils     qw(with_coro_timeout);
-use PCW::Captcha   qw(captcha_report_bad);
+use PCW::Core::Utils     qw(with_coro_timeout);
+use PCW::Core::Captcha   qw(captcha_report_bad);
  
 #------------------------------------------------------------------------------------------------
 # Local package variables and procedures

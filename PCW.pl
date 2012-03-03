@@ -18,7 +18,7 @@ use PCW::Modes::Wipe;
 use PCW::Modes::Delete;
 use PCW::Modes::Bump;
 use PCW::Modes::ProxyChecker;
-use PCW::Utils qw(get_proxylist);
+use PCW::Core::Utils qw(get_proxylist);
  
 #-----------------------------------------------------------------------------
 # Common variables
@@ -190,7 +190,7 @@ sub load_engine()
     my $package = "PCW::Engine::". $chan_config->{engine};
     eval("use $package");
     Carp::croak($@) if ($@);
-    $engine = $package->new(agents => \@agents, debug => $debug, verbose => $verbose);
+    $engine = $package->new(%$chan_config, agents => \@agents, debug => $debug, verbose => $verbose);
 }
  
 #-----------------------------------------------------------------------------
@@ -199,7 +199,7 @@ check_user_error();
 load_configs();     #-- load %mode_config
 load_proxies();     
 load_agents();
-load_chan();        #-- load %chan_config
+load_chan();        #-- load $chan_config
 load_engine();
 #-----------------------------------------------------------------------------
  
@@ -213,25 +213,25 @@ if ($mode =~ /wipe/)
 {
     $PCW::Modes::Wipe::DEBUG   = $debug;
     $PCW::Modes::Wipe::VERBOSE = $verbose;
-    PCW::Modes::Wipe->wipe($engine, $chan_config, proxies => \@proxies, %mode_config);
+    PCW::Modes::Wipe->wipe($engine, proxies => \@proxies, %mode_config);
 }
-elsif ($mode =~ /delete/)
-{
-    $PCW::Modes::Delete::DEBUG   = $debug;
-    $PCW::Modes::Delete::VERBOSE = $verbose;
-    PCW::Modes::Delete->delete($engine, $chan_config, proxies => \@proxies, %mode_config);
-}
-elsif ($mode =~ /proxychecker/)
-{
-    $PCW::Modes::ProxyChecker::DEBUG   = $debug;
-    $PCW::Modes::ProxyChecker::VERBOSE = $verbose;
-    PCW::Modes::ProxyChecker->checker($engine, $chan_config, proxies => \@proxies, %mode_config);
-}
-elsif ($mode =~ /bump/)
-{
-    $PCW::Modes::Bump::DEBUG   = $debug;
-    $PCW::Modes::Bump::VERBOSE = $verbose;
-    PCW::Modes::Bump->bump($engine, $chan_config, proxies => \@proxies, %mode_config);
-}
+#elsif ($mode =~ /delete/)
+#{
+    #$PCW::Modes::Delete::DEBUG   = $debug;
+    #$PCW::Modes::Delete::VERBOSE = $verbose;
+    #PCW::Modes::Delete->delete($engine, proxies => \@proxies, %mode_config);
+#}
+#elsif ($mode =~ /proxychecker/)
+#{
+    #$PCW::Modes::ProxyChecker::DEBUG   = $debug;
+    #$PCW::Modes::ProxyChecker::VERBOSE = $verbose;
+    #PCW::Modes::ProxyChecker->checker($engine, proxies => \@proxies, %mode_config);
+#}
+#elsif ($mode =~ /bump/)
+#{
+    #$PCW::Modes::Bump::DEBUG   = $debug;
+    #$PCW::Modes::Bump::VERBOSE = $verbose;
+    #PCW::Modes::Bump->bump($engine, proxies => \@proxies, %mode_config);
+#}
 
-__END__
+#__END__

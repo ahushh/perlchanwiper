@@ -29,7 +29,7 @@ use Time::HiRes;
 #------------------------------------------------------------------------------------------------
 use PCW::Core::Log qw(echo_msg echo_msg_dbg echo_proxy echo_proxy_dbg);
 use PCW::Core::Net qw(http_get);
-use PCW::Utils     qw(with_coro_timeout);
+use PCW::Core::Utils     qw(with_coro_timeout);
  
 #------------------------------------------------------------------------------------------------
 # Local package variables and procedures

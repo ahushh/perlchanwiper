@@ -15,7 +15,7 @@
 ** TODO Done Вынести загрузку engine из модов в PCW.pl
 ** TODO Done Отедельная папка configs
 ** TODO Debug сообщения
-** TODO Может загружить chan_cnf в engine?
+** TODO Done Может загружить chan_cnf в engine?
 ** TODO Добавить интерполяция в сообщении
 ** TODO Заменить ф-ю get_time
 * Captcha
