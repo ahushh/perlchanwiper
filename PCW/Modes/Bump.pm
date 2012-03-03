@@ -60,7 +60,7 @@ sub show_stats
 #-- Coro callback
 my $cb_bump_thread = sub
 { 
-    my ($msg, $engine, $task, $chan, $cnf) = @_;
+    my ($msg, $engine, $task, $cnf) = @_;
     echo_msg_dbg($DEBUG > 1, "cb_bump_thread(): message: $msg");
     #-- Delete temporary files
     unlink($task->{path_to_captcha})
@@ -74,7 +74,7 @@ my $cb_bump_thread = sub
         $stats{bumped}++;
         my $now = Time::HiRes::time;
         $run_at = $now + $cnf->{time};
-        run_cleanup($engine, $task, $chan, $cnf->{silent}) if ($cnf->{silent});
+        run_cleanup($engine, $task, $cnf->{silent}) if ($cnf->{silent});
     }
     elsif ($msg eq 'wrong_captcha')
     {
@@ -95,9 +95,9 @@ my $cb_bump_thread = sub
     $bump_queue->put($task);
 };
 
-sub bump_thread($$$$)
+sub bump_thread($$$)
 {
-    my ($engine, $task, $chan, $cnf) = @_;
+    my ($engine, $task, $cnf) = @_;
     async {
         my $coro = $Coro::current;
         $coro->desc('bump');
@@ -105,16 +105,16 @@ sub bump_thread($$$$)
         $coro->on_destroy($cb_bump_thread);
         my $status = 
         with_coro_timeout {
-            my $status = $engine->get($task, $chan, $cnf);
-            $coro->cancel($status, $task, $chan, $cnf) if ($status ne 'success');
+            my $status = $engine->get($task, $cnf);
+            $coro->cancel($status, $task, $cnf) if ($status ne 'success');
              
-            $status = $engine->prepare($task, $chan, $cnf);
-            $coro->cancel($status, $task, $chan, $cnf) if ($status ne 'success');
+            $status = $engine->prepare($task, $cnf);
+            $coro->cancel($status, $task, $cnf) if ($status ne 'success');
              
-            $status = $engine->post($task, $chan, $cnf);
+            $status = $engine->post($task, $cnf);
             
         } $coro, $cnf->{timeout};
-        $coro->cancel($status, $engine, $task, $chan, $cnf);
+        $coro->cancel($status, $engine, $task, $cnf);
     };
     cede;
 }
@@ -123,9 +123,9 @@ sub bump_thread($$$$)
 #--------------------------------------  DELETE BUMP  -------------------------------------------
 #------------------------------------------------------------------------------------------------
 #-- Coro callback
-sub delete_post($$$$)
+sub delete_post($$$)
 {
-    my ($engine, $task, $chan, $cnf) = @_;
+    my ($engine, $task, $cnf) = @_;
     async {
         my $coro = $Coro::current;
         $coro->desc('delete');
@@ -133,18 +133,18 @@ sub delete_post($$$$)
         #$coro->on_destroy($cb_delete_post);
         my $status =
         with_coro_timeout {
-            $engine->delete($task, $chan, $cnf);
+            $engine->delete($task, $cnf);
         } $coro, $cnf->{delete_timeout};
-        $coro->cancel($status, $task, $chan, $cnf);
+        $coro->cancel($status, $task, $cnf);
     };
     cede;
 }
 
-sub run_cleanup($$$$)
+sub run_cleanup($$$)
 {
-    my ($engine, $task, $chan, $cnf) = @_;
+    my ($engine, $task, $cnf) = @_;
     #-- get_posts_for_del imported from delete mode
-    my @posts_for_del = get_posts_for_del($task->{proxy}, $engine, $chan, %{ $cnf });
+    my @posts_for_del = get_posts_for_del($task->{proxy}, $engine, %{ $cnf });
 
     for my $postid (@posts_for_del)
     {
@@ -163,7 +163,7 @@ sub run_cleanup($$$$)
 #------------------------------------------------------------------------------------------------
 sub bump($$%)
 {
-    my ($self, $engine, $chan, %cnf) =  @_;
+    my ($self, $engine, %cnf) =  @_;
      
     #-- Initialization
     @proxies = @{ $cnf{proxies} };
@@ -210,7 +210,7 @@ sub bump($$%)
             {
                 my $task = $bump_queue->get;
                 echo_msg_dbg($DEBUG > 1, "bump_thread();");
-                bump_thread($engine, $task, $chan, \%cnf);
+                bump_thread($engine, $task, \%cnf);
             }
         }
     );
@@ -229,7 +229,7 @@ sub bump($$%)
                 $thrs_available = $n > 0 ? $n : 0;
             }
              
-            delete_post($engine, $delete_queue->get, $chan, $cnf{silent})
+            delete_post($engine, $delete_queue->get, $cnf{silent})
                 while $delete_queue->size && $thrs_available--;
         }
     ) if $cnf{silent};

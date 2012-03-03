@@ -14,7 +14,7 @@ sub decode_captcha($$)
                                                "attempts" => 15,
                                               );
     my $id = $recognizer->upload(%$opt);
-    #-- Используем как хранилищие id и путей капч
+    #-- Используем аргументы как хранилищие id и путей капч.
     $captcha_decode->{$file_path} = $id;
      
     my $cap_text = $recognizer->recognize($id);

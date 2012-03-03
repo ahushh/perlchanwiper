@@ -50,7 +50,7 @@ sub show_stats()
 #-- Coro callback
 my $cb_delete_post = sub
 {
-    my ($msg, $task, $chan, $cnf) = @_;
+    my ($msg, $task, $cnf) = @_;
     $stats{total}++;
     if ($msg eq 'success')
     {
@@ -62,9 +62,9 @@ my $cb_delete_post = sub
     }
 };
  
-sub delete_post($$$$)
+sub delete_post($$$)
 {
-    my ($engine, $task, $chan, $cnf) = @_;
+    my ($engine, $task, $cnf) = @_;
     async {
         my $coro = $Coro::current;
         $coro->desc('delete');
@@ -72,20 +72,20 @@ sub delete_post($$$$)
         $coro->on_destroy($cb_delete_post);
         my $status =
         with_coro_timeout {
-            $engine->delete($task, $chan, $cnf);
+            $engine->delete($task, $cnf);
         } $coro, $cnf->{delete_timeout};
-        $coro->cancel($status, $task, $chan, $cnf);
+        $coro->cancel($status, $task, $cnf);
     };
     cede;
 }
 
 #------------------------------------------------------------------------------------------------
-sub get_page($$$$)
+sub get_page($$$)
 {
-    my ($engine, $task, $chan, $cnf) = @_;
+    my ($engine, $task, $cnf) = @_;
     my $coro = async
     {
-        my ($response, $response_headers, $status_line) = $engine->get_page($task, $chan, $cnf);
+        my ($response, $response_headers, $status_line) = $engine->get_page($task, $cnf);
         return $response, $response_headers, $status_line;
     };
     $coro->{proxy} = $task->{proxy}; #-- Для вывода timeout
@@ -95,10 +95,10 @@ sub get_page($$$$)
  
 sub get_thread($$$$)
 {
-    my ($engine, $task, $chan, $cnf) = @_;
+    my ($engine, $task, $cnf) = @_;
     my $coro = async
     {
-        my ($response, $response_headers, $status_line) = $engine->get_thread($task, $chan, $cnf);
+        my ($response, $response_headers, $status_line) = $engine->get_thread($task, $cnf);
         return $response, $response_headers, $status_line;
     };
     $coro->{proxy} = $task->{proxy}; #-- Для вывода timeout
@@ -110,7 +110,7 @@ sub get_thread($$$$)
 #------------------------------------------------------------------------------------------------
 sub get_posts_for_del($$%)
 {
-    my ($proxy, $engine, $chan, %cnf) =  @_;
+    my ($proxy, $engine, %cnf) =  @_;
      
     my @posts_for_del;
     my $get_task = {
@@ -127,10 +127,10 @@ sub get_posts_for_del($$%)
             $local_delete_cnf{thread} = $thread;
              
             #-- Get the thread
-            my ($html, undef, $status) = get_thread($engine, $get_task, $chan, \%local_delete_cnf);
+            my ($html, undef, $status) = $engine->get_thread($get_task, \%local_delete_cnf);
             echo_msg("Thread $thread downloaded: $status");
              
-            %all_posts = (%all_posts, $engine->find_all_replies($chan, html => $html));
+            %all_posts = (%all_posts, $engine->get_all_replies(html => $html));
         }
     }
     #-- Search thread on the pages
@@ -142,10 +142,10 @@ sub get_posts_for_del($$%)
             $local_delete_cnf{page} = $page;
              
             #-- Get the page
-            my ($html, undef, $status) = get_page($engine, $get_task, $chan, \%local_delete_cnf);
+            my ($html, undef, $status) = $engine->get_page($get_task, \%local_delete_cnf);
             echo_msg("Page $page downloaded: $status");
              
-            %all_posts = (%all_posts, $engine->find_all_threads($chan, html => $html));
+            %all_posts = (%all_posts, $engine->get_all_threads(html => $html));
         }
     }
     unless ($cnf{delete_cnf}{page} || $cnf{delete_cnf}{thread})
@@ -169,7 +169,7 @@ sub get_posts_for_del($$%)
  
 sub delete($$$%)
 {
-    my ($self, $engine, $chan, %cnf) =  @_;
+    my ($self, $engine, %cnf) =  @_;
      
     my $proxy = shift @{ $cnf{proxies} };
     #-------------------------------------------------------------------
@@ -182,7 +182,7 @@ sub delete($$$%)
     }
     elsif ($cnf{delete_cnf}{find})
     {
-        @posts_for_del = get_posts_for_del($proxy, $engine, $chan, %cnf);
+        @posts_for_del = get_posts_for_del($proxy, $engine, %cnf);
     }
     else
     {
@@ -235,7 +235,7 @@ sub delete($$$%)
                 $thrs_available = $n > 0 ? $n : 0;
             }
              
-            delete_post($engine, $delete_queue->get, $chan, \%cnf)
+            delete_post($engine, $delete_queue->get, \%cnf)
                 while $delete_queue->size && $thrs_available--;
         }
     );

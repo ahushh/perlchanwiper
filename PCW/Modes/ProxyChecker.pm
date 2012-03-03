@@ -48,7 +48,7 @@ sub show_stats
 #------------------------------------------------------------------------------------------------
 my $cb_check = sub
 {
-    my ($msg, $task, $chan, $cnf) = @_;
+    my ($msg, $task, $cnf) = @_;
     #-- Delete temporary files
     unlink($task->{file_path})
         if $cnf->{img_data}{altering} && $task->{file_path} && -e $task->{file_path};
@@ -65,32 +65,32 @@ my $cb_check = sub
     }
 };
  
-sub check($$$$)
+sub check($$$)
 {
-    my ($engine, $task, $chan, $cnf) = @_;
+    my ($engine, $task, $cnf) = @_;
     async {
         my $coro = $Coro::current;
         $coro->desc('check');
         $coro->{proxy} = $task->{proxy}; #-- Для вывода timeout
         $coro->on_destroy($cb_check);
          
-        $engine->prepare($task, $chan, $cnf);
+        $engine->prepare($task, $cnf);
          
         my $status = 
         with_coro_timeout {
-            $engine->check_proxy($task, $chan, $cnf);
+            $engine->ban_check($task, $cnf);
         } $coro, $cnf->{timeout};
          
-        $coro->cancel($status, $task, $chan, $cnf);
+        $coro->cancel($status, $task, $cnf);
     };
     cede;
 }
 #------------------------------------------------------------------------------------------------
 #------------------------------------  MAIN CHECKER  --------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub checker($$$)
+sub checker($$%)
 {
-    my ($self, $engine, $chan, %cnf) =  @_;
+    my ($self, $engine, %cnf) =  @_;
  
     #-- Initialization
     $queue->put({ proxy => $_ }) for (@{ $cnf{proxies} });
@@ -122,7 +122,7 @@ sub checker($$$)
         {
             my @checker_coro = grep { $_->desc eq 'check' } Coro::State::list;
             my $thrs_available = $cnf{max_thrs} - scalar @checker_coro;
-            check($engine, $queue->get, $chan, \%cnf)
+            check($engine, $queue->get, \%cnf)
                 while $queue->size && $thrs_available--;
         }
     );
