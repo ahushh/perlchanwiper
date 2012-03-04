@@ -5,7 +5,7 @@ use autodie;
 use Carp;
 
 use Exporter 'import';
-our @EXPORT_OK = qw(get_posts_for_del);
+our @EXPORT_OK = qw(get_deletion_posts);
  
 #------------------------------------------------------------------------------------------------
 # Package Variables
@@ -108,11 +108,11 @@ sub get_thread($$$$)
 #------------------------------------------------------------------------------------------------
 #------------------------------------  MAIN DELETE  ---------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub get_posts_for_del($$%)
+sub get_deletion_posts($$%)
 {
     my ($proxy, $engine, %cnf) =  @_;
      
-    my @posts_for_del;
+    my @deletion_posts;
     my $get_task = {
         proxy    => $proxy,
     };
@@ -160,11 +160,11 @@ sub get_posts_for_del($$%)
     {
         if ($all_posts{$_} =~ /$pattern/mg)
         {
-            push @posts_for_del, $_;
+            push @deletion_posts, $_;
         }
     }
-    echo_msg(sprintf "%d posts and threads matched the pattern", scalar @posts_for_del);
-    return @posts_for_del;
+    echo_msg(sprintf "%d posts and threads matched the pattern", scalar @deletion_posts);
+    return @deletion_posts;
 }
  
 sub delete($$$%)
@@ -172,24 +172,25 @@ sub delete($$$%)
     my ($self, $engine, %cnf) =  @_;
      
     my $proxy = shift @{ $cnf{proxies} };
+    echo_msg("Used proxy: $proxy");
     #-------------------------------------------------------------------
     #-- Initialization
     #-------------------------------------------------------------------
-    my @posts_for_del;
+    my @deletion_posts;
     if ($cnf{delete_cnf}{by_id})
     {
-        @posts_for_del = @{ $cnf{delete_cnf}{by_id} };
+        @deletion_posts = @{ $cnf{delete_cnf}{by_id} };
     }
     elsif ($cnf{delete_cnf}{find})
     {
-        @posts_for_del = get_posts_for_del($proxy, $engine, %cnf);
+        @deletion_posts = get_deletion_posts($proxy, $engine, %cnf);
     }
     else
     {
         Carp::croak("Option 'by_id' or 'find' should be specified.");
     }
      
-    for my $postid (@posts_for_del)
+    for my $postid (@deletion_posts)
     {
         my $task = {
             proxy    => $proxy,

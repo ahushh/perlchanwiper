@@ -154,7 +154,7 @@ my $cb_wipe_post = sub
         if ($cnf->{save_captcha} && $task->{path_to_captcha})
         {
             my ($name, $path, $suffix) = fileparse($task->{path_to_captcha}, 'png', 'jpeg', 'jpg', 'gif');
-            move $task->{path_to_captcha}, "$CAPTCHA_DIR/". $task->{captcha_text} ."--$name$suffix";
+            move $task->{path_to_captcha}, "$CAPTCHA_DIR/". $task->{captcha_text} ."--". time .".$suffix";
         }
         $stats{posted}++;
 
@@ -300,9 +300,11 @@ sub wipe($$%)
             }
             if ($cnf{salvo})
             {
-                if (!@get_coro     && $get_queue->size     == 0 && 
+                if (
+                    !@get_coro     && $get_queue->size     == 0 && 
                     !@prepare_coro && $prepare_queue->size == 0 &&
-                    !@post_coro    && $post_queue->size)
+                    !@post_coro    && $post_queue->size
+                   )
                 {
                     echo_msg("Start posting.");
                     wipe_post($engine, $post_queue->get, \%cnf) 
