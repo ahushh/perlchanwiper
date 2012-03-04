@@ -1,4 +1,4 @@
-package PCW::Engine::Wakaba;
+package PCW::Engine::Kusaba;
  
 use strict;
 use utf8;
@@ -49,34 +49,20 @@ use PCW::Data::Text     qw(make_text);
 sub get_post_url($$%)
 {
     my ($self, %config) = @_;
-    Carp::croak("Board is not set! at get_post_url")
-        unless($config{board});
-    return sprintf $self->{urls}{post}, $config{board};
+    return $self->{urls}{post};
 }
 
 sub get_delete_url($$%) 
 {
     my ($self, %config) = @_;
-    Carp::croak("Board is not set! at get_delete_url")
-        unless($config{board});
-    return sprintf $self->{urls}{delete}, $config{board};
+    return $self->{urls}{delete};
 }
 
 sub get_captcha_url($$%) 
 {
     my ($self, %config) = @_;
-    Carp::croak("Board is not set! at get_captcha_url")
-        unless($config{board});
-    if ($config{thread})
-    {
-        return sprintf $self->{urls}{captcha}, $config{board}, "res$config{thread}", $config{thread};
-    }
-    else
-    {
-        return sprintf $self->{urls}{captcha}, $config{board}, 'mainpage', '?';
-    }
+    return $self->{urls}{captcha};
 }
-
 #sub get_page_url($$%)
 #{
 #}
@@ -128,6 +114,7 @@ sub get_post_content($$%)
 {
     my ($self, %config) = @_;
     my $thread   = $config{thread};
+    my $board    = $config{board};
     my $email    = $config{email};
     my $name     = $config{name};
     my $subject  = $config{subject};
@@ -135,33 +122,29 @@ sub get_post_content($$%)
     my $nofile   = $config{nofile};
 
     my $content = {
-        'task'       => 'post',
-        'name'       => '',
-        'link'       => '',
-        'gb2'        => 'board',
+        'MAX_FILE_SIZE' => 10240000, 
         'email'      => $email,
         'subject'    => $subject,
         'password'   => $password,
+        'thread'     => $thread,
+        'board'      => $board,
     };
     $content->{nofile} = $nofile
         if ($nofile);
-         
-    $content->{thread} = $thread
-        if ($thread);
-         
     return $content;
 }
 
 sub get_delete_content($$%)
 {
     my ($self, %config) = @_;
-    Carp::croak("Delete and password parameters are not set!")
-        unless($config{delete} && $config{password});
+    Carp::croak("Delete, board and password parameters are not set!")
+        unless($config{board} && $config{password});
          
     my $content = {
-        task     => 'delete',
+        board    => $config{board},
         password => $config{password},
         delete   => $config{delete},
+        deletepost => 'Удалить',
     };
     return $content;
 }
@@ -207,6 +190,20 @@ sub get($$$$)
         {
             echo_proxy('green', $task->{proxy}, 'CAPTCHA', "[SUCCESS]{$status_line}");
         }
+        #-- Obtaining cookies
+        if ($self->{cookies})
+        {
+            my $saved_cookies = parse_cookies($self->{cookies}, $response_headers);
+            if (!$saved_cookies)
+            {
+                echo_proxy('red', $task->{proxy}, 'COOKIES', '[ERROR]{required cookies not found/proxy does not supported cookies at all}');
+                return('banned');
+            }
+            else
+            {
+                $headers->header('Cookie' => $saved_cookies);
+            }
+        }
     }
     #-- The recaptcha
     elsif ($self->{recaptcha_key})
@@ -221,8 +218,11 @@ sub get($$$$)
         echo_proxy('green', $task->{proxy}, 'CAPTCHA', '[SUCCESS]{ok..recaptcha obtaining went well}');
         $task->{content} = { @fields };
     }
-    my $path_to_captcha = save_file($captcha_img, $self->{captcha_extension});
-    $task->{path_to_captcha} = $path_to_captcha;
+    if ($captcha_img)
+    {
+        my $path_to_captcha = save_file($captcha_img, $self->{captcha_extension});
+        $task->{path_to_captcha} = $path_to_captcha;
+    }
      
     $task->{headers} = $headers;
     return('success');
@@ -269,10 +269,10 @@ sub prepare($$$$)
         $content{ $self->{fields}{post}{img} } = ( $file_path ? [$file_path] : undef);
         $task->{file_path} = $file_path;
     }
-    elsif (!$cnf->{post_cnf}{thread}) #-- New thread
-    {
-        $content{ $self->{fields}{post}{nofile} } = 'on';
-    }
+    #elsif (!$cnf->{post_cnf}{thread}) #-- New thread
+    #{
+        #$content{ $self->{fields}{post}{nofile} } = 'on';
+    #}
      
     if ($task->{content})
     {

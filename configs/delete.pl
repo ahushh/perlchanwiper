@@ -12,7 +12,7 @@ my $delete_cnf = {
 };
 our %mode_config = (
     delete_cnf        => $delete_cnf,
-    max_del_thrs      => 5,       #-- максимально количество запущенных потоков
-    delete_timeout    => 30,      #-- таймаут
+    max_del_thrs      => 10,       #-- максимально количество запущенных потоков
+    delete_timeout    => 60,      #-- таймаут
 );
 

@@ -12,6 +12,16 @@ use List::Util qw(shuffle);
 use Data::Random qw(rand_set);
 
 use PCW::Core::Utils qw(random);
+
+sub interpolate($)
+{
+    my $text = shift;
+     
+    my $time = time;
+    $text =~ s/%time%/$time/g;
+     
+    return $text;
+}
  
 sub make_text($)
 {
@@ -21,7 +31,8 @@ sub make_text($)
     Carp::croak sprintf "Text mode '%s' doesn't exist!\n", $conf->{mode}
 			unless exists &{ $msg_mode };
     my $create_msg = \&{ $msg_mode };
-    return &$create_msg($conf) . $sign;
+    my $text = &$create_msg($conf) . $sign;
+    return interpolate($text);
 }
 
 #------------------------------------------------------------------------------------------------

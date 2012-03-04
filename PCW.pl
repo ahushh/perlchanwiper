@@ -65,7 +65,6 @@ sub init()
         'proxy=s'   => \$proxy_file,
         'ua=s'      => \$useragents,
         'debug=i'   => \$debug,
-        #'debug'     => \$debug,
         'verbose'   => \$verbose,
         'help|?'    => \$help,
     );
@@ -119,12 +118,14 @@ sub usage
     my @chans;
     for my $path (glob "chans/*.pl")
     {
+        next if $path =~ /example/;
         my ($chan, undef, undef) = fileparse($path, '.pl');
         push @chans, $chan;
     }
     my @engines;
     for my $path (glob "PCW/Engine/*.pm")
     {
+        next if $path =~ /Abstract/;
         my ($engine, undef, undef) = fileparse($path, '.pm');
         push @engines, $engine;
     }
@@ -146,6 +147,7 @@ Options:
     --help          Show this message and exit
 
 Supported chan engines: @engines
+¡ Bump mode is experimental ! DO NOT USE
 Version $VERSION
 DESU
      

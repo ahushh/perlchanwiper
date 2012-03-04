@@ -34,7 +34,7 @@ use File::Copy qw(move);
 use PCW::Core::Log qw(echo_msg echo_msg_dbg echo_proxy echo_proxy_dbg);
 use PCW::Core::Utils     qw(with_coro_timeout);
 use PCW::Core::Captcha   qw(captcha_report_bad);
-use PCW::Modes::Delete qw(get_posts_for_del);
+use PCW::Modes::Delete qw(get_deletion_posts);
  
 #------------------------------------------------------------------------------------------------
 # Local package variables and procedures
@@ -143,10 +143,10 @@ sub delete_post($$$)
 sub run_cleanup($$$)
 {
     my ($engine, $task, $cnf) = @_;
-    #-- get_posts_for_del imported from delete mode
-    my @posts_for_del = get_posts_for_del($task->{proxy}, $engine, %{ $cnf });
+    #-- get_deletion_posts imported from delete mode
+    my @deletion_posts = get_deletion_posts($task->{proxy}, $engine, %{ $cnf });
 
-    for my $postid (@posts_for_del)
+    for my $postid (@deletion_posts)
     {
         my $task = {
             proxy    => $task->{proxy},
