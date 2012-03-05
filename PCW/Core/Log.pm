@@ -22,21 +22,19 @@ sub get_time()
     "$hour:$min:$sec";
 }
  
-sub echo_msg(;$$)
+sub echo_msg($;$$)
 {
-    my ($msg, $type) = @_;
-    print sprintf "[%s]", get_time;
-    print "[$type]" if $type;
-    print " $msg\n" if $msg;
+    my ($p, $msg, $type) = @_;
+    return 0 unless $p;
+
+    printf "[%s]",    get_time;
+    printf "[%-10s]", $type    if $type;
+    printf " %s\n",   $msg,    if $msg;
+
+    return 1;
 }
 
-sub echo_msg_dbg($$;$)
-{
-    my ($debug, $msg, $type) = @_;
-    echo_msg($msg, $type) if $debug;
-}
- 
-sub echo_proxy($$$$)
+sub echo_proxy($$$$$)
 {
     no warnings;
     my $print_proxy = sub
@@ -45,19 +43,17 @@ sub echo_proxy($$$$)
         print colored [$color], sprintf " %-40s ", $proxy;
     };
     
-    my ($color, $proxy, $type, $msg) = @_;
-    echo_msg("", $type);
+    my ($p, $color, $proxy, $type, $msg) = @_;
+    return 0 unless $p;
+     
+    echo_msg(1, "", $type);
      
     &$print_proxy($proxy, $color);
     print "$msg\n";
+
+    return 1;
 }
 
-sub echo_proxy_dbg($$$$$)
-{
-    my ($debug, $color, $proxy, $type, $msg) = @_;
-    echo_proxy($color, $proxy, $type, $msg) if $debug;
-}
- 
 1;
  
  

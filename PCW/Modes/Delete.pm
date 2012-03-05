@@ -10,7 +10,7 @@ our @EXPORT_OK = qw(get_deletion_posts);
 #------------------------------------------------------------------------------------------------
 # Package Variables
 #------------------------------------------------------------------------------------------------
-our $DEBUG   = 0;
+our $LOGLEVEL   = 0;
 our $VERBOSE = 0;
  
 #------------------------------------------------------------------------------------------------
@@ -27,9 +27,9 @@ use Time::HiRes;
 #------------------------------------------------------------------------------------------------
 # Importing internal PCW packages
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Log qw(echo_msg echo_msg_dbg echo_proxy echo_proxy_dbg);
-use PCW::Core::Net qw(http_get);
-use PCW::Core::Utils     qw(with_coro_timeout);
+use PCW::Core::Log   qw(echo_msg echo_proxy);
+use PCW::Core::Net   qw(http_get);
+use PCW::Core::Utils qw(with_coro_timeout);
  
 #------------------------------------------------------------------------------------------------
 # Local package variables and procedures
@@ -128,7 +128,7 @@ sub get_deletion_posts($$%)
              
             #-- Get the thread
             my ($html, undef, $status) = $engine->get_thread($get_task, \%local_delete_cnf);
-            echo_msg("Thread $thread downloaded: $status");
+            echo_msg($LOGLEVEL >= 2, "Thread $thread downloaded: $status");
              
             %all_posts = (%all_posts, $engine->get_all_replies(html => $html));
         }
@@ -143,7 +143,7 @@ sub get_deletion_posts($$%)
              
             #-- Get the page
             my ($html, undef, $status) = $engine->get_page($get_task, \%local_delete_cnf);
-            echo_msg("Page $page downloaded: $status");
+            echo_msg($LOGLEVEL >= 2, "Page $page downloaded: $status");
              
             %all_posts = (%all_posts, $engine->get_all_threads(html => $html));
         }
@@ -153,7 +153,7 @@ sub get_deletion_posts($$%)
         Carp::croak("Options 'thread' or/and 'page' should be specified.");
     }
      
-    echo_msg(sprintf "%d posts and threads were found", scalar keys %all_posts);
+    echo_msg($LOGLEVEL >= 2, sprintf "%d posts and threads were found", scalar keys %all_posts);
      
     my $pattern = $cnf{delete_cnf}{find};
     for (keys %all_posts)
@@ -163,7 +163,7 @@ sub get_deletion_posts($$%)
             push @deletion_posts, $_;
         }
     }
-    echo_msg(sprintf "%d posts and threads matched the pattern", scalar @deletion_posts);
+    echo_msg($LOGLEVEL >= 2, sprintf "%d posts and threads matched the pattern", scalar @deletion_posts);
     return @deletion_posts;
 }
  
@@ -172,7 +172,7 @@ sub delete($$$%)
     my ($self, $engine, %cnf) =  @_;
      
     my $proxy = shift @{ $cnf{proxies} };
-    echo_msg("Used proxy: $proxy");
+    echo_msg($LOGLEVEL >= 2, "Used proxy: $proxy");
     #-------------------------------------------------------------------
     #-- Initialization
     #-------------------------------------------------------------------
@@ -209,14 +209,14 @@ sub delete($$$%)
         {
             my @delete_coro  = grep { $_->desc eq 'delete' } Coro::State::list;
              
-            echo_msg_dbg($DEBUG, sprintf "run: %d; queue: %d", scalar @delete_coro, $delete_queue->size);
+            echo_msg($LOGLEVEL >= 2, sprintf "run: %d; queue: %d", scalar @delete_coro, $delete_queue->size);
                        
             for my $coro (@delete_coro)
             {
                 my $now = Time::HiRes::time;
                 if ($coro->{timeout_at} && $now > $coro->{timeout_at})
                 {
-                    echo_proxy('red', $coro->{proxy}, uc($coro->{desc}), '[TIMEOUT]');
+                    echo_proxy(1, 'red', $coro->{proxy}, uc($coro->{desc}), '[TIMEOUT]');
                     $coro->cancel('timeout');
                 }
             }

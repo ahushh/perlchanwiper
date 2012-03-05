@@ -12,7 +12,7 @@ use Carp;
 #------------------------------------------------------------------------------------------------
 # Package Variables
 #------------------------------------------------------------------------------------------------
-our $DEBUG;
+our $LOGLEVEL;
 our $VERBOSE;
  
 #------------------------------------------------------------------------------------------------
@@ -34,7 +34,7 @@ use HTTP::Headers;
 use PCW::Core::Utils    qw(merge_hashes parse_cookies html2text save_file);
 use PCW::Core::Captcha  qw(captcha_recognizer);
 use PCW::Core::Net      qw(http_get http_post get_recaptcha);
-use PCW::Core::Log      qw(echo_msg echo_msg_dbg echo_proxy echo_proxy_dbg);
+use PCW::Core::Log      qw(echo_msg echo_proxy);
 use PCW::Data::Images   qw(make_pic);
 use PCW::Data::Text     qw(make_text);
  
@@ -44,12 +44,12 @@ use PCW::Data::Text     qw(make_text);
 sub new($%)
 {
     my ($class, %args) = @_;
-    my $agents  = delete $args{agents};
-    my $debug   = delete $args{debug};
-    my $verbose = delete $args{verbose};
+    my $agents   = delete $args{agents};
+    my $loglevel = delete $args{loglevel};
+    my $verbose  = delete $args{verbose};
      
-    $DEBUG   = $debug   || 0;
-    $VERBOSE = $verbose || 0;
+    $LOGLEVEL = $loglevel || 0;
+    $VERBOSE  = $verbose  || 0;
 
     # TODO: check for errors in the chan-config file
     Carp::croak("Option 'agents' should be are set.")
@@ -264,14 +264,14 @@ sub check_post_result($$$$$)
         {
             if ($response =~ /$_/ || $code =~ /$_/)
             {
-                echo_proxy($color, $task->{proxy}, 'POST',
+                echo_proxy(1, $color, $task->{proxy}, 'POST',
                             sprintf("[%s](%d){%s}", uc($type), $code, ($VERBOSE ? html2text($response) : $_)));
                 return($type);
             }
         }
     }
      
-    echo_proxy('yellow', $task->{proxy}, 'POST',
+    echo_proxy(1, 'yellow', $task->{proxy}, 'POST',
         sprintf("[%s](%d){%s}", 'UNKNOWN', $code, ($VERBOSE ? html2text($response) : 'unknown error')));
     return('unknown');
 }
@@ -310,13 +310,13 @@ sub check_delete_result($$$$$)
         {
             if ($response =~ /$_/ || $code =~ /$_/)
             {
-                echo_proxy($color, 'No. '. $task->{delete}, 'DELETE',
+                echo_proxy(1, $color, 'No. '. $task->{delete}, 'DELETE',
                             sprintf("[%s](%d){%s}", uc($type), $code, ($VERBOSE ? html2text($response) : $_)));
                 return($type);
             }
         }
     }
-    echo_proxy('yellow', 'No. '. $task->{delete}, 'DELETE',
+    echo_proxy(1, 'yellow', 'No. '. $task->{delete}, 'DELETE',
         sprintf("[%s](%d){%s}", 'UNKNOWN', $code, ($VERBOSE ? html2text($response) : 'unknown error')));
     return('unknown');
 }
@@ -360,14 +360,14 @@ sub ban_check_result($$$$$)
         {
             if ($response =~ /$_/ || $code =~ /$_/)
             {
-                echo_proxy($color, $task->{proxy}, 'CHECK',
+                echo_proxy(1, $color, $task->{proxy}, 'CHECK',
                             sprintf("[%s](%d){%s}", uc($type), $code, ($VERBOSE ? html2text($response) : $_)));
                 return($type);
             }
         }
     }
      
-    echo_proxy('yellow', $task->{proxy}, 'CHECK',
+    echo_proxy(1, 'yellow', $task->{proxy}, 'CHECK',
         sprintf("[%s](%d){%s}", 'UNKNOWN', $code, ($VERBOSE ? html2text($response) : 'unknown error')));
     return('unknown');
 }

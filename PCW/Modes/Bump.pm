@@ -8,7 +8,7 @@ use Carp;
 # Package Variables
 #------------------------------------------------------------------------------------------------
 our $CAPTCHA_DIR = './captcha';
-our $DEBUG   = 0;
+our $LOGLEVEL   = 0;
 our $VERBOSE = 0;
  
 #------------------------------------------------------------------------------------------------
@@ -31,9 +31,9 @@ use File::Copy qw(move);
 #------------------------------------------------------------------------------------------------
 # Importing internal PCW packages
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Log qw(echo_msg echo_msg_dbg echo_proxy echo_proxy_dbg);
-use PCW::Core::Utils     qw(with_coro_timeout);
-use PCW::Core::Captcha   qw(captcha_report_bad);
+use PCW::Core::Log     qw(echo_msg echo_proxy);
+use PCW::Core::Utils   qw(with_coro_timeout);
+use PCW::Core::Captcha qw(captcha_report_bad);
 use PCW::Modes::Delete qw(get_deletion_posts);
  
 #------------------------------------------------------------------------------------------------
@@ -61,7 +61,7 @@ sub show_stats
 my $cb_bump_thread = sub
 { 
     my ($msg, $engine, $task, $cnf) = @_;
-    echo_msg_dbg($DEBUG > 1, "cb_bump_thread(): message: $msg");
+    echo_msg($LOGLEVEL >= 4, "cb_bump_thread(): message: $msg");
     #-- Delete temporary files
     unlink($task->{path_to_captcha})
         if !$cnf->{save_captcha} && $task->{path_to_captcha} && -e $task->{path_to_captcha};
@@ -86,7 +86,7 @@ my $cb_bump_thread = sub
         $task->{proxy} = $proxy;
         unless ($task->{proxy})
         {
-            echo_msg("All proxies are dead");
+            echo_msg(1, "All proxies are dead");
             EV::break;
             show_stats();
             exit;
@@ -177,9 +177,9 @@ sub bump($$%)
             my @bump_coro   = grep { $_->desc ? ($_->desc eq 'bump')   : 0 } Coro::State::list;
             my @delete_coro = grep { $_->desc ? ($_->desc eq 'delete') : 0 } Coro::State::list;
 
-            echo_msg_dbg($DEBUG, sprintf "run: %d bump, %d delete.",
+            echo_msg($LOGLEVEL >= 2, sprintf "run: %d bump, %d delete.",
                 scalar @bump_coro, scalar @delete_coro);
-            echo_msg_dbg($DEBUG, sprintf "queue: %d bump, %d delete.",
+            echo_msg($LOGLEVEL >= 2, sprintf "queue: %d bump, %d delete.",
                 $bump_queue->size, $delete_queue->size);
              
             for my $coro (@bump_coro, @delete_coro)
@@ -187,8 +187,8 @@ sub bump($$%)
                 my $now = Time::HiRes::time;
                 if ($coro->{timeout_at} && $now > $coro->{timeout_at})
                 {
-                    echo_msg_dbg($VERBOSE, "timeout at: ". $coro->{timeout_at} ."now: $now");
-                    echo_proxy('red', $coro->{proxy}, uc($coro->{desc}), '[TIMEOUT]');
+                    echo_msg($LOGLEVEL >= 4, $VERBOSE, "timeout at: ". $coro->{timeout_at} ."now: $now");
+                    echo_proxy(1, 'red', $coro->{proxy}, uc($coro->{desc}), '[TIMEOUT]');
                     $coro->cancel('timeout');
                 }
             }
@@ -203,13 +203,13 @@ sub bump($$%)
             my @delete_coro = grep { $_->desc ? ($_->desc eq 'delete') : 0 } Coro::State::list;
              
             my $now = Time::HiRes::time;
-            echo_msg_dbg($DEBUG > 1, "now: $now; run_at: $run_at");
+            echo_msg($LOGLEVEL >= 4, "now: $now; run_at: $run_at");
             return if (scalar @bump_coro or scalar @delete_coro);
              
             if ($now > $run_at)
             {
                 my $task = $bump_queue->get;
-                echo_msg_dbg($DEBUG > 1, "bump_thread();");
+                echo_msg($LOGLEVEL >= 4, "bump_thread();");
                 bump_thread($engine, $task, \%cnf);
             }
         }

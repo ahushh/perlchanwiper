@@ -7,7 +7,7 @@ use Carp;
 #------------------------------------------------------------------------------------------------
 # Package Variables
 #------------------------------------------------------------------------------------------------
-our $DEBUG   = 0;
+our $LOGLEVEL   = 0;
 our $VERBOSE = 0;
  
 #------------------------------------------------------------------------------------------------
@@ -24,9 +24,9 @@ use Time::HiRes;
 #------------------------------------------------------------------------------------------------
 # Importing internal PCW packages
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Log qw(echo_msg echo_msg_dbg echo_proxy echo_proxy_dbg);
-use PCW::Core::Utils     qw(with_coro_timeout);
-use PCW::Core::Captcha   qw(captcha_report_bad);
+use PCW::Core::Log     qw(echo_msg echo_proxy);
+use PCW::Core::Utils   qw(with_coro_timeout);
+use PCW::Core::Captcha qw(captcha_report_bad);
  
 #------------------------------------------------------------------------------------------------
 # Local package variables and procedures
@@ -101,15 +101,15 @@ sub checker($$%)
         {
             my @checker_coro = grep { $_->desc eq 'check' } Coro::State::list;
 
-            echo_msg_dbg($DEBUG, sprintf "run: %d coros.", scalar @checker_coro);
-            echo_msg_dbg($DEBUG, sprintf "queue: %d coros.", $queue->size);
+            echo_msg($LOGLEVEL >= 2, sprintf "run: %d coros.", scalar @checker_coro);
+            echo_msg($LOGLEVEL >= 2, sprintf "queue: %d coros.", $queue->size);
 
             for my $coro (@checker_coro)
             {
                 my $now = Time::HiRes::time;
                 if ($coro->{timeout_at} && $now > $coro->{timeout_at})
                 {
-                    echo_proxy('red', $coro->{proxy}, uc($coro->{desc}), '[TIMEOUT]');
+                    echo_proxy(1, 'red', $coro->{proxy}, uc($coro->{desc}), '[TIMEOUT]');
                     $coro->cancel('timeout');
                 }
             }
