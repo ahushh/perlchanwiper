@@ -10,7 +10,7 @@ use base 'PCW::Engine::SimpleAbstract';
 #------------------------------------------------------------------------------------------------
 # Package Variables
 #------------------------------------------------------------------------------------------------
-our $DEBUG;
+our $LOGLEVEL;
 our $VERBOSE;
  
 #------------------------------------------------------------------------------------------------
@@ -32,7 +32,7 @@ use HTTP::Headers;
 use PCW::Core::Utils    qw(merge_hashes parse_cookies html2text save_file);
 use PCW::Core::Captcha  qw(captcha_recognizer);
 use PCW::Core::Net      qw(http_get http_post get_recaptcha);
-use PCW::Core::Log      qw(echo_msg echo_msg_dbg echo_proxy echo_proxy_dbg);
+use PCW::Core::Log      qw(echo_msg echo_proxy);
 use PCW::Data::Images   qw(make_pic);
 use PCW::Data::Text     qw(make_text);
  
@@ -183,12 +183,12 @@ sub get($$$$)
         #-- Check result
         if ($status_line !~ /200/ or !$captcha_img or $captcha_img !~ /GIF|PNG|JFIF|JPEG|JPEH|JPG/)
         {
-            echo_proxy('red', $task->{proxy}, 'CAPTCHA', sprintf "[ERROR]{%s}", html2text($status_line));
+            echo_proxy(1, 'red', $task->{proxy}, 'CAPTCHA', sprintf "[ERROR]{%s}", html2text($status_line));
             return('banned');
         }
         else
         {
-            echo_proxy('green', $task->{proxy}, 'CAPTCHA', "[SUCCESS]{$status_line}");
+            echo_proxy(1, 'green', $task->{proxy}, 'CAPTCHA', "[SUCCESS]{$status_line}");
         }
         #-- Obtaining cookies
         if ($self->{cookies})
@@ -196,7 +196,7 @@ sub get($$$$)
             my $saved_cookies = parse_cookies($self->{cookies}, $response_headers);
             if (!$saved_cookies)
             {
-                echo_proxy('red', $task->{proxy}, 'COOKIES', '[ERROR]{required cookies not found/proxy does not supported cookies at all}');
+                echo_proxy(1, 'red', $task->{proxy}, 'COOKIES', '[ERROR]{required cookies not found/proxy does not supported cookies at all}');
                 return('banned');
             }
             else
@@ -212,10 +212,10 @@ sub get($$$$)
         ($captcha_img, @fields) = get_recaptcha($task->{proxy}, $self->{recaptcha_key});
         unless ($captcha_img)
         {
-            echo_proxy('red', $task->{proxy}, 'CAPTCHA', '[ERROR]{something wrong with recaptcha obtaining}');
+            echo_proxy(1, 'red', $task->{proxy}, 'CAPTCHA', '[ERROR]{something wrong with recaptcha obtaining}');
             return('banned');
         }
-        echo_proxy('green', $task->{proxy}, 'CAPTCHA', '[SUCCESS]{ok..recaptcha obtaining went well}');
+        echo_proxy(1, 'green', $task->{proxy}, 'CAPTCHA', '[SUCCESS]{ok..recaptcha obtaining went well}');
         $task->{content} = { @fields };
     }
     if ($captcha_img)
@@ -249,7 +249,7 @@ sub prepare($$$$)
     if ($task->{path_to_captcha})
     {
         my $captcha_text = captcha_recognizer($cnf->{captcha_decode}, $task->{path_to_captcha});
-        echo_proxy('green', $task->{proxy}, 'PREPARE', "captcha was recognized: $captcha_text");
+        echo_proxy(1, 'green', $task->{proxy}, 'PREPARE', "captcha was recognized: $captcha_text");
                  
         $content{ $self->{fields}{post}{captcha} } = $captcha_text;
         $task->{captcha_text}                      = $captcha_text;
@@ -273,6 +273,9 @@ sub prepare($$$$)
     #{
         #$content{ $self->{fields}{post}{nofile} } = 'on';
     #}
+     
+    # TODO
+    echo_proxy(1, 'green', $task->{proxy}, 'PREPARE', "данные формы созданы");
      
     if ($task->{content})
     {

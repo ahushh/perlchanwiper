@@ -1,4 +1,4 @@
-#!/usr/bin/perl -W
+#!/usr/bin/perl
 $|=1;
 
 our $VERSION = '0.2';
@@ -34,19 +34,6 @@ our $chan_config;
 my @proxies;
 my @agents;
 my $engine;
-#-----------------------------------------------------------------------------
-# Functions
-#-----------------------------------------------------------------------------
-sub info($$$)
-{
-    my ($chan, $mode, $proxies) = @_;
-    say "Perl Chan Wiper v$VERSION";
-    say "~" x 30;
-    say "Chan: $chan";
-    say "Work mode: $mode";
-    say "Proxies loaded: $proxies";
-    say "~" x 30;
-}
  
 #-----------------------------------------------------------------------------
 # Parse command line arguments
@@ -54,8 +41,8 @@ sub info($$$)
 #-- DEFAULT VALUES
 my $chan;
 my $mode;
-my $debug   = 0;
-my $verbose = 0;
+my $loglevel   = 1;
+my $verbose    = 0;
 my $useragents = 'UserAgents';
 my $proxy_file = 'proxy/no';
 my $proxy_type = 'http';
@@ -64,13 +51,13 @@ sub init()
 {
     my $help = 0;
     my $result = GetOptions(
-        'chan=s'    => \$chan,
-        'mode=s'    => \$mode,
-        'proxy=s'   => \$proxy_file,
-        'ua=s'      => \$useragents,
-        'debug=i'   => \$debug,
-        'verbose'   => \$verbose,
-        'help|?'    => \$help,
+        'chan=s'     => \$chan,
+        'mode=s'     => \$mode,
+        'proxy=s'    => \$proxy_file,
+        'ua=s'       => \$useragents,
+        'loglevel=i' => \$loglevel,
+        'verbose'    => \$verbose,
+        'help|?'     => \$help,
     );
     if ($help || !($mode && $chan))
     {
@@ -106,6 +93,24 @@ sub check_user_error()
          
     Carp::croak("Useragents list '$useragents' does not exist")
         unless($useragents && -e $useragents);
+}
+ 
+#-----------------------------------------------------------------------------
+# Info
+#-----------------------------------------------------------------------------
+sub info()
+{
+    say "Perl Chan Wiper v$VERSION";
+    say "~" x 30;
+    say "Chan: $chan";
+    say "Engine: ". $chan_config->{engine};
+    say "Work mode: $mode";
+    say "Proxies loaded: ". scalar @proxies;
+    say "Browsers loaded: ". scalar @agents;
+    say "~" x 30;
+    say "Log level: $loglevel";
+    say "Verbose output: $verbose";
+    say "~" x 30;
 }
  
 #-----------------------------------------------------------------------------
@@ -146,7 +151,7 @@ Options:
     --proxy         Proxy file (default is '$proxy_file')
     --proxytype     Default proxy protocol (default is '$proxy_type')
     --ua            Userg agents list file (default is '$useragents')
-    --debug         Debug level
+    --loglevel      Log level (1-4, 1 — the least and default)
     --verbose       Verbose output
     --help          Show this message and exit
 
@@ -196,7 +201,7 @@ sub load_engine()
     my $package = "PCW::Engine::". $chan_config->{engine};
     eval("use $package");
     Carp::croak($@) if ($@);
-    $engine = $package->new(%$chan_config, agents => \@agents, debug => $debug, verbose => $verbose);
+    $engine = $package->new(%$chan_config, agents => \@agents, loglevel => $loglevel, verbose => $verbose);
 }
  
 #-----------------------------------------------------------------------------
@@ -210,33 +215,33 @@ load_engine();
 #-----------------------------------------------------------------------------
  
 #-----------------------------------------------------------------------------
-info($chan, $mode, scalar @proxies); #-- Show info
+info(); #-- Show info
 #config_checker($mode, %args);                 #-- Check for common config errors
 ##-----------------------------------------------------------------------------
 
 ##-----------------------------------------------------------------------------
 if ($mode =~ /wipe/) 
 {
-    $PCW::Modes::Wipe::DEBUG   = $debug;
-    $PCW::Modes::Wipe::VERBOSE = $verbose;
+    $PCW::Modes::Wipe::LOGLEVEL = $loglevel;
+    $PCW::Modes::Wipe::VERBOSE  = $verbose;
     PCW::Modes::Wipe->wipe($engine, proxies => \@proxies, %mode_config);
 }
 elsif ($mode =~ /delete/)
 {
-    $PCW::Modes::Delete::DEBUG   = $debug;
-    $PCW::Modes::Delete::VERBOSE = $verbose;
+    $PCW::Modes::Delete::LOGLEVEL = $loglevel;
+    $PCW::Modes::Delete::VERBOSE  = $verbose;
     PCW::Modes::Delete->delete($engine, proxies => \@proxies, %mode_config);
 }
 elsif ($mode =~ /proxychecker/)
 {
-    $PCW::Modes::ProxyChecker::DEBUG   = $debug;
-    $PCW::Modes::ProxyChecker::VERBOSE = $verbose;
+    $PCW::Modes::ProxyChecker::LOGLEVEL = $loglevel;
+    $PCW::Modes::ProxyChecker::VERBOSE  = $verbose;
     PCW::Modes::ProxyChecker->checker($engine, proxies => \@proxies, %mode_config);
 }
 elsif ($mode =~ /bump/)
 {
-    $PCW::Modes::Bump::DEBUG   = $debug;
-    $PCW::Modes::Bump::VERBOSE = $verbose;
+    $PCW::Modes::Bump::LOGLEVEL = $loglevel;
+    $PCW::Modes::Bump::VERBOSE  = $verbose;
     PCW::Modes::Bump->bump($engine, proxies => \@proxies, %mode_config);
 }
 
