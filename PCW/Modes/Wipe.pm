@@ -9,7 +9,7 @@ our @EXPORT_OK = qw(wipe);
 #------------------------------------------------------------------------------------------------
 # Package Variables
 #------------------------------------------------------------------------------------------------
-our $CAPTCHA_DIR = './captcha';
+our $CAPTCHA_DIR = 'captcha';
 our $DEBUG   = 0;
 our $VERBOSE = 0;
  
@@ -29,6 +29,7 @@ use Time::HiRes;
 #------------------------------------------------------------------------------------------------
 use File::Basename;
 use File::Copy qw(move);
+use File::Spec; 
  
 #------------------------------------------------------------------------------------------------
 # Importing internal PCW packages
@@ -63,6 +64,8 @@ sub show_stats
 my $cb_wipe_get = sub
 { 
     my ($msg, $task, $cnf) = @_;
+    return unless @_;
+     
     if ($msg eq 'success')
     {
         $prepare_queue->put($task);
@@ -102,6 +105,8 @@ sub wipe_get($$$)
 my $cb_wipe_prepare = sub 
 {
     my ($msg, $task, $cnf) = @_;
+    return unless @_;
+     
     if ($msg eq 'success')
     {
         $post_queue->put($task);
@@ -140,6 +145,8 @@ sub wipe_prepare($$$)
 my $cb_wipe_post = sub 
 {
     my ($msg, $task, $cnf) = @_;
+    return unless @_;
+     
     #-- Delete temporary files
     unlink($task->{path_to_captcha})
         if !$cnf->{save_captcha} && $task->{path_to_captcha} && -e $task->{path_to_captcha};
@@ -154,7 +161,7 @@ my $cb_wipe_post = sub
         if ($cnf->{save_captcha} && $task->{path_to_captcha})
         {
             my ($name, $path, $suffix) = fileparse($task->{path_to_captcha}, 'png', 'jpeg', 'jpg', 'gif');
-            move $task->{path_to_captcha}, "$CAPTCHA_DIR/". $task->{captcha_text} ."--". time .".$suffix";
+            move $task->{path_to_captcha}, File::Spec->catfile($CAPTCHA_DIR, $task->{captcha_text} ."--". time .".$suffix");
         }
         $stats{posted}++;
 
@@ -309,13 +316,13 @@ sub wipe($$%)
                     echo_msg("Start posting.");
                     wipe_post($engine, $post_queue->get, \%cnf) 
                         while $post_queue->size && $thrs_available--;
+                }
             }
-        }
-        else
-        {
-            wipe_post($engine, $post_queue->get, \%cnf) 
-                while $post_queue->size && $thrs_available--;
-        }
+            else
+            {
+                wipe_post($engine, $post_queue->get, \%cnf) 
+                    while $post_queue->size && $thrs_available--;
+            }
         }
     );
 
@@ -332,7 +339,7 @@ sub wipe($$%)
                 !($get_queue->size)      && 
                 !($post_queue->size)     &&
                 !($prepare_queue->size)  or
-                #-- post limit was reaced
+                #-- post limit was reached
                 ( $cnf{post_limit} ? ($stats{posted} >= $cnf{post_limit}) : undef ))
             {
                 EV::break;

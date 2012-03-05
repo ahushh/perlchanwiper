@@ -1,19 +1,23 @@
-#!/usr/bin/perl -w
+#!/usr/bin/perl -W
 $|=1;
 
 our $VERSION = '0.2';
  
 use strict;
 use autodie;
-use lib '.';
+use lib 'lib';
  
+#-----------------------------------------------------------------------------
 use Carp;
 use feature qw/say switch/;
  
+#-----------------------------------------------------------------------------
 use Getopt::Long; 
 use File::Basename; 
 use File::Temp qw/tempdir/;
+use File::Spec; 
 
+#-----------------------------------------------------------------------------
 use PCW::Modes::Wipe;
 use PCW::Modes::Delete;
 use PCW::Modes::Bump;
@@ -160,7 +164,7 @@ sub load_configs()
 {
     our ($img, $msg, $captcha_decode);
     require $common_config;
-    require "configs/$mode.pl";  #-- load %mode_config
+    require File::Spec->catfile('configs', "$mode.pl");  #-- load %mode_config
     if ($mode =~ /bump|wipe/)
     {
         $mode_config{img_data} = $img;
@@ -183,7 +187,7 @@ sub load_agents()
 
 sub load_chan()
 {
-    my $package = "chans/$chan.pl";
+    my $package = File::Spec->catfile('chans', "$chan.pl");
     require "$package"; #-- load $chan_config
 }
 
@@ -207,7 +211,7 @@ load_engine();
  
 #-----------------------------------------------------------------------------
 info($chan, $mode, scalar @proxies); #-- Show info
-#config_checker($mode, %args);                 #-- Check for config errors
+#config_checker($mode, %args);                 #-- Check for common config errors
 ##-----------------------------------------------------------------------------
 
 ##-----------------------------------------------------------------------------
