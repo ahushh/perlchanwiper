@@ -6,9 +6,9 @@ sub decode_captcha($$)
     my $imgv = $captcha_decode->{imgv};
     my $arg  = $captcha_decode->{arg};
     system("$imgv $arg $file_path &");
-    print " captcha: ";
+    print "\tcaptcha: ";
     chomp (my $cap_text = <>);
-    return $cap_text;
+    return $cap_text || undef;
 }
 
 sub abuse($$) { }

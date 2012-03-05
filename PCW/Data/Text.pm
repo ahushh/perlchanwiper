@@ -17,8 +17,11 @@ sub interpolate($)
 {
     my $text = shift;
      
-    my $time = time;
-    $text =~ s/%time%/$time/g;
+    my $now = time;
+    $text =~ s/%unixtime%/$now/g;
+     
+    my $date_string = scalar localtime($now);
+    $text =~ s/%date%/$date_string/g;
      
     return $text;
 }
