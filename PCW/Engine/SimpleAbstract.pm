@@ -107,32 +107,28 @@ sub get_thread_url($$%)
 #------------------------------------------------------------------------------------------------
 # HTML 
 #------------------------------------------------------------------------------------------------
-sub get_all_replies($$%)
+sub get_all_replies($$)
 {
-    my ($self, %config) = @_;
-    Carp::croak("Html parameter is not set!")
-        unless($config{html});
+    my ($self, $html) = @_;
 
     my $pattern = $self->{html}{replies_regexp};
      
     my %posts;
-    while ($config{html} =~ /$pattern/mg)
+    while ($html =~ /$pattern/mg)
     {
         $posts{ $+{id} } = $+{post};
     }
     return %posts;
 } 
 
-sub get_all_threads($$%)
+sub get_all_threads($$)
 {
-    my ($self, %config) = @_;
-    Carp::croak("Html parameter is not set!")
-        unless($config{html});
+    my ($self, $html) = @_;
      
     my $pattern = $self->{html}{threads_regexp};
      
     my %threads;
-    while ($config{html} =~ /$pattern/mg)
+    while ($html =~ /$pattern/mg)
     {
         $threads{ $+{id} } = $+{thread};
     }
@@ -421,7 +417,7 @@ sub get_page($$$$)
     my ($response, $response_headers, $status_line) =
         http_get($task->{proxy}, $self->get_page_url(%$cnf), $headers);
          
-    $response = encode('utf-8', $response); #-- Для корректной работы кириллицы и рэгэкспов
+    #$response = encode('utf-8', $response); #-- Для корректной работы кириллицы и рэгэкспов
      
     return $response, $response_headers, $status_line;
 }
@@ -436,7 +432,7 @@ sub get_thread($$$$)
     my ($response, $response_headers, $status_line) =
         http_get($task->{proxy}, $self->get_thread_url(%$cnf), $headers);
          
-    $response = encode('utf-8', $response); #-- Для корректной работы кириллицы и рэгэкспов
+    #$response = encode('utf-8', $response); #-- Для корректной работы кириллицы и рэгэкспов
      
     return $response, $response_headers, $status_line;
 }

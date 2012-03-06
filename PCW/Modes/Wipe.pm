@@ -4,8 +4,8 @@ use strict;
 use autodie;
 use Carp;
 
-use Exporter 'import';
-our @EXPORT_OK = qw(wipe);
+#use Exporter 'import';
+#our @EXPORT_OK = qw(wipe);
 #------------------------------------------------------------------------------------------------
 # Package Variables
 #------------------------------------------------------------------------------------------------

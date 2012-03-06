@@ -15,7 +15,7 @@
 ** TODO Done Рефакторинг response сообщений
 ** TODO Done Вынести загрузку engine из модов в PCW.pl
 ** TODO Done Отедельная папка configs
-** TODO Переделать логи
+** TODO Done Переделать логи
 ** TODO Done Может загружить chan_cnf в engine?
 ** TODO Done Добавить интерполяция в сообщении
 ** TODO cancel Заменить ф-ю get_time
@@ -23,6 +23,8 @@
 ** TODO done Сделать абстрактный класс engine, от него наследовать wakaba и kusaba и т.д. и т.п.
 ** TODO cancel Заменить rand_set
 ** TODO Написать antigate.
+** TODO Доделать автобамп и поддержку кусабы
+** TODO Автобамп + бамп поста если [...]
 * Captcha
 ** GUI смотрелка капчи
 ** Постинг без капчи (для вакабы?)
