@@ -56,6 +56,7 @@ my $cb_delete_post = sub
     {
         $stats{deleted}++;
     }
+    # TODO перезапуск при ошибке 
     else
     {
         $stats{error}++;
@@ -80,32 +81,6 @@ sub delete_post($$$)
 }
 
 #------------------------------------------------------------------------------------------------
-sub get_page($$$)
-{
-    my ($engine, $task, $cnf) = @_;
-    my $coro = async
-    {
-        my ($response, $response_headers, $status_line) = $engine->get_page($task, $cnf);
-        return $response, $response_headers, $status_line;
-    };
-    $coro->{proxy} = $task->{proxy}; #-- Для вывода timeout
-     
-    return $coro->join;
-}
- 
-sub get_thread($$$$)
-{
-    my ($engine, $task, $cnf) = @_;
-    my $coro = async
-    {
-        my ($response, $response_headers, $status_line) = $engine->get_thread($task, $cnf);
-        return $response, $response_headers, $status_line;
-    };
-    $coro->{proxy} = $task->{proxy}; #-- Для вывода timeout
-    return $coro->join;
-}
- 
-#------------------------------------------------------------------------------------------------
 #------------------------------------  MAIN DELETE  ---------------------------------------------
 #------------------------------------------------------------------------------------------------
 sub get_deletion_posts($$%)
@@ -127,12 +102,14 @@ sub get_deletion_posts($$%)
             $local_delete_cnf{thread} = $thread;
              
             #-- Get the thread
+            echo_msg($LOGLEVEL >= 2, "Downloading $thread thread...");
             my ($html, undef, $status) = $engine->get_thread($get_task, \%local_delete_cnf);
             echo_msg($LOGLEVEL >= 2, "Thread $thread downloaded: $status");
              
-            %all_posts = (%all_posts, $engine->get_all_replies(html => $html));
+            %all_posts = (%all_posts, $engine->get_all_replies($html));
         }
     }
+    #use Data::Dumper; print Dumper(%all_posts); exit;
     #-- Search thread on the pages
     if ($cnf{delete_cnf}{page})
     {
@@ -142,10 +119,11 @@ sub get_deletion_posts($$%)
             $local_delete_cnf{page} = $page;
              
             #-- Get the page
+            echo_msg($LOGLEVEL >= 2, "Downloading $page page...");
             my ($html, undef, $status) = $engine->get_page($get_task, \%local_delete_cnf);
             echo_msg($LOGLEVEL >= 2, "Page $page downloaded: $status");
              
-            %all_posts = (%all_posts, $engine->get_all_threads(html => $html));
+            %all_posts = (%all_posts, $engine->get_all_threads($html));
         }
     }
     unless ($cnf{delete_cnf}{page} || $cnf{delete_cnf}{thread})

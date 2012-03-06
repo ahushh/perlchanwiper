@@ -74,6 +74,7 @@ my $cb_bump_thread = sub
         $stats{bumped}++;
         my $now = Time::HiRes::time;
         $run_at = $now + $cnf->{time};
+        echo_msg($LOGLEVEL >= 4, "run_cleanup(): try to start");
         run_cleanup($engine, $task, $cnf->{silent}) if ($cnf->{silent});
     }
     elsif ($msg eq 'wrong_captcha')
@@ -143,8 +144,13 @@ sub delete_post($$$)
 sub run_cleanup($$$)
 {
     my ($engine, $task, $cnf) = @_;
+    echo_msg(1, "Start deleting posts...");
     #-- get_deletion_posts imported from delete mode
+    #my $a = async { get_deletion_posts($task->{proxy}, $engine, %{ $cnf->{delete_cnf} }); };
+    #my @deletion_posts = $a->join();
     my @deletion_posts = get_deletion_posts($task->{proxy}, $engine, %{ $cnf });
+
+    echo_msg($LOGLEVEL >= 4, "run_cleanup(): \@deletion_posts: @deletion_posts");
 
     for my $postid (@deletion_posts)
     {
@@ -166,6 +172,8 @@ sub bump($$%)
     my ($self, $engine, %cnf) =  @_;
      
     #-- Initialization
+    $PCW::Modes::Delete::LOGLEVEL = $LOGLEVEL;
+     
     @proxies = @{ $cnf{proxies} };
     my $proxy = shift @proxies;
     $bump_queue->put({ proxy => $proxy });
@@ -187,7 +195,7 @@ sub bump($$%)
                 my $now = Time::HiRes::time;
                 if ($coro->{timeout_at} && $now > $coro->{timeout_at})
                 {
-                    echo_msg($LOGLEVEL >= 4, $VERBOSE, "timeout at: ". $coro->{timeout_at} ."now: $now");
+                    echo_msg($LOGLEVEL >= 4, "time left before timeout: ". int($coro->{timeout_at} - $now));
                     echo_proxy(1, 'red', $coro->{proxy}, uc($coro->{desc}), '[TIMEOUT]');
                     $coro->cancel('timeout');
                 }
@@ -203,7 +211,7 @@ sub bump($$%)
             my @delete_coro = grep { $_->desc ? ($_->desc eq 'delete') : 0 } Coro::State::list;
              
             my $now = Time::HiRes::time;
-            echo_msg($LOGLEVEL >= 4, "now: $now; run_at: $run_at");
+            echo_msg($LOGLEVEL >= 4, "time left before run new deletion: ". int($run_at - $now));
             return if (scalar @bump_coro or scalar @delete_coro);
              
             if ($now > $run_at)
