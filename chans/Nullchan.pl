@@ -1,9 +1,11 @@
 our $chan_config =
 {
-    name               => 'Scichan',
-    engine             => 'Kusaba',
-    captcha_extension  => 'gif',
-     
+    name               => '0chan.ru',
+    engine             => 'EFGKusaba',
+    captcha_extension  => 'png',
+    # cookies            => ['PHPSESSID', 'cap'],
+    cookies            => ['PHPSESSID'],
+
     response => {
         post => {
             banned        => [403, 'CDN'],
@@ -11,6 +13,7 @@ our $chan_config =
             wrong_captcha => [
                              ],
             flood         => [
+                              'Flood detected',
                              ],
             critical_error => [
                               ],
@@ -38,6 +41,7 @@ our $chan_config =
             'password'   => 'postpassword',
             'name'       => 'name',
             'nofile'     => 'nofile',
+            'mm'         => 'mm',
              MAX_FILE_SIZE => 'MAX_FILE_SIZE',
         },
 
@@ -48,15 +52,14 @@ our $chan_config =
             password => 'postpassword',
         },
     },
-     
+
     urls => {
-        post     => "http://scichan.ru/board.php",
-        delete   => "http://scichan.ru/board.php",
-        #captcha  => "http://scichan.ru/captcha.php",
-        captcha  => "",
-        page     => "http://scichan.ru/%s/%d.html",
-        zero_page    => "http://scichan.ru/%s",
-        thread   => "http://scichan.ru/%s/res/%d.html",
+        post     => "https://0chan.ru/board.php",
+        delete   => "https://0chan.ru/board.php",
+        captcha  => "https://0chan.ru/captcha.php",
+        page     => "https://0chan.ru/%s/%d.html",
+        zero_page    => "https://0chan.ru/%s",
+        thread   => "https://0chan.ru/%s/res/%d.html",
     },
 
     html => {
@@ -66,7 +69,7 @@ our $chan_config =
 
     headers => {
         post => {
-            'Host'               =>   'scichan.ru',
+            'Host'               =>   'www.0chan.ru',
             'Accept'             =>   'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Charset'     =>   'windows-1251,utf-8;q=0.7,*;q=0,7',
             'Accept-Encoding'    =>   'gzip, deflate',
@@ -74,8 +77,8 @@ our $chan_config =
             'Connection'         =>   'keep-alive',
         },
         captcha => {
-            'Host'               =>   'scichan.ru',
-            'Accept'             =>   'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Host'               =>   'www.0chan.ru',
+            'Accept'             =>   'image/png,image/*;q=0.8,*/*;q=0.5',
             'Accept-Charset'     =>   'windows-1251,utf-8;q=0.7,*;q=0,7',
             'Accept-Encoding'    =>   'gzip, deflate',
             'Accept-Language'    =>   'ru-ru,ru;q=0.8,en-us;q=0.5,en;q=0.3',
@@ -83,8 +86,8 @@ our $chan_config =
         },
 
         default => {
-            'Host'               =>   'scichan.ru',
-            'Referer'            =>   "http://scichan.ru/",
+            'Host'               =>   'www.0chan.ru',
+            'Referer'            =>   "https://0chan.ru/",
             'Connection'         =>   'keep-alive',
         },
     },

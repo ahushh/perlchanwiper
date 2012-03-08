@@ -187,15 +187,13 @@ sub get_delete_content($$%)
 sub get($$$$)
 {
     my ($self, $task, $cnf) = @_;
-    my $headers = HTTP::Headers->new(%{ $self->get_post_headers(%{ $cnf->{post_cnf} }) });
-    $headers->user_agent(rand_set(set => $self->{agents}));
-     
     my $captcha_img;
     #-- A simple captcha
     if (my $captcha_url = $self->get_captcha_url(%{ $cnf->{post_cnf} }))
     {
         my ($response_headers, $status_line);
-        ($captcha_img, $response_headers, $status_line) = http_get($task->{proxy}, $captcha_url, $headers);
+        my $cap_headers = HTTP::Headers->new(%{ $self->get_captcha_headers(%{ $cnf->{post_cnf} }) });
+        ($captcha_img, $response_headers, $status_line) = http_get($task->{proxy}, $captcha_url, $cap_headers);
              
         #-- Check result
         if ($status_line !~ /200/ or !$captcha_img or $captcha_img !~ /GIF|PNG|JFIF|JPEG|JPEH|JPG/)
@@ -223,8 +221,11 @@ sub get($$$$)
     }
     my $path_to_captcha = save_file($captcha_img, $self->{captcha_extension});
     $task->{path_to_captcha} = $path_to_captcha;
-     
+
+    my $headers = HTTP::Headers->new(%{ $self->get_post_headers(%{ $cnf->{post_cnf} }) });
+    $headers->user_agent(rand_set(set => $self->{agents}));
     $task->{headers} = $headers;
+
     return('success');
 }
  

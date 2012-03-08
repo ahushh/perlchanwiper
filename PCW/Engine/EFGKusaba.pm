@@ -1,11 +1,11 @@
-package PCW::Engine::Kusaba;
+package PCW::Engine::EFGKusaba;
  
 use strict;
 use utf8;
 use autodie;
 use Carp;
 
-use base 'PCW::Engine::SimpleAbstract';
+use base 'PCW::Engine::Kusaba';
  
 #------------------------------------------------------------------------------------------------
 # Package Variables
@@ -42,27 +42,42 @@ use PCW::Data::Text     qw(make_text);
 #sub new($%)
 #{
 #}
+sub new($%)
+{
+    my ($class, %args) = @_;
+    my $agents   = delete $args{agents};
+    my $loglevel = delete $args{loglevel};
+    my $verbose  = delete $args{verbose};
+
+    $__PACKAGE__::LOGLEVEL = $loglevel || 0;
+    $__PACKAGE__::VERBOSE  = $verbose  || 0;
+
+    # TODO: check for errors in the chan-config file
+    Carp::croak("Option 'agents' should be are set.")
+        unless(@$agents);
+     
+    my $self  = { agents => $agents, %args };
+    bless $self, $class;
+}
  
 #------------------------------------------------------------------------------------------------
 # URL 
 #------------------------------------------------------------------------------------------------
-sub get_post_url($$%)
-{
-    my ($self, %config) = @_;
-    return $self->{urls}{post};
-}
+# sub get_post_url($$%)
+# {
+# }
 
-sub get_delete_url($$%) 
-{
-    my ($self, %config) = @_;
-    return $self->{urls}{delete};
-}
+# sub get_delete_url($$%) 
+# {
+# }
 
-sub get_captcha_url($$%) 
+sub get_captcha_url($$%)
 {
     my ($self, %config) = @_;
-    return $self->{urls}{captcha};
+    return $self->{urls}{captcha} . "?" . rand;
 }
+#sub get_page_url($$%)
+
 #sub get_page_url($$%)
 #{
 #}
@@ -122,13 +137,14 @@ sub get_post_content($$%)
     my $nofile   = $config{nofile};
 
     my $content = {
-        'MAX_FILE_SIZE' => 10240000, 
-        'email'      => $email,
-        'subject'    => $subject,
-        'password'   => $password,
-        'thread'     => $thread,
-        'board'      => $board,
-    };
+                   'MAX_FILE_SIZE' => 10240000,
+                   'email'         => $email,
+                   'subject'       => $subject,
+                   'password'      => $password,
+                   'thread'        => $thread,
+                   'board'         => $board,
+                   'mm'            => 0,
+                  };
     $content->{nofile} = $nofile
         if ($nofile);
     return $content;
@@ -139,7 +155,7 @@ sub get_delete_content($$%)
     my ($self, %config) = @_;
     Carp::croak("Delete, board and password parameters are not set!")
         unless($config{board} && $config{password});
-         
+
     my $content = {
         board    => $config{board},
         password => $config{password},
@@ -173,63 +189,43 @@ sub get($$$$)
     my $post_headers = HTTP::Headers->new(%{ $self->get_post_headers(%{ $cnf->{post_cnf} }) });
     $post_headers->user_agent(rand_set(set => $self->{agents}));
 
-    my $captcha_img;
-    #-- A simple captcha
-    if (my $captcha_url = $self->get_captcha_url(%{ $cnf->{post_cnf} }))
-    {
-        my ($response_headers, $status_line);
-        my $cap_headers = HTTP::Headers->new(%{ $self->get_captcha_headers(%{ $cnf->{post_cnf} }) });
-        ($captcha_img, $response_headers, $status_line) = http_get($task->{proxy}, $captcha_url, $cap_headers);
+    #-- Get captcha
+    my $captcha_url = $self->get_captcha_url(%{ $cnf->{post_cnf} });
+    my $cap_headers = HTTP::Headers->new(%{ $self->get_captcha_headers(%{ $cnf->{post_cnf} }) });
+    my ($captcha_img, $response_headers, $status_line) = http_get($task->{proxy}, $captcha_url, $cap_headers);
 
-        #-- Check result
-        if ($status_line !~ /200/ or !$captcha_img or $captcha_img !~ /GIF|PNG|JFIF|JPEG|JPEH|JPG/)
+    #-- Check result
+    if ($status_line !~ /200/ or !$captcha_img or $captcha_img !~ /GIF|PNG|JFIF|JPEG|JPEH|JPG/)
+    {
+        echo_proxy(1, 'red', $task->{proxy}, 'CAPTCHA', sprintf "[ERROR]{%s}", html2text($status_line));
+        return('banned');
+    }
+    else
+    {
+        echo_proxy(1, 'green', $task->{proxy}, 'CAPTCHA', "[SUCCESS]{$status_line}");
+    }
+    #-- Obtaining cookies
+    if ($self->{cookies})
+    {
+        my $saved_cookies = parse_cookies($self->{cookies}, $response_headers);
+        if (!$saved_cookies)
         {
-            echo_proxy(1, 'red', $task->{proxy}, 'CAPTCHA', sprintf "[ERROR]{%s}", html2text($status_line));
+            echo_proxy(1, 'red', $task->{proxy}, 'COOKIES', '[ERROR]{required cookies not found/proxy does not supported cookies at all}');
             return('banned');
         }
         else
         {
-            echo_proxy(1, 'green', $task->{proxy}, 'CAPTCHA', "[SUCCESS]{$status_line}");
-        }
-        #-- Obtaining cookies
-        if ($self->{cookies})
-        {
-            my $saved_cookies = parse_cookies($self->{cookies}, $response_headers);
-            if (!$saved_cookies)
-            {
-                echo_proxy(1, 'red', $task->{proxy}, 'COOKIES', '[ERROR]{required cookies not found/proxy does not supported cookies at all}');
-                return('banned');
-            }
-            else
-            {
-                $post_headers->header('Cookie' => $saved_cookies);
-            }
+            $post_headers->header('Cookie' => $saved_cookies);
         }
     }
-    #-- The recaptcha
-    elsif ($self->{recaptcha_key})
-    {
-        my @fields;
-        ($captcha_img, @fields) = get_recaptcha($task->{proxy}, $self->{recaptcha_key});
-        unless ($captcha_img)
-        {
-            echo_proxy(1, 'red', $task->{proxy}, 'CAPTCHA', '[ERROR]{something wrong with recaptcha obtaining}');
-            return('banned');
-        }
-        echo_proxy(1, 'green', $task->{proxy}, 'CAPTCHA', '[SUCCESS]{ok..recaptcha obtaining went well}');
-        $task->{content} = { @fields };
-    }
-    if ($captcha_img)
-    {
-        my $path_to_captcha = save_file($captcha_img, $self->{captcha_extension});
-        $task->{path_to_captcha} = $path_to_captcha;
-    }
+
+    #-- Save captcha
+    my $path_to_captcha = save_file($captcha_img, $self->{captcha_extension});
+    $task->{path_to_captcha} = $path_to_captcha;
 
     $task->{headers} = $post_headers;
-
     return('success');
 }
-
 
 #------------------------------------------------------------------------------------------------
 # PREPARE
@@ -242,6 +238,12 @@ sub get($$$$)
 #########
 # captcha_text    - recognized text
 # file_path       - путь до файла, который отправляется на сервер
+sub compute_mm($)
+{
+    my $s = shift;
+    `lib/mm '$s'`;
+}
+
 sub prepare($$$$)
 {
     my ($self, $task, $cnf) = @_;
@@ -276,17 +278,22 @@ sub prepare($$$$)
         $content{ $self->{fields}{post}{nofile} } = 'on';
     }
 
-    # TODO
-    echo_proxy(1, 'green', $task->{proxy}, 'PREPARE', "данные формы созданы");
+    #-- Compute mm cookie
+    if ($content{board} eq 'b')
+    {
+        my $mm = compute_mm($content{mm} . $content{message} . $content{postpassword});
+        echo_msg($LOGLEVEL >= 4, "mm value: $mm");
 
-    if ($task->{content})
-    {
-        $task->{content} = { %{ $task->{content} },  %content };
+        my $h  = $task->{headers};
+        my $c = $h->header('Cookie');
+        $c =~ s/; $//;
+        #-- Add mm to post headers
+        $h->header('Cookie' => "$c; mm=$mm");
+        echo_msg($LOGLEVEL >= 4, "$c; mm=$mm");
     }
-    else
-    {
-        $task->{content} = \%content;
-    }
+
+    echo_proxy(1, 'green', $task->{proxy}, 'PREPARE', "данные формы созданы.");
+    $task->{content} = \%content;
 
     return('success');
 }

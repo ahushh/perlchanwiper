@@ -13,15 +13,17 @@ sub cap($)
 
     my $vbox  = Gtk2::VBox->new();
     $w->add($vbox);
-     
+
     my $image = Gtk2::Image->new_from_file($img_path);
     $vbox->pack_start($image, 0, 0, 10);
 
     my $entry = Gtk2::Entry->new();
     $entry->signal_connect(
         activate => sub {
-            $text = $entry->get_text;        
+            $text = $entry->get_text;
             $w->destroy;
+            Gtk2->main_quit;
+            
         },
     );
     $vbox->pack_start($entry, 0, 0, 0);
