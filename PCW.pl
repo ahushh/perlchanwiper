@@ -80,10 +80,8 @@ sub check_user_error()
     Carp::croak("Mode '$mode' does not exist")
         unless($mode =~ /$modes_list/i);
          
-    #--- it is... a programmer error
     Carp::croak("Mode '$mode' config does not exist")
         unless(-e "configs/$mode.pl");
-    #--
          
     Carp::croak("Proxylist '$proxy_file' does not exist")
         unless($proxy_file && -e $proxy_file);
@@ -150,13 +148,12 @@ Options:
     --mode          Work mode (@modes)
     --proxy         Proxy file (default is '$proxy_file')
     --proxytype     Default proxy protocol (default is '$proxy_type')
-    --ua            Userg agents list file (default is '$useragents')
+    --ua            User agents list file (default is '$useragents')
     --loglevel      Log level (1-4, 1 — the least and default)
     --verbose       Verbose output
     --help          Show this message and exit
 
 Supported chan engines: @engines
-¡ Bump mode is experimental ! DO NOT USE
 Version $VERSION
 DESU
      

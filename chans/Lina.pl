@@ -74,6 +74,14 @@ our $chan_config =
             'Accept-Language'    =>   'ru-ru,ru;q=0.8,en-us;q=0.5,en;q=0.3',
             'Connection'         =>   'keep-alive',
         },
+        captcha => {
+            'Host'               =>   'lina.sytes.net.ru',
+            'Accept'             =>   'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Charset'     =>   'windows-1251,utf-8;q=0.7,*;q=0,7',
+            'Accept-Encoding'    =>   'gzip, deflate',
+            'Accept-Language'    =>   'ru-ru,ru;q=0.8,en-us;q=0.5,en;q=0.3',
+            'Connection'         =>   'keep-alive',
+        },
 
         default => {
             'Host'               =>   'lina.sytes.net.ru',

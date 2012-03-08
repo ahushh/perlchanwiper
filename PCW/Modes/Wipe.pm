@@ -89,6 +89,15 @@ sub wipe_get($$$)
         $coro->desc('get');
         $coro->{proxy} = $task->{proxy}; #-- Для вывода timeout
         $coro->on_destroy($cb_wipe_get);
+         
+        if ($task->{run_at})
+        {
+            my $now = Time::HiRes::time;
+            echo_proxy(1, 'green', $task->{proxy}, 'GET', "sleep $cnf->{flood_limit}...");
+            echo_msg($LOGLEVEL >= 3, "sleep: ". int($task->{run_at} - $now) );
+            Coro::Timer::sleep( int($task->{run_at} - $now) );
+        }
+         
         my $status = 
         with_coro_timeout {
             $engine->get($task, $cnf);
@@ -165,9 +174,10 @@ my $cb_wipe_post = sub
         }
         $stats{posted}++;
 
-        if ($cnf->{delay} && $cnf->{loop})
+        if ($cnf->{flood_limit} && $cnf->{loop})
         {
-            $new_task->{sleep} = 1;
+            my $now = Time::HiRes::time;
+            $new_task->{run_at} = $now + $cnf->{flood_limit};
         }
     }
     elsif ($msg eq 'wrong_captcha')
@@ -211,11 +221,11 @@ sub wipe_post($$$)
         $coro->on_destroy($cb_wipe_post);
 
         #-- Sleep before posting if specified
-        if ($task->{sleep})
-        {
-            echo_proxy(1, 'green', $task->{proxy}, 'POST', "sleep $cnf->{delay} seconds before posting...");
-            Coro::Timer::sleep($cnf->{delay});
-        }
+        #if ($task->{sleep})
+        #{
+            #echo_proxy(1, 'green', $task->{proxy}, 'POST', "sleep $cnf->{delay} seconds before posting...");
+            #Coro::Timer::sleep($cnf->{delay});
+        #}
 
         my $status = 
         with_coro_timeout {

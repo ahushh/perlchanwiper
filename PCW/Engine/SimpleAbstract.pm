@@ -47,9 +47,9 @@ sub new($%)
     my $agents   = delete $args{agents};
     my $loglevel = delete $args{loglevel};
     my $verbose  = delete $args{verbose};
-     
-    $LOGLEVEL = $loglevel || 0;
-    $VERBOSE  = $verbose  || 0;
+
+    $__PACKAGE__::LOGLEVEL = $loglevel || 0;
+    $__PACKAGE__::VERBOSE  = $verbose  || 0;
 
     # TODO: check for errors in the chan-config file
     Carp::croak("Option 'agents' should be are set.")
@@ -160,6 +160,21 @@ sub get_post_headers($%)
     my %h = %{ $self->{headers}{post} };
     $h{Referer} = $referer;
     return \%h;
+}
+
+sub get_captcha_headers($%)
+{
+    my ($self, %config) = @_;
+
+    Carp::croak("Board is not set! at get_post_headers")
+        unless($config{board});
+
+    my $referer = ($config{thread} ? $self->get_thread_url(%config) : $self->get_page_url(%config));
+
+    my %h = %{ $self->{headers}{captcha} };
+    $h{Referer} = $referer;
+    return \%h;
+
 }
 
 sub get_delete_headers($%)
