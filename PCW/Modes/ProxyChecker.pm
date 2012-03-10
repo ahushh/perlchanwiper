@@ -52,9 +52,9 @@ my $cb_check = sub
     #-- Delete temporary files
     unlink($task->{file_path})
         if $cnf->{img_data}{altering} && $task->{file_path} && -e $task->{file_path};
-     
+
     $stats{total}++;
-    if ($msg =~ /wrong_captcha|chan_error/) 
+    if ($msg =~ /wrong_captcha|flood|file_exist|unknown/) 
     {
         $stats{good}++;
         push @good_proxis, $task->{proxy}; 
@@ -64,7 +64,7 @@ my $cb_check = sub
         $stats{bad}++;
     }
 };
- 
+
 sub check($$$)
 {
     my ($engine, $task, $cnf) = @_;
@@ -73,14 +73,14 @@ sub check($$$)
         $coro->desc('check');
         $coro->{proxy} = $task->{proxy}; #-- Для вывода timeout
         $coro->on_destroy($cb_check);
-         
-        $engine->prepare($task, $cnf);
-         
+
+        # $engine->prepare($task, $cnf);
+
         my $status = 
         with_coro_timeout {
             $engine->ban_check($task, $cnf);
         } $coro, $cnf->{timeout};
-         
+
         $coro->cancel($status, $task, $cnf);
     };
     cede;
@@ -91,10 +91,10 @@ sub check($$$)
 sub checker($$%)
 {
     my ($self, $engine, %cnf) =  @_;
- 
+
     #-- Initialization
     $queue->put({ proxy => $_ }) for (@{ $cnf{proxies} });
-     
+
     #-- Timeout watcher
     my $tw = AnyEvent->timer(after => 0.5, interval => 1, cb =>
         sub
@@ -115,7 +115,7 @@ sub checker($$%)
             }
         }
     );
-     
+
     #-- Watcher
     my $w = AnyEvent->timer(after => 0.5, interval => 1, cb =>
         sub

@@ -6,13 +6,7 @@ use autodie;
 use Carp;
 
 use base 'PCW::Engine::Kusaba';
- 
-#------------------------------------------------------------------------------------------------
-# Package Variables
-#------------------------------------------------------------------------------------------------
-our $LOGLEVEL;
-our $VERBOSE;
- 
+
 #------------------------------------------------------------------------------------------------
 # Features
 #------------------------------------------------------------------------------------------------
@@ -42,24 +36,6 @@ use PCW::Data::Text     qw(make_text);
 #sub new($%)
 #{
 #}
-sub new($%)
-{
-    my ($class, %args) = @_;
-    my $agents   = delete $args{agents};
-    my $loglevel = delete $args{loglevel};
-    my $verbose  = delete $args{verbose};
-
-    $__PACKAGE__::LOGLEVEL = $loglevel || 0;
-    $__PACKAGE__::VERBOSE  = $verbose  || 0;
-
-    # TODO: check for errors in the chan-config file
-    Carp::croak("Option 'agents' should be are set.")
-        unless(@$agents);
-     
-    my $self  = { agents => $agents, %args };
-    bless $self, $class;
-}
- 
 #------------------------------------------------------------------------------------------------
 # URL 
 #------------------------------------------------------------------------------------------------
@@ -156,11 +132,13 @@ sub get_delete_content($$%)
     Carp::croak("Delete, board and password parameters are not set!")
         unless($config{board} && $config{password});
 
+    my $deletestr = 'Удалить';
+    utf8::encode($deletestr);
     my $content = {
         board    => $config{board},
         password => $config{password},
         delete   => $config{delete},
-        deletepost => 'Удалить',
+        deletepost => $deletestr,
     };
     return $content;
 }
@@ -279,17 +257,19 @@ sub prepare($$$$)
     }
 
     #-- Compute mm cookie
+    #use Data::Dumper;
     if ($content{board} eq 'b')
     {
         my $mm = compute_mm($content{mm} . $content{message} . $content{postpassword});
-        echo_msg($LOGLEVEL >= 4, "mm value: $mm");
+        echo_msg($self->{loglevel} >= 4, "mm value: $mm");
 
         my $h  = $task->{headers};
         my $c = $h->header('Cookie');
         $c =~ s/; $//;
         #-- Add mm to post headers
         $h->header('Cookie' => "$c; mm=$mm");
-        echo_msg($LOGLEVEL >= 4, "$c; mm=$mm");
+        echo_msg($self->{loglevel} >= 4, "$c; mm=$mm");
+        # print Dumper($h);
     }
 
     echo_proxy(1, 'green', $task->{proxy}, 'PREPARE', "данные формы созданы.");

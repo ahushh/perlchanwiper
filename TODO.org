@@ -37,6 +37,7 @@
 ** TODO Доделать автобамп и поддержку кусабы
 ** TODO Автобамп + бамп поста если [...]
 ** TODO captcha headers
+** TODO Починить loglevel и verbose
  
 * Captcha
 ** GUI смотрелка капчи

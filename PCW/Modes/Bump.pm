@@ -34,7 +34,7 @@ use File::Copy qw(move);
 use PCW::Core::Log     qw(echo_msg echo_proxy);
 use PCW::Core::Utils   qw(with_coro_timeout);
 use PCW::Core::Captcha qw(captcha_report_bad);
-use PCW::Modes::Delete qw(get_deletion_posts);
+use PCW::Modes::Delete qw(get_posts_by_regexp);
  
 #------------------------------------------------------------------------------------------------
 # Local package variables and procedures
@@ -145,10 +145,10 @@ sub run_cleanup($$$)
 {
     my ($engine, $task, $cnf) = @_;
     echo_msg(1, "Start deleting posts...");
-    #-- get_deletion_posts imported from delete mode
-    #my $a = async { get_deletion_posts($task->{proxy}, $engine, %{ $cnf->{delete_cnf} }); };
+    #-- get_posts_by_regexp imported from delete mode
+    #my $a = async { get_posts_by_regexp($task->{proxy}, $engine, %{ $cnf->{delete_cnf} }); };
     #my @deletion_posts = $a->join();
-    my @deletion_posts = get_deletion_posts($task->{proxy}, $engine, %{ $cnf });
+    my @deletion_posts = get_posts_by_regexp($task->{proxy}, $engine, %{ $cnf });
 
     echo_msg($LOGLEVEL >= 4, "run_cleanup(): \@deletion_posts: @deletion_posts");
 

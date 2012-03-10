@@ -46,8 +46,6 @@ sub get_recaptcha($$)
 sub http_get($$$)
 {
     my ($proxy, $url, $headers) = @_;
-#    use Data::Dumper; print Dumper(@_); exit;
-    
     my $ua = LWP::UserAgent->new();
     $ua->default_headers($headers) if $headers;
     $ua->proxy([qw/http https/] => $proxy) if $proxy !~ 'no_proxy';
@@ -56,7 +54,7 @@ sub http_get($$$)
     return $response->content, $response->as_string, $response->status_line;
 }
 
-sub http_post($$$$)
+sub http_post($$$$;$)
 {
     my ($proxy, $url, $headers, $content) = @_;
     my $ua = LWP::UserAgent->new();

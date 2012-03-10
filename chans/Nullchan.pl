@@ -8,11 +8,13 @@ our $chan_config =
 
     response => {
         post => {
-            banned        => [403, 'CDN'],
+            banned        => [403, 'CDN', 'possible proxy'],
             net_error     => ['Service Unavailable Connection', 502],
             wrong_captcha => [
+                              'капча',
                              ],
             flood         => [
+                              'Ошибка Вы постите очень часто. Умерьте пыл.' 
                               'Flood detected',
                              ],
             critical_error => [
@@ -24,8 +26,8 @@ our $chan_config =
             success       => [302],
         },
         delete => {
-            success => [303],
-            error   => ['Неверный пароль для удаления', 503, 504],
+            success => ['Сообщение удалено.'],
+            error   => ['Неправильный пароль.', 503, 504],
         },
     },
 
@@ -47,24 +49,24 @@ our $chan_config =
 
         delete => {
             board    => 'board',
-            delete   => 'post[]',
+            delete   => 'delete',
             deletepost => 'deletepost',
             password => 'postpassword',
         },
     },
 
     urls => {
-        post     => "https://0chan.ru/board.php",
-        delete   => "https://0chan.ru/board.php",
-        captcha  => "https://0chan.ru/captcha.php",
-        page     => "https://0chan.ru/%s/%d.html",
-        zero_page    => "https://0chan.ru/%s",
-        thread   => "https://0chan.ru/%s/res/%d.html",
+        post     => "https://www.0chan.ru/board.php",
+        delete   => "https://www.0chan.ru/board.php",
+        captcha  => "https://www.0chan.ru/captcha.php",
+        page     => "http://www.0chan.ru/%s/%d.html",
+        zero_page    => "http://www.0chan.ru/%s",
+        thread   => "http://www.0chan.ru/%s/res/%d.html",
     },
 
     html => {
         replies_regexp => '(?<post><td class="reply" id="reply(?<id>\d+)">.+?</td>)',
-        threads_regexp => '(?<thread><span class="filesize">.+?<a name="(?<id>\d+)"></a>.+?<br clear="left" /><hr />)',
+        threads_regexp => '(?<thread><div id="thread(?<id>\d+)\w+">.+?</div>\s*<br clear="left">)',
     },
 
     headers => {
