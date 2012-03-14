@@ -12,7 +12,7 @@ our %mode_config = (
         password   => "fNfR3",
     },
     max_thrs   => 100,
-    timeout    => 160,
+    timeout    => 360,
     msg_data   => $msg,
     img_data   => $img,
 );

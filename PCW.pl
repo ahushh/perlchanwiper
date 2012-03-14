@@ -20,7 +20,7 @@ use File::Spec;
 #-----------------------------------------------------------------------------
 use PCW::Modes::Wipe;
 use PCW::Modes::Delete;
-use PCW::Modes::Bump;
+use PCW::Modes::AutoBump;
 use PCW::Modes::ProxyChecker;
 use PCW::Core::Utils qw(get_proxylist);
  
@@ -235,11 +235,11 @@ elsif ($mode =~ /proxychecker/)
     $PCW::Modes::ProxyChecker::VERBOSE  = $verbose;
     PCW::Modes::ProxyChecker->checker($engine, proxies => \@proxies, %mode_config);
 }
-elsif ($mode =~ /bump/)
+elsif ($mode =~ /autobump/)
 {
-    $PCW::Modes::Bump::LOGLEVEL = $loglevel;
-    $PCW::Modes::Bump::VERBOSE  = $verbose;
-    PCW::Modes::Bump->bump($engine, proxies => \@proxies, %mode_config);
+    $PCW::Modes::AutoBump::LOGLEVEL = $loglevel;
+    $PCW::Modes::AutoBump::VERBOSE  = $verbose;
+    PCW::Modes::AutoBump->bump($engine, proxies => \@proxies, %mode_config);
 }
 
 #__END__

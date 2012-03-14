@@ -54,7 +54,7 @@ sub http_get($$$)
     return $response->content, $response->as_string, $response->status_line;
 }
 
-sub http_post($$$$;$)
+sub http_post($$$$)
 {
     my ($proxy, $url, $headers, $content) = @_;
     my $ua = LWP::UserAgent->new();

@@ -10,8 +10,8 @@ our @EXPORT_OK = qw(get_posts_by_regexp);
 #------------------------------------------------------------------------------------------------
 # Package Variables
 #------------------------------------------------------------------------------------------------
-our $LOGLEVEL   = 0;
-our $VERBOSE = 0;
+our $LOGLEVEL = 0;
+our $VERBOSE  = 0;
  
 #------------------------------------------------------------------------------------------------
 # Importing Coro packages
@@ -200,7 +200,7 @@ sub delete($$$%)
             }
         }
     );
-     
+
 	#-- Delete watcher
     my $dw = AnyEvent->timer(after => 0.5, interval => 2, cb =>
         sub
@@ -213,12 +213,12 @@ sub delete($$$%)
                 my $n = $cnf{max_del_thrs} - scalar @delete_coro;
                 $thrs_available = $n > 0 ? $n : 0;
             }
-             
+
             delete_post($engine, $delete_queue->get, \%cnf)
                 while $delete_queue->size && $thrs_available--;
         }
     );
-     
+
     #-- Exit watchers
     my $ew = AnyEvent->timer(after => 1, interval => 2, cb =>
         sub
@@ -239,7 +239,7 @@ sub delete($$$%)
             exit;
         }
     );
-     
+
     EV::run;
 }
  

@@ -62,6 +62,10 @@ sub get_captcha_url($$%)
 #{
 #}
 
+#sub get_catalog_url($$%
+#{
+#}
+
 #------------------------------------------------------------------------------------------------
 # HTML 
 #------------------------------------------------------------------------------------------------
@@ -73,17 +77,10 @@ sub get_captcha_url($$%)
 #{
 #}
 
-#sub thread_exists($%)
+#sub thread_on_page
 #{
-    #my (%config) = @_;
-    #Carp::croak("Html and thread parameters are not set!")
-        #unless($config{html} && $config{thread});
-         
-    #my $pattern = "<span id=\"exlink_$config{thread}\">";
-    #my $pattern = "<span id=\"exlink_$config{thread}\">";
-    #return $config{html} =~ /$pattern/;
 #}
- 
+
 #------------------------------------------------------------------------------------------------
 # headers
 #------------------------------------------------------------------------------------------------
@@ -231,7 +228,7 @@ sub prepare($$$$)
     if ($task->{path_to_captcha})
     {
         my $captcha_text = captcha_recognizer($cnf->{captcha_decode}, $task->{path_to_captcha});
-        echo_proxy(1, 'green', $task->{proxy}, 'PREPARE', "captcha was recognized: $captcha_text");
+        echo_proxy(1, 'green', $task->{proxy}, 'PREPARE', "solved captcha: $captcha_text");
 
         $content{ $self->{fields}{post}{captcha} } = $captcha_text;
         $task->{captcha_text}                      = $captcha_text;
@@ -261,18 +258,18 @@ sub prepare($$$$)
     if ($content{board} eq 'b')
     {
         my $mm = compute_mm($content{mm} . $content{message} . $content{postpassword});
-        echo_msg($self->{loglevel} >= 4, "mm value: $mm");
+        #echo_msg($self->{loglevel} >= 4, "mm value: $mm");
 
         my $h  = $task->{headers};
         my $c = $h->header('Cookie');
         $c =~ s/; $//;
         #-- Add mm to post headers
         $h->header('Cookie' => "$c; mm=$mm");
-        echo_msg($self->{loglevel} >= 4, "$c; mm=$mm");
+        #echo_msg($self->{loglevel} >= 4, "$c; mm=$mm");
         # print Dumper($h);
     }
 
-    echo_proxy(1, 'green', $task->{proxy}, 'PREPARE', "данные формы созданы.");
+    echo_proxy(1, 'green', $task->{proxy}, 'PREPARE', "form data was created");
     $task->{content} = \%content;
 
     return('success');
@@ -308,19 +305,23 @@ sub prepare($$$$)
 #{
 #}
  
-#sub ban_check($$$$)
+#sub ban_check($$$)
 #{
 #}
  
 #------------------------------------------------------------------------------------------------
 #----------------------------------  OTHER METHODS  ---------------------------------------------
 #------------------------------------------------------------------------------------------------
-#sub get_page($$$$)
+#sub get_page($$$)
 #{
 #}
 
-#sub get_thread($$$$)
+#sub get_thread($$$)
 #{
 #}
- 
+
+#sub get_catalog($$$)
+#{
+#}
+
 1;

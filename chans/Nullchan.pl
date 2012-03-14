@@ -1,3 +1,4 @@
+
 our $chan_config =
 {
     name               => '0chan.ru',
@@ -5,6 +6,7 @@ our $chan_config =
     captcha_extension  => 'png',
     # cookies            => ['PHPSESSID', 'cap'],
     cookies            => ['PHPSESSID'],
+    threads_per_page   => 20,
 
     response => {
         post => {
@@ -14,7 +16,7 @@ our $chan_config =
                               'капча',
                              ],
             flood         => [
-                              'Ошибка Вы постите очень часто. Умерьте пыл.' 
+                              'Вы постите очень часто.',
                               'Flood detected',
                              ],
             critical_error => [
@@ -23,7 +25,7 @@ our $chan_config =
                              ],
             bad_file      => [
                              ],
-            success       => [302],
+            success       => [302, 'BuildThread()', 'Updating pages'],
         },
         delete => {
             success => ['Сообщение удалено.'],
@@ -56,17 +58,19 @@ our $chan_config =
     },
 
     urls => {
-        post     => "https://www.0chan.ru/board.php",
-        delete   => "https://www.0chan.ru/board.php",
-        captcha  => "https://www.0chan.ru/captcha.php",
-        page     => "http://www.0chan.ru/%s/%d.html",
-        zero_page    => "http://www.0chan.ru/%s",
-        thread   => "http://www.0chan.ru/%s/res/%d.html",
+        post      => "https://www.0chan.ru/board.php",
+        delete    => "https://www.0chan.ru/board.php",
+        captcha   => "https://www.0chan.ru/captcha.php",
+        page      => "http://www.0chan.ru/%s/%d.html",
+        zero_page => "http://www.0chan.ru/%s",
+        thread    => "http://www.0chan.ru/%s/res/%d.html",
+        catalog   => "http://www.0chan.ru/%s/catalog.html",
     },
 
     html => {
         replies_regexp => '(?<post><td class="reply" id="reply(?<id>\d+)">.+?</td>)',
         threads_regexp => '(?<thread><div id="thread(?<id>\d+)\w+">.+?</div>\s*<br clear="left">)',
+        catalog_regexp => '/res/(?<id>\d+).html',
     },
 
     headers => {

@@ -14,6 +14,11 @@ sub decode_captcha($$)
                                                "attempts" => 15,
                                               );
     my $id = $recognizer->upload(%$opt);
+    unless ($id)
+    {
+        warn "Cant' upload captcha";
+        return undef;
+    }
     #-- Используем аргументы как хранилищие id и путей капч.
     $captcha_decode->{$file_path} = $id;
      
@@ -26,6 +31,11 @@ sub abuse($$)
     my ($captcha_decode, $file_path) = @_;
     my $key = $captcha_decode->{key};
     my $id  = delete $captcha_decode->{$file_path};
+    unless ($id)
+    {
+        warn "Can't upload captcha";
+        return undef;
+    }
     my $recognizer = WebService::Antigate->new("key" => $key);
     return $recognizer->abuse($id);
 }

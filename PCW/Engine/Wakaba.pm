@@ -90,17 +90,10 @@ sub get_captcha_url($$%)
 #{
 #}
 
-#sub thread_exists($%)
+#sub thread_on_page
 #{
-    #my (%config) = @_;
-    #Carp::croak("Html and thread parameters are not set!")
-        #unless($config{html} && $config{thread});
-         
-    #my $pattern = "<span id=\"exlink_$config{thread}\">";
-    #my $pattern = "<span id=\"exlink_$config{thread}\">";
-    #return $config{html} =~ /$pattern/;
 #}
- 
+
 #------------------------------------------------------------------------------------------------
 # headers
 #------------------------------------------------------------------------------------------------
@@ -139,10 +132,10 @@ sub get_post_content($$%)
     };
     $content->{nofile} = $nofile
         if ($nofile);
-         
+
     $content->{thread} = $thread
         if ($thread);
-         
+
     return $content;
 }
 
@@ -151,7 +144,7 @@ sub get_delete_content($$%)
     my ($self, %config) = @_;
     Carp::croak("Delete and password parameters are not set!")
         unless($config{delete} && $config{password});
-         
+
     my $content = {
         task     => 'delete',
         password => $config{password},
@@ -188,7 +181,7 @@ sub get($$$$)
         my ($response_headers, $status_line);
         my $cap_headers = HTTP::Headers->new(%{ $self->get_captcha_headers(%{ $cnf->{post_cnf} }) });
         ($captcha_img, $response_headers, $status_line) = http_get($task->{proxy}, $captcha_url, $cap_headers);
-             
+
         #-- Check result
         if ($status_line !~ /200/ or !$captcha_img or $captcha_img !~ /GIF|PNG|JFIF|JPEG|JPEH|JPG/)
         {
@@ -222,8 +215,7 @@ sub get($$$$)
 
     return('success');
 }
- 
-     
+
 #------------------------------------------------------------------------------------------------
 # PREPARE
 #------------------------------------------------------------------------------------------------
@@ -238,14 +230,14 @@ sub get($$$$)
 sub prepare($$$$)
 {
     my ($self, $task, $cnf) = @_;
-     
+
     #-- Recognize captcha
     my %content = %{ merge_hashes( $self->get_post_content(%{ $cnf->{post_cnf} }), $self->{fields}{post}) };
     if ($task->{path_to_captcha})
     {
         my $captcha_text = captcha_recognizer($cnf->{captcha_decode}, $task->{path_to_captcha});
-        echo_proxy(1, 'green', $task->{proxy}, 'PREPARE', "captcha was recognized: $captcha_text");
-                 
+        echo_proxy(1, 'green', $task->{proxy}, 'PREPARE', "solved captcha: $captcha_text");
+
         $content{ $self->{fields}{post}{captcha} } = $captcha_text;
         $task->{captcha_text}                      = $captcha_text;
     } 
@@ -270,8 +262,8 @@ sub prepare($$$$)
     }
 
     # TODO
-    echo_proxy(1, 'green', $task->{proxy}, 'PREPARE', "данные формы созданы");
-                 
+    echo_proxy(1, 'green', $task->{proxy}, 'PREPARE', "form data was created");
+
     if ($task->{content})
     {
         $task->{content} = { %{ $task->{content} },  %content };
@@ -280,11 +272,11 @@ sub prepare($$$$)
     {
         $task->{content} = \%content;
     }
-     
+
     return('success');
 }
-     
- 
+
+
 #------------------------------------------------------------------------------------------------
 # POST
 #------------------------------------------------------------------------------------------------
@@ -328,5 +320,4 @@ sub prepare($$$$)
 #sub get_thread($$$$)
 #{
 #}
- 
 1;

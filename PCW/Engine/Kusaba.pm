@@ -65,6 +65,15 @@ sub get_captcha_url($$%)
 #{
 #}
 
+sub get_catalog_url($$%)
+{
+    my ($self, %config) = @_;
+    Carp::croak("Board is not set!")
+            unless($config{board});
+
+    return sprintf $self->{urls}{catalog}, $config{board};
+}
+
 #------------------------------------------------------------------------------------------------
 # HTML 
 #------------------------------------------------------------------------------------------------
@@ -76,16 +85,30 @@ sub get_captcha_url($$%)
 #{
 #}
 
-#sub thread_exists($%)
-#{
-    #my (%config) = @_;
-    #Carp::croak("Html and thread parameters are not set!")
-        #unless($config{html} && $config{thread});
-         
-    #my $pattern = "<span id=\"exlink_$config{thread}\">";
-    #my $pattern = "<span id=\"exlink_$config{thread}\">";
-    #return $config{html} =~ /$pattern/;
-#}
+#-- Вызывать отсюда get_catalog_url/get_thread_url, get_catalog/get_thread
+#-- потому что реализация будет неизвестна.
+sub thread_on_page
+{
+    my ($self, $html, $page, $thread) = @_;
+
+    my $pattern = $self->{html}{catalog_regexp};
+
+    my (%threads, $count);
+    while ($html =~ /$pattern/sg)
+    # while ($html =~ /$pattern/mg)
+    {
+        $threads{ $count++ } = $+{id};
+    }
+
+    my $n    = $self->{threads_per_page};
+    my $from = ($page + 1) * $n;
+    my $to   = $from + $n;
+    for ($from..$to)
+    {
+        return $_ if ($thread eq $threads{$_});
+    }
+    return undef;
+}
  
 #------------------------------------------------------------------------------------------------
 # headers
@@ -133,7 +156,7 @@ sub get_delete_content($$%)
     my ($self, %config) = @_;
     Carp::croak("Delete, board and password parameters are not set!")
         unless($config{board} && $config{password});
-         
+
     my $content = {
         board    => $config{board},
         password => $config{password},
@@ -245,7 +268,7 @@ sub prepare($$$$)
     if ($task->{path_to_captcha})
     {
         my $captcha_text = captcha_recognizer($cnf->{captcha_decode}, $task->{path_to_captcha});
-        echo_proxy(1, 'green', $task->{proxy}, 'PREPARE', "captcha was recognized: $captcha_text");
+        echo_proxy(1, 'green', $task->{proxy}, 'PREPARE', "solved captcha: $captcha_text");
 
         $content{ $self->{fields}{post}{captcha} } = $captcha_text;
         $task->{captcha_text}                      = $captcha_text;
@@ -271,7 +294,7 @@ sub prepare($$$$)
     }
 
     # TODO
-    echo_proxy(1, 'green', $task->{proxy}, 'PREPARE', "данные формы созданы");
+    echo_proxy(1, 'green', $task->{proxy}, 'PREPARE', "form data was created");
 
     if ($task->{content})
     {
@@ -315,19 +338,33 @@ sub prepare($$$$)
 #{
 #}
  
-#sub ban_check($$$$)
+#sub ban_check($$$)
 #{
 #}
  
 #------------------------------------------------------------------------------------------------
 #----------------------------------  OTHER METHODS  ---------------------------------------------
 #------------------------------------------------------------------------------------------------
-#sub get_page($$$$)
+#sub get_page($$$)
 #{
 #}
 
-#sub get_thread($$$$)
+#sub get_thread($$$)
 #{
 #}
- 
+
+sub get_catalog($$$)
+{
+    my ($self, $task, $cnf) = @_;
+    #-- Set headers
+    my $headers = HTTP::Headers->new(%{ $self->get_default_headers() });
+    $headers->user_agent(rand_set(set => $self->{agents}));
+    #-- Send request
+    my ($response, $response_headers, $status_line) =
+        http_get($task->{proxy}, $self->get_catalog_url(%$cnf), $headers);
+
+    # $response = encode('utf-8', $response); #-- Для корректной работы кириллицы и рэгэкспов
+
+    return $response, $response_headers, $status_line;
+}
 1;
