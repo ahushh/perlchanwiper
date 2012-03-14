@@ -54,7 +54,7 @@ my $cb_check = sub
         if $cnf->{img_data}{altering} && $task->{file_path} && -e $task->{file_path};
 
     $stats{total}++;
-    if ($msg =~ /wrong_captcha|flood|file_exist|unknown/) 
+    if ($msg =~ /wrong_captcha|flood|file_exist/) 
     {
         $stats{good}++;
         push @good_proxis, $task->{proxy}; 

@@ -65,7 +65,7 @@ my $cb_wipe_get = sub
 { 
     my ($msg, $task, $cnf) = @_;
     return unless @_;
-     
+
     if ($msg eq 'success')
     {
         $prepare_queue->put($task);
@@ -89,7 +89,7 @@ sub wipe_get($$$)
         $coro->desc('get');
         $coro->{proxy} = $task->{proxy}; #-- Для вывода timeout
         $coro->on_destroy($cb_wipe_get);
-         
+
         if ($task->{run_at})
         {
             my $now = Time::HiRes::time;
@@ -97,7 +97,7 @@ sub wipe_get($$$)
             echo_msg($LOGLEVEL >= 3, "sleep: ". int($task->{run_at} - $now) );
             Coro::Timer::sleep( int($task->{run_at} - $now) );
         }
-         
+
         my $status = 
         with_coro_timeout {
             $engine->get($task, $cnf);
@@ -155,7 +155,7 @@ my $cb_wipe_post = sub
 {
     my ($msg, $task, $cnf) = @_;
     return unless @_;
-     
+
     #-- Delete temporary files
     unlink($task->{path_to_captcha})
         if !$cnf->{save_captcha} && $task->{path_to_captcha} && -e $task->{path_to_captcha};
@@ -220,13 +220,6 @@ sub wipe_post($$$)
         $coro->{proxy} = $task->{proxy}; #-- Для вывода timeout
         $coro->on_destroy($cb_wipe_post);
 
-        #-- Sleep before posting if specified
-        #if ($task->{sleep})
-        #{
-            #echo_proxy(1, 'green', $task->{proxy}, 'POST', "sleep $cnf->{delay} seconds before posting...");
-            #Coro::Timer::sleep($cnf->{delay});
-        #}
-
         my $status = 
         with_coro_timeout {
             $engine->post($task, $cnf);
@@ -242,7 +235,7 @@ sub wipe_post($$$)
 sub wipe($$%)
 {
     my ($self, $engine, %cnf) =  @_;
-     
+
     #-- Initialization
     $get_queue->put({ proxy => $_ }) for (@{ $cnf{proxies} });
 
@@ -357,7 +350,7 @@ sub wipe($$%)
             }
         }
     );
-     
+
     my $sw = AnyEvent->signal(signal => 'INT', cb =>
         sub
         {

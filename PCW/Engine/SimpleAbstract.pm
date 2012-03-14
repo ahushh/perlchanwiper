@@ -127,17 +127,14 @@ sub get_all_threads($$)
     return %threads;
 }
 
-#sub thread_exists($%)
-#{
-    #my (%config) = @_;
-    #Carp::croak("Html and thread parameters are not set!")
-        #unless($config{html} && $config{thread});
+#-- Virtual
+#-- TODO: реализовать для общего случая.
+sub thread_on_page
+{
+    my ($self, %config) = @_;
+    Carp::croak("Call a virtual method!");
+}
 
-    #my $pattern = "<span id=\"exlink_$config{thread}\">";
-    #my $pattern = "<span id=\"exlink_$config{thread}\">";
-    #return $config{html} =~ /$pattern/;
-#}
- 
 #------------------------------------------------------------------------------------------------
 # headers
 #------------------------------------------------------------------------------------------------
@@ -190,15 +187,14 @@ sub get_default_headers($%)
 sub get_post_content($$%)
 {
     my ($self, %config) = @_;
-    Carp::croak("Calling virtual method!");
+    Carp::croak("Call a virtual method!");
 }
 
 #-- Virtual
 sub get_delete_content($$%)
 {
     my ($self, %config) = @_;
-
-    Carp::croak("Calling virtual method!");
+    Carp::croak("Call a virtual method!");
 }
 
 #------------------------------------------------------------------------------------------------
@@ -223,7 +219,7 @@ sub get_delete_content($$%)
 #-- Virtual
 sub get($$$$)
 {
-    Carp::croak("Calling virtual method!");
+    Carp::croak("Call a virtual method!");
 }
 
 #------------------------------------------------------------------------------------------------
@@ -241,7 +237,7 @@ sub get($$$$)
 #-- Virtual
 sub prepare($$$$)
 {
-    Carp::croak("Calling virtual method!");
+    Carp::croak("Call a virtual method!");
 }
 
 #------------------------------------------------------------------------------------------------
@@ -373,7 +369,7 @@ sub ban_check_result($$$$$)
     return('unknown');
 }
 
-sub ban_check($$$$)
+sub ban_check($$$)
 {
     my ($self, $task, $cnf) = @_;
 
@@ -400,14 +396,14 @@ sub ban_check($$$$)
     {
         $content{ $self->{fields}{post}{nofile} } = 'on';
     }
-     
+
     $task->{content} = \%content;
-     
+
     #-- POSTING
     my ($code, $response) =
         http_post($task->{proxy},   $self->get_post_url(%{ $cnf->{post_cnf} }),
                   $task->{headers}, $task->{content});
-         
+
     $response = encode('utf-8', $response); #-- Для корректной работы кириллицы и рэгэкспов
 
     return $self->ban_check_result($response, $code, $task, $cnf);
@@ -416,7 +412,7 @@ sub ban_check($$$$)
 #------------------------------------------------------------------------------------------------
 #----------------------------------  OTHER METHODS  ---------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub get_page($$$$)
+sub get_page($$$)
 {
     my ($self, $task, $cnf) = @_;
     #-- Set headers
@@ -431,7 +427,7 @@ sub get_page($$$$)
     return $response, $response_headers, $status_line;
 }
 
-sub get_thread($$$$)
+sub get_thread($$$)
 {
     my ($self, $task, $cnf) = @_;
     #-- Set headers
@@ -441,9 +437,9 @@ sub get_thread($$$$)
     my ($response, $response_headers, $status_line) =
         http_get($task->{proxy}, $self->get_thread_url(%$cnf), $headers);
 
-    $response = encode('utf-8', $response); #-- Для корректной работы кириллицы и рэгэкспов
+    # $response = encode('utf-8', $response); #-- Для корректной работы кириллицы и рэгэкспов
 
     return $response, $response_headers, $status_line;
 }
- 
+
 1;
