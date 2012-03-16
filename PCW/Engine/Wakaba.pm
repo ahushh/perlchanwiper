@@ -90,7 +90,7 @@ sub get_captcha_url($$%)
 #{
 #}
 
-#sub thread_on_page
+#sub is_thread_on_page
 #{
 #}
 
@@ -185,12 +185,12 @@ sub get($$$$)
         #-- Check result
         if ($status_line !~ /200/ or !$captcha_img or $captcha_img !~ /GIF|PNG|JFIF|JPEG|JPEH|JPG/)
         {
-            echo_proxy(1, 'red', $task->{proxy}, 'CAPTCHA', sprintf "[ERROR]{%s}", html2text($status_line));
+            echo_proxy(1, 'red', $task->{proxy}, 'GET', sprintf "[ERROR]{%s}", html2text($status_line));
             return('banned');
         }
         else
         {
-            echo_proxy(1, 'green', $task->{proxy}, 'CAPTCHA', "[SUCCESS]{$status_line}");
+            echo_proxy(1, 'green', $task->{proxy}, 'GET', "[SUCCESS]{$status_line}");
         }
     }
     #-- The recaptcha
@@ -200,10 +200,10 @@ sub get($$$$)
         ($captcha_img, @fields) = get_recaptcha($task->{proxy}, $self->{recaptcha_key});
         unless ($captcha_img)
         {
-            echo_proxy(1, 'red', $task->{proxy}, 'CAPTCHA', '[ERROR]{something wrong with recaptcha obtaining}');
+            echo_proxy(1, 'red', $task->{proxy}, 'GET', '[ERROR]{something wrong with recaptcha obtaining}');
             return('banned');
         }
-        echo_proxy(1, 'green', $task->{proxy}, 'CAPTCHA', '[SUCCESS]{ok..recaptcha obtaining went well}');
+        echo_proxy(1, 'green', $task->{proxy}, 'GET', '[SUCCESS]{ok..recaptcha obtaining went well}');
         $task->{content} = { @fields };
     }
     my $path_to_captcha = save_file($captcha_img, $self->{captcha_extension});
@@ -260,9 +260,6 @@ sub prepare($$$$)
     {
         $content{ $self->{fields}{post}{nofile} } = 'on';
     }
-
-    # TODO
-    echo_proxy(1, 'green', $task->{proxy}, 'PREPARE', "form data was created");
 
     if ($task->{content})
     {

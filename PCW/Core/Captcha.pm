@@ -14,10 +14,10 @@ sub captcha_recognizer($$)
 {
     my ($captcha_decode, $file_path) = @_;
     my $mode = $captcha_decode->{mode};
-     
+
     Carp::croak("Captcha decode method '$mode' does not exist")
         unless (-e "OCR/$mode.pm");
-     
+
     require File::Spec->catfile('OCR', "$mode.pm");
     return decode_captcha($captcha_decode, $file_path);
 }

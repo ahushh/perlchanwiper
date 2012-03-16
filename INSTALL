@@ -1,0 +1,23 @@
+Вот эти библиотеки необходимы для работы (часть из них входят в стандартный perl, остальное ставить через cpan):
+AnyEvent
+Carp
+Coro
+Data::Random
+EV
+Encode
+File::Basename 
+File::Copy
+File::Spec 
+File::Temp
+Getopt::Long 
+HTML::Entities
+HTTP::Headers
+LWP::Protocol::socks
+LWP::Simple qw(get)
+LWP:userAgent
+List::MoreUtils qw(uniq)
+List::Util qw(shuffle)
+Term::ANSIColor
+Time::HiRes
+WWW::ProxyChecker
+WebService::Antigate

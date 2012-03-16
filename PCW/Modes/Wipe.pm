@@ -115,7 +115,7 @@ my $cb_wipe_prepare = sub
 {
     my ($msg, $task, $cnf) = @_;
     return unless @_;
-     
+
     if ($msg eq 'success')
     {
         $post_queue->put($task);
@@ -189,12 +189,21 @@ my $cb_wipe_post = sub
     {
         Carp::croak("Critical chan error. Going on is purposelessly.");
     }
+    elsif ($msg eq 'flood')
+    {
+        $stats{error}++;
+        if ($cnf->{flood_limit} && $cnf->{loop})
+        {
+            my $now = Time::HiRes::time;
+            $new_task->{run_at} = $now + $cnf->{flood_limit};
+        }
+    }
     else
     {
         $stats{error}++;
     }
 
-    if ($msg =~ /net_error|timeout/)
+    if ($msg =~ /net_error|timeout|unknown/)
     {
         $failed_proxy{ $task->{proxy} }++;
     }
