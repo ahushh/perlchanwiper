@@ -129,7 +129,7 @@ sub get_all_threads($$)
 
 #-- Virtual
 #-- TODO: реализовать для общего случая.
-sub thread_on_page
+sub is_thread_on_page
 {
     my ($self, %config) = @_;
     Carp::croak("Call a virtual method!");

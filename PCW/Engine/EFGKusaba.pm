@@ -77,7 +77,7 @@ sub get_captcha_url($$%)
 #{
 #}
 
-#sub thread_on_page
+#sub is_thread_on_page
 #{
 #}
 
@@ -172,12 +172,12 @@ sub get($$$$)
     #-- Check result
     if ($status_line !~ /200/ or !$captcha_img or $captcha_img !~ /GIF|PNG|JFIF|JPEG|JPEH|JPG/)
     {
-        echo_proxy(1, 'red', $task->{proxy}, 'CAPTCHA', sprintf "[ERROR]{%s}", html2text($status_line));
+        echo_proxy(1, 'red', $task->{proxy}, 'GET', sprintf "[ERROR]{%s}", html2text($status_line));
         return('banned');
     }
     else
     {
-        echo_proxy(1, 'green', $task->{proxy}, 'CAPTCHA', "[SUCCESS]{$status_line}");
+        echo_proxy(1, 'green', $task->{proxy}, 'GET', "[SUCCESS]{$status_line}");
     }
     #-- Obtaining cookies
     if ($self->{cookies})
@@ -269,7 +269,6 @@ sub prepare($$$$)
         # print Dumper($h);
     }
 
-    echo_proxy(1, 'green', $task->{proxy}, 'PREPARE', "form data was created");
     $task->{content} = \%content;
 
     return('success');

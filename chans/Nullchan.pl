@@ -25,7 +25,7 @@ our $chan_config =
                              ],
             bad_file      => [
                              ],
-            success       => [302, 'BuildThread()', 'Updating pages'],
+            success       => [302, 'BuildThread()', 'Updating pages', 504],
         },
         delete => {
             success => ['Сообщение удалено.'],

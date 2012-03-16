@@ -47,7 +47,7 @@ for my $type ('http')
 
 my $checker = WWW::ProxyChecker->new( debug         => 1,
                                       agent         => 'Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:1.8.1.12)',
-                                      #check_sites   => [ "http://dobrochan.ru" ],
+                                      check_sites   => [ "http://www.0chan.ru" ],
                                     );
 my $working_ref= $checker->check(\@proxies);
 
