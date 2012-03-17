@@ -132,7 +132,7 @@ sub usage
     my @engines;
     for my $path (glob "PCW/Engine/*.pm")
     {
-        next if $path =~ /Abstract/;
+        next if $path =~ /Abstract|Simple/;
         my ($engine, undef, undef) = fileparse($path, '.pm');
         push @engines, $engine;
     }

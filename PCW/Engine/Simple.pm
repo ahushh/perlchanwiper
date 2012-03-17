@@ -362,13 +362,73 @@ sub delete($$$$)
 # $self, $response, $code, $task, $cnf -> $status_str
 sub _check_ban_result($$$$$)
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    my ($self, $response, $code, $task, $cnf) = @_;
+
+    for my $type (keys %{ $self->{response}{post} })
+    {
+        my $color;
+        given ($type)
+        {
+            when (/banned|critical_error|net_error/) { $color = 'red'   }
+            default                                  { $color = 'green' }
+        }
+        for (@{ $self->{response}{post}{$type} })
+        {
+            if ($response =~ /$_/ || $code =~ /$_/)
+            {
+                echo_proxy(1, $color, $task->{proxy}, 'CHECK',
+                            sprintf("[%s](%d){%s}", uc($type), $code, ($self->{verbose} ? html2text($response) : $_)));
+                return($type);
+            }
+        }
+    }
+
+    echo_proxy(1, 'yellow', $task->{proxy}, 'CHECK',
+        sprintf("[%s](%d){%s}", 'UNKNOWN', $code, ($self->{verbose} ? html2text($response) : 'unknown error')));
+
+    return('unknown');
 }
 
 # $self, $task, $cnf -> $status_str
 sub ban_check($$$)
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    my ($self, $task, $cnf) = @_;
+
+    my $post_headers = HTTP::Headers->new(%{ $self->_get_post_headers(%{ $cnf->{post_cnf} }) });
+    $post_headers->user_agent(rand_set(set => $self->{agents}));
+    $task->{headers} = $post_headers;
+     
+    my %content = %{ merge_hashes( $self->_get_post_content(%{ $cnf->{post_cnf} }), $self->{fields}{post}) };
+    #---- Form data
+    #-- Message
+    if ($cnf->{msg_data}{mode} ne 'no')
+    {
+        my $text = make_text( $cnf->{msg_data} );
+        $content{ $self->{fields}{post}{msg} } = $text;
+    }
+    #-- Image
+    if ($cnf->{img_data}{mode} ne 'no')
+    {
+        my $file_path = make_pic( $cnf->{img_data} );
+        $content{ $self->{fields}{post}{img} } = ( $file_path ? [$file_path] : undef);
+        $task->{file_path} = $file_path;
+    }
+    elsif (!$cnf->{post_cnf}{thread}) #-- New thread
+    {
+        $content{ $self->{fields}{post}{nofile} } = 'on';
+    }
+     
+    $task->{content} = \%content;
+ 
+    #-- POSTING
+    my ($code, $response) =
+        http_post($task->{proxy},   $self->_get_post_url(%{ $cnf->{post_cnf} }),
+                  $task->{headers}, $task->{content});
+               
+    $response = encode('utf-8', $response); #-- Для корректной работы кириллицы и рэгэкспов
+     
+    return $self->_check_ban_result($response, $code, $task, $cnf);
+
 }
 
 #------------------------------------------------------------------------------------------------

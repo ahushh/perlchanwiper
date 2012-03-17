@@ -393,7 +393,7 @@ sub get_catalog($$$)
     $headers->user_agent(rand_set(set => $self->{agents}));
     #-- Send request
     my ($response, $response_headers, $status_line) =
-        http_get($task->{proxy}, $self->get_catalog_url(%$cnf), $headers);
+        http_get($task->{proxy}, $self->_get_catalog_url(%$cnf), $headers);
 
     # $response = encode('utf-8', $response); #-- Для корректной работы кириллицы и рэгэкспов
 
