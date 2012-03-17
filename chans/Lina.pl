@@ -4,6 +4,7 @@ our $chan_config =
     engine             => 'Kusaba',
     captcha_extension  => 'gif',
     cookies            => ['PHPSESSID'],
+    threads_per_page   => 20,
      
     response => {
         post => {
@@ -51,13 +52,14 @@ our $chan_config =
     },
      
     urls => {
-        post     => "http://lina.sytes.net/board.php",
-        delete   => "http://lina.sytes.net/board.php",
+        post      => "http://lina.sytes.net/board.php",
+        delete    => "http://lina.sytes.net/board.php",
         #captcha  => "http://lina.sytes.net/captcha.php",
-        captcha  => "",
-        page     => "http://lina.sytes.net/%s/%d.html",
-        zero_page    => "http://lina.sytes.net/%s",
-        thread   => "http://lina.sytes.net/%s/res/%d.html",
+        captcha   => "",
+        page      => "http://lina.sytes.net/%s/%d.html",
+        zero_page => "http://lina.sytes.net/%s",
+        thread    => "http://lina.sytes.net/%s/res/%d.html",
+        catalog   => "http://lina.sytes.net/%s/catalog.html",
     },
 
     html => {

@@ -58,12 +58,12 @@ our $chan_config =
     },
      
     urls => {
-        post     => "http://chaos.fm/%s/wakaba.pl",
-        delete   => "http://chaos.fm/%s/wakaba.pl",
-        captcha  => "http://chaos.fm/%s/captcha.pl?key=%s&dummy=%s?",
-        page     => "http://chaos.fm/%s/%d.html",
-        zero_page    => "http://chaos.fm/%s",
-        thread   => "http://chaos.fm/%s/res/%d.html",
+        post      => "http://chaos.fm/%s/wakaba.pl",
+        delete    => "http://chaos.fm/%s/wakaba.pl",
+        captcha   => "http://chaos.fm/%s/captcha.pl?key=%s&dummy=%s?",
+        page      => "http://chaos.fm/%s/%d.html",
+        zero_page => "http://chaos.fm/%s",
+        thread    => "http://chaos.fm/%s/res/%d.html",
     },
 
     html => {

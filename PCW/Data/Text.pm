@@ -121,16 +121,13 @@ sub delirium_msg(;$)
     my $max_q     = $cnf->{max_q}     || 20;
     my $sep_ch    = $cnf->{sep_ch}    || 20; #-- частота, с которой добавляются разделители в %
      
-    #my @small_v = qw(а а а у у е е е о о ы э я и и ю);
-    my @small_v = qw(a a a y y e e e o o i u u i i o);
+    my @small_v = qw(а а а у у е е е о о ы э я и и ю);
     @small_v = @{ $cnf->{small_v} } if $cnf->{small_v};
      
-    #my @small_c = qw(й ц к к н н г г з х ъ ф в п п р р л л д д ч м м т т б б ь);
-    my @small_c = qw(q w r t p s d f g h j k l z x c v b n m m h g l l k r q j);
+    my @small_c = qw(й ц к к н н г г з х ъ ф в п п р р л л д д ч м м т т б б ь);
     @small_c = @{ $cnf->{small_c} } if $cnf->{small_c};
      
-    #my @big = qw(У К Е Н Г Ш З Х Ф В А П Р О Л Д Ж Ч С Я М И Т Б Ю);
-    my @big = qw(Y K E N G S H H F V A P R O L D Z C C Y M I T B J);
+    my @big = qw(У К Е Н Г Ш З Х Ф В А П Р О Л Д Ж Ч С Я М И Т Б Ю);
     @big = @{ $cnf->{big} } if $cnf->{big};
      
     my @end = qw(. . . . . . ! ?);

@@ -1,1 +1,1 @@
-При loop, attempts, flood limit прокси добавляется в список 2 раза.
+* При включенных loop, attempts, flood limit прокси добавляется в список 2 раза.

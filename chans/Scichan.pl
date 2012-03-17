@@ -3,6 +3,8 @@ our $chan_config =
     name               => 'Scichan',
     engine             => 'Kusaba',
     captcha_extension  => 'gif',
+    #cookies            => ['PHPSESSID'],
+    threads_per_page   => 20,
      
     response => {
         post => {
@@ -50,13 +52,14 @@ our $chan_config =
     },
      
     urls => {
-        post     => "http://scichan.ru/board.php",
-        delete   => "http://scichan.ru/board.php",
+        post      => "http://scichan.ru/board.php",
+        delete    => "http://scichan.ru/board.php",
         #captcha  => "http://scichan.ru/captcha.php",
-        captcha  => "",
-        page     => "http://scichan.ru/%s/%d.html",
-        zero_page    => "http://scichan.ru/%s",
-        thread   => "http://scichan.ru/%s/res/%d.html",
+        captcha   => "",
+        page      => "http://scichan.ru/%s/%d.html",
+        zero_page => "http://scichan.ru/%s",
+        thread    => "http://scichan.ru/%s/res/%d.html",
+        catalog   => "http://scichan.ru/%s/catalog.html",
     },
 
     html => {

@@ -1,10 +1,8 @@
-
 our $chan_config =
 {
     name               => '0chan.ru',
     engine             => 'EFGKusaba',
     captcha_extension  => 'png',
-    # cookies            => ['PHPSESSID', 'cap'],
     cookies            => ['PHPSESSID'],
     threads_per_page   => 20,
 

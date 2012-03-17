@@ -1,23 +1,23 @@
-Вот эти библиотеки необходимы для работы (часть из них входят в стандартный perl, остальное ставить через cpan):
+#!/usr/bin/perl
+
+# Список необходимых модулей. Возможно, не полный.
+@modules = qw/
 AnyEvent
 Carp
 Coro
 Data::Random
 EV
-Encode
-File::Basename 
-File::Copy
-File::Spec 
-File::Temp
 Getopt::Long 
 HTML::Entities
-HTTP::Headers
 LWP::Protocol::socks
-LWP::Simple qw(get)
-LWP:userAgent
-List::MoreUtils qw(uniq)
-List::Util qw(shuffle)
+List::MoreUtils
+List::Util
 Term::ANSIColor
-Time::HiRes
 WWW::ProxyChecker
 WebService::Antigate
+/;
+
+for (@modules)
+{
+    `sudo cpan -i $_`;
+}
