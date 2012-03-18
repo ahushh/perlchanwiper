@@ -5,21 +5,19 @@ our $chan_config =
     captcha_extension  => 'gif',
     cookies            => ['PHPSESSID'],
     threads_per_page   => 20,
-     
+
     response => {
         post => {
             banned        => [403, 'CDN'],
             net_error     => ['Service Unavailable Connection', 502],
+            post_error    => [
+                             ],
             wrong_captcha => [
                              ],
             flood         => [
                              ],
             critical_error => [
                               ],
-            file_exist    => [
-                             ],
-            bad_file      => [
-                             ],
             success       => [302],
         },
         delete => {

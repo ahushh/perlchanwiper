@@ -55,6 +55,7 @@ sub init()
         'mode=s'     => \$mode,
         'proxy=s'    => \$proxy_file,
         'ua=s'       => \$useragents,
+        'cconfig=s'  => \$common_config,
         'loglevel=i' => \$loglevel,
         'verbose'    => \$verbose,
         'help|?'     => \$help,
@@ -69,8 +70,8 @@ sub init()
  
 sub check_user_error()
 {
-    my $modes_list = 'proxychecker|wipe|delete|bump';
-     
+    my $modes_list = 'proxychecker|wipe|delete|autobump';
+
     Carp::croak("Chan config '$chan' does not exist")
         unless($chan || -e "chans/$chan.pl");
 
@@ -79,16 +80,16 @@ sub check_user_error()
 
     Carp::croak("Mode '$mode' does not exist")
         unless($mode =~ /$modes_list/i);
-         
+
     Carp::croak("Mode '$mode' config does not exist")
         unless(-e "configs/$mode.pl");
-         
+
     Carp::croak("Proxylist '$proxy_file' does not exist")
         unless($proxy_file && -e $proxy_file);
-         
+
     Carp::croak("Proxy type '$proxy_type' is not specified")
         unless($proxy_type);
-         
+
     Carp::croak("Useragents list '$useragents' does not exist")
         unless($useragents && -e $useragents);
 }
@@ -103,6 +104,7 @@ sub info()
     say "Chan: $chan";
     say "Engine: ". $chan_config->{engine};
     say "Work mode: $mode";
+    say "Common config: $common_config";
     say "Proxies loaded: ". scalar @proxies;
     say "Browsers loaded: ". scalar @agents;
     say "~" x 30;
@@ -149,6 +151,7 @@ Options:
     --proxy         Proxy file (default is '$proxy_file')
     --proxytype     Default proxy protocol (default is '$proxy_type')
     --ua            User agents list file (default is '$useragents')
+    --cconfig       Common config file (default is '$common_config')
     --loglevel      Log level (1-4, 1 — the least and default)
     --verbose       Verbose output
     --help          Show this message and exit
@@ -156,7 +159,6 @@ Options:
 Supported chan engines: @engines
 Version $VERSION
 DESU
-     
 }
  
 #-----------------------------------------------------------------------------
