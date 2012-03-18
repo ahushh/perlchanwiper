@@ -15,7 +15,7 @@ our $msg = {
     #-------------------------------------------------------------------------------------------------------
     #text => ">>%9990000rand9999999%\nhttp://rghost.ru/%10000000rand99999999%/image.png\n>#string#\n#string#\n>#string#\n#string#",
     text => ">>%9990000rand9999999%\nhttp://rghost.ru/%10000000rand99999999%/image.jpg\n[code]#string#[/code]\n[code]#string#[/code]\n#delirium#",
-    text => "#string#",
+    text => "[code]#boundary#[/code]",
     #-------------------------------------------------------------------------------------------------------
     #-- #delirium# config
     delirium => {
@@ -37,7 +37,7 @@ our $msg = {
     boundary => {
         boundary => "----",                  #-- разделитель блоков текста
         order    => 'random',                #-- порядок считывания блоков (normal - по-порядку; random - случайно) 
-        path     => "$ENV{HOME}/poetry/cas.txt",   #-- путь к файлу
+        path     => "$ENV{HOME}/rm/desu/ascii",   #-- путь к файлу
     },
     #-------------------------------------------------------------------------------------------------------
     #-- #string# config

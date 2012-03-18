@@ -266,7 +266,7 @@ sub prepare($$$$)
         unless ($captcha_text)
         {
             echo_proxy(1, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returns undef");
-            return('error');
+            return('no_captcha');
         }
 
         echo_proxy(1, 'green', $task->{proxy}, 'PREPARE', "solved captcha: $captcha_text");

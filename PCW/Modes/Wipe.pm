@@ -120,6 +120,11 @@ my $cb_wipe_prepare = sub
     {
         $post_queue->put($task);
     }
+    elsif ($msg eq 'no_captcha')
+    {
+        my $new_task = {proxy => $task->{proxy} };
+        $get_queue->put($new_task);
+    }
     elsif ($msg =~ /net_error|timeout/)
     {
         $failed_proxy{ $task->{proxy} }++;

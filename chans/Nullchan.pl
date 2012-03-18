@@ -10,8 +10,11 @@ our $chan_config =
         post => {
             banned        => [403, 'CDN', 'possible proxy'],
             net_error     => ['Service Unavailable Connection', 502],
+            post_error    => [
+                              'your message is too long',
+                             ],
             wrong_captcha => [
-                              'капча',
+                              'Неправильно введена капча',
                              ],
             flood         => [
                               'Вы постите очень часто.',
@@ -19,10 +22,6 @@ our $chan_config =
                              ],
             critical_error => [
                               ],
-            file_exist    => [
-                             ],
-            bad_file      => [
-                             ],
             success       => [302, 'BuildThread()', 'Updating pages', 504],
         },
         delete => {

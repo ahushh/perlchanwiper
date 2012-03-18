@@ -268,9 +268,9 @@ sub _check_post_result($$$$$)
         my $color;
         given ($type)
         {
-            when (/critical_error|banned|net_error|wrong_captcha/) { $color = 'red'    }
-            when (/flood|file_exist|bad_file/)                     { $color = 'yellow' }
-            when (/success/)                                       { $color = 'green'  }
+            when (/critical_error|banned|net_error/) { $color = 'red'    }
+            when (/flood|post_error|wrong_captcha/)  { $color = 'yellow' }
+            when (/success/)                         { $color = 'green'  }
         }
 
         for (@{ $self->{response}{post}{$type} })
@@ -397,7 +397,7 @@ sub ban_check($$$)
     my $post_headers = HTTP::Headers->new(%{ $self->_get_post_headers(%{ $cnf->{post_cnf} }) });
     $post_headers->user_agent(rand_set(set => $self->{agents}));
     $task->{headers} = $post_headers;
-     
+
     my %content = %{ merge_hashes( $self->_get_post_content(%{ $cnf->{post_cnf} }), $self->{fields}{post}) };
     #---- Form data
     #-- Message
