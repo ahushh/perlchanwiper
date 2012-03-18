@@ -260,7 +260,7 @@ sub prepare($$$$)
         my $captcha_text = captcha_recognizer($cnf->{captcha_decode}, $task->{path_to_captcha});
         unless ($captcha_text)
         {
-            echo_proxy(1, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returns undef.");
+            echo_proxy(1, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returns undef");
             return('error');
         }
 
@@ -280,7 +280,7 @@ sub prepare($$$$)
     if ($cnf->{img_data}{mode} ne 'no')
     {
         my $file_path = make_pic( $cnf->{img_data} );
-        $content{ $self->{fields}{post}{img} } = ( $file_path ? [$file_path] : undef);
+        $content{ $self->{fields}{post}{img} } = ( $file_path ? [$file_path] : undef );
         $task->{file_path} = $file_path;
     }
     elsif (!$cnf->{post_cnf}{thread}) #-- New thread

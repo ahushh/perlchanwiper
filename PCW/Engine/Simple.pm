@@ -410,7 +410,7 @@ sub ban_check($$$)
     if ($cnf->{img_data}{mode} ne 'no')
     {
         my $file_path = make_pic( $cnf->{img_data} );
-        $content{ $self->{fields}{post}{img} } = ( $file_path ? [$file_path] : undef);
+        $content{ $self->{fields}{post}{img} } = ( $file_path ? [$file_path] : undef );
         $task->{file_path} = $file_path;
     }
     elsif (!$cnf->{post_cnf}{thread}) #-- New thread

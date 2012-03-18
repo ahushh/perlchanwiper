@@ -1,5 +1,4 @@
-#!/usr/bin/perl
-
+# Устанавливать модули так: perl ./INSTALL
 # Список необходимых модулей. Возможно, не полный.
 @modules = qw/
 AnyEvent
@@ -15,9 +14,8 @@ List::Util
 Term::ANSIColor
 WWW::ProxyChecker
 WebService::Antigate
+Image::OCR::Tesseract
 /;
 
-for (@modules)
-{
-    `sudo cpan -i $_`;
-}
+`sudo cpan -i @modules`;
+

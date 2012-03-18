@@ -1,5 +1,5 @@
 syntax: glob
-TODO.org
+./TODO.org
 captcha/*
 proxy/my/*
 *~

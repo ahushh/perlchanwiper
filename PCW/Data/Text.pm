@@ -16,42 +16,31 @@ use PCW::Core::Utils qw(random);
 sub interpolate($)
 {
     my $text = shift;
-     
-    my $now = time;
-    $text =~ s/%unixtime%/$now/g;
-     
-    my $date_string = scalar localtime($now);
-    $text =~ s/%date%/$date_string/g;
-     
+
+    $text =~ s/%unixtime%/time;/eg;
+
+    $text =~ s/%date%/scalar(localtime(time));/eg;
+
+    $text =~ s/%(\d+)rand(\d+)%/random($1, $2);/eg;
+
     return $text;
 }
- 
+
 sub make_text($)
 {
     my $conf = shift;
-    my $msg_mode = $conf->{mode} . '_msg';
-    my $sign     = $conf->{sign} || '';
-    Carp::croak sprintf "Text mode '%s' doesn't exist!\n", $conf->{mode}
-			unless exists &{ $msg_mode };
-    my $create_msg = \&{ $msg_mode };
-    my $text = &$create_msg($conf) . $sign;
+    my $text = $conf->{text};
+
+    $text =~ s/#delirium#/delirium_msg($conf->{delirium});/eg;
+    $text =~ s/#boundary#/boundary_msg($conf->{boundary});/eg;
+    $text =~ s/#string#/string_msg($conf->{string});/eg;
+
     return interpolate($text);
 }
 
 #------------------------------------------------------------------------------------------------
 #---------------------------------------- Text --------------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub no_msg($)
-{
-    undef;
-}
-
-sub single_msg($)
-{
-    my $data = shift;
-    $data->{text};
-}
-
 sub boundary_msg($)
 {
     my $data = shift;
@@ -103,7 +92,7 @@ sub string_msg($)
         }
         elsif ($data->{order} eq 'random')
         {
-            $msg = ${ rand_set(set => \@text) };
+            $msg .= ${ rand_set(set => \@text) };
         }
         $msg .= "\n";
     }

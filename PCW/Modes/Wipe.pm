@@ -54,7 +54,7 @@ sub show_stats
     print "Failed posted: $stats{error}\n";
     print "Wrong captcha: $stats{wrong_captcha}\n";
     print "Total posted: $stats{total}\n";
-    print "Good proxies: @good\n";
+    print "Good proxies: ", scalar @good, "\n";
 };
 
 #------------------------------------------------------------------------------------------------
