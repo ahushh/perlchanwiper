@@ -23,6 +23,8 @@ sub interpolate($)
 
     $text =~ s/%(\d+)rand(\d+)%/random($1, $2);/eg;
 
+    $text =~ s/@~(.+)~@/`$1`;/eg;
+
     return $text;
 }
 

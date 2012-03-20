@@ -42,12 +42,12 @@ sub echo_proxy($$$$$)
         my ($proxy, $color) = @_;
         print colored [$color], sprintf " %-40s ", $proxy;
     };
-    
+
     my ($p, $color, $proxy, $type, $msg) = @_;
     return 0 unless $p;
-     
+
     echo_msg(1, "", $type);
-     
+
     &$print_proxy($proxy, $color);
     print "$msg\n";
 
@@ -55,6 +55,3 @@ sub echo_proxy($$$$$)
 }
 
 1;
- 
- 
- 

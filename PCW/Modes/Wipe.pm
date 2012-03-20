@@ -51,8 +51,8 @@ sub show_stats
 {
     my @good = grep { $failed_proxy{$_} == 0 } keys %failed_proxy;
     print "\nSuccessfully posted: $stats{posted}\n";
-    print "Failed posted: $stats{error}\n";
     print "Wrong captcha: $stats{wrong_captcha}\n";
+    print "Other failed: $stats{error}\n";
     print "Total posted: $stats{total}\n";
     print "Good proxies: ", scalar @good, "\n";
 };
@@ -208,7 +208,8 @@ my $cb_wipe_post = sub
         $stats{error}++;
     }
 
-    if ($msg =~ /net_error|timeout|unknown/)
+    if ($msg =~ /net_error|timeout/)
+    #if ($msg =~ /net_error|timeout|unknown/)
     {
         $failed_proxy{ $task->{proxy} }++;
     }
@@ -246,11 +247,38 @@ sub wipe_post($$$)
 #------------------------------------------------------------------------------------------------
 #---------------------------------------  MAIN WIPE  --------------------------------------------
 #------------------------------------------------------------------------------------------------
+sub get_threads($$$)
+{
+    my ($proxy, $engine, $cnf) = @_;
+    my @threads;
+    my $task = {proxy => $proxy };
+    for my $page (@{ $cnf->{random_reply}{pages} })
+    {
+        my %local_post_cnf = %{ $cnf->{post_cnf} };
+        $local_post_cnf{page} = $page;
+
+        #-- Get the page
+        echo_msg($LOGLEVEL >= 1, "Downloading $page page...");
+        my ($html, undef, $status) = $engine->get_page($task, \%local_post_cnf);
+        echo_msg($LOGLEVEL >= 1, "Page $page downloaded: $status");
+
+        my %allthreads = $engine->get_all_threads($html);
+        @threads = (@threads, keys(%allthreads));
+    }
+    return \@threads;
+}
+
 sub wipe($$%)
 {
     my ($self, $engine, %cnf) =  @_;
 
     #-- Initialization
+    if ($cnf{random_reply})
+    {
+        $cnf{post_cnf}{thread} = get_threads("http://no_proxy", $engine, \%cnf);
+        my @ttr = @{ $cnf{post_cnf}{thread} };
+        echo_msg(1, sprintf "%d threads were found", scalar @ttr);
+    }
     $get_queue->put({ proxy => $_ }) for (@{ $cnf{proxies} });
 
     #-- Timeout watcher
@@ -277,6 +305,20 @@ sub wipe($$%)
             }
         }
     );
+
+    #-- Find threads watcher
+    my $ftw = AnyEvent->timer(after    => $cnf{random_reply}{interval},
+                              interval => $cnf{random_reply}{interval},
+                              cb =>
+                              sub
+                              {
+                                  #-- Refresh the thread list
+                                  async {
+                                      $cnf{post_cnf}{thread} = get_threads("http://no_proxy", $engine, \%cnf);
+                                  };
+                                  cede;
+                              }
+                             ) if $cnf{random_reply};
 
     #-- Get watcher
     my $gw = AnyEvent->timer(after => 0.5, interval => 2, cb =>

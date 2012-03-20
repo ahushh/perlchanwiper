@@ -4,21 +4,24 @@ use strict;
 #------------------------------------------------------------------------------------------------------------
 our $msg = {
     #--------------------------------------------------------------------------------------------------------
-    #--- Переменные
-    #-- %unixtime% — будет заменено текущим timestamp
-    #-- %date%     — будет заменено на строку с датой
-    #-- %XrandY%   — ... на случайное целое числов в диапазоне от X до Y
-    #--- Функции
-    #-- #delirium# — сгенерированный бред
-    #-- #string#   — чтение файла по строчно
-    #-- #boundary# — чтение файла блоками
+    #--- Подстановка
+    #-- %unixtime%   — будет заменено текущим timestamp
+    #-- %date%       — ... на строку с датой
+    #-- %XrandY%     — ... на случайное целое числов в диапазоне от X до Y
+    #-- @~command~@  — ... на результат выполенения внешней команды 'command'
+    #--- Подстановка с параметрами
+    #-- #delirium#   — сгенерированный бред
+    #-- #string#     — чтение файла по строчно
+    #-- #boundary#   — чтение файла блоками
     #-------------------------------------------------------------------------------------------------------
-    #text => ">>%9990000rand9999999%\nhttp://rghost.ru/%10000000rand99999999%/image.png\n>#string#\n#string#\n>#string#\n#string#",
-    text => ">>%9990000rand9999999%\nhttp://rghost.ru/%10000000rand99999999%/image.jpg\n[code]#string#[/code]\n[code]#string#[/code]\n#delirium#",
     text => "[code]#boundary#[/code]",
+    text => '@~fortune psalms bible~@',
     #-------------------------------------------------------------------------------------------------------
     #-- #delirium# config
     delirium => {
+        # q - предложение; w - слово; c - символ;
+        # small_v - строчные гласные
+        # small_c - строчные согласные
         #min_len_w => 0,
         #max_len_w => 0,
         #min_w     => 0,
@@ -78,7 +81,7 @@ my $img_altering = {
     #mode        => 'convert',
     #convert     => '/usr/bin/convert',  #-- путь до программы
     #args        => '-negate',                 #-- аргуметны
-    #args        => '-fill red -pointsize 20 -draw "text 100,100 \'ALL HAIL DOLLCHAN\'"',                 #-- аргуметны
+    #args        => '-fill red -pointsize 20 -draw "text 100,100 \'ALL HAIL DOLLCHAN\'"',
 };
  
 our $img = {
@@ -117,9 +120,9 @@ our $img = {
 our $captcha_decode = {
     #-------------------------------------------------------------------------------------------------------
     #-- antigate mode
-    # mode   => 'antigate',
-    # key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
-    # opt    => {},
+    #mode   => 'antigate',
+    #key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
+    #opt    => {},
     #-------------------------------------------------------------------------------------------------------
     #-- captchabot mode
     #mode   => 'captchabot',
@@ -133,10 +136,11 @@ our $captcha_decode = {
     # arg    => '-d --geometry 400x300 -Z', #-- аргументы
     #-- gui hand mode
     #-- Ручной ввод капчи через GUI.
+    #-- Необходим Gtk2
     #-- Работает криво.
-    mode   => 'guihand',
+    #mode   => 'guihand',
     #-- tesseract OCR
-    #-- необходим convert (ImageMagick) и сам tesseract
+    #-- Необходим convert (ImageMagick) и сам tesseract
     mode => 'tesseract',
 };
 
