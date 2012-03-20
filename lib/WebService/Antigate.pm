@@ -1,4 +1,5 @@
 package WebService::Antigate;
+# sleep везде заменен на Coro::Timer::sleep
 
 use strict;
 use Coro;

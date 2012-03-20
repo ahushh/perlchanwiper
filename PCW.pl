@@ -121,6 +121,7 @@ sub usage
     my @modes;
     for my $path (glob "PCW/Modes/*.pm")
     {
+        next if $path =~ /Common/;
         my ($mode, undef, undef) = fileparse($path, '.pm');
         push @modes, lc($mode);
     }

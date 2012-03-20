@@ -33,7 +33,7 @@ use File::Copy qw(move);
 use PCW::Core::Log     qw(echo_msg echo_proxy);
 use PCW::Core::Utils   qw(with_coro_timeout);
 use PCW::Core::Captcha qw(captcha_report_bad);
-use PCW::Modes::Delete qw(get_posts_by_regexp);
+use PCW::Modes::Common qw(get_posts_by_regexp);
  
 #------------------------------------------------------------------------------------------------
 # Local package variables and procedures
@@ -171,7 +171,8 @@ sub bump($$%)
     my ($self, $engine, %cnf) =  @_;
 
     #-- Initialization
-    $PCW::Modes::Delete::LOGLEVEL = $LOGLEVEL;
+    $PCW::Modes::Common::VERBOSE = $VERBOSE;
+    $PCW::Modes::Common::LOGLEVEL = $LOGLEVEL;
 
     @proxies = @{ $cnf{proxies} };
     my $proxy = shift @proxies;

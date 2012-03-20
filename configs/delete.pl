@@ -9,7 +9,7 @@ my $delete_cnf = {
     find        => '.*',           #-- искать по регулярному выражению
     #find        => 'Dollchan',           #-- искать по регулярному выражению
     #find        => '<blockquote><div class="postmessage">(\s+)?</div></blockquote>',
-    thread      => [9997029],           #-- искать посты в тредах
+    thread      => [10001305],           #-- искать посты в тредах
     #page        => [0..5],        #-- искать треды на страницах
 };
 our %mode_config = (

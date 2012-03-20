@@ -1,15 +1,15 @@
 package PCW::Modes::ProxyChecker;
- 
+
 use strict;
 use autodie;
 use Carp;
- 
+
 #------------------------------------------------------------------------------------------------
 # Package Variables
 #------------------------------------------------------------------------------------------------
-our $LOGLEVEL   = 0;
-our $VERBOSE = 0;
- 
+our $LOGLEVEL = 0;
+our $VERBOSE  = 0;
+
 #------------------------------------------------------------------------------------------------
 # Importing Coro packages
 #------------------------------------------------------------------------------------------------
@@ -20,14 +20,14 @@ use Coro::Timer;
 use Coro;
 use EV;
 use Time::HiRes;
- 
+
 #------------------------------------------------------------------------------------------------
 # Importing internal PCW packages
 #------------------------------------------------------------------------------------------------
 use PCW::Core::Log     qw(echo_msg echo_proxy);
 use PCW::Core::Utils   qw(with_coro_timeout);
 use PCW::Core::Captcha qw(captcha_report_bad);
- 
+
 #------------------------------------------------------------------------------------------------
 # Local package variables and procedures
 #------------------------------------------------------------------------------------------------
@@ -54,14 +54,14 @@ my $cb_check = sub
         if $cnf->{img_data}{altering} && $task->{file_path} && -e $task->{file_path};
 
     $stats{total}++;
-    if ($msg =~ /wrong_captcha|flood|file_exist/) 
+    if ($msg =~ /banned|critical_error|net_error/)
     {
-        $stats{good}++;
-        push @good_proxis, $task->{proxy}; 
+        $stats{bad}++;
     }
     else
     {
-        $stats{bad}++;
+        $stats{good}++;
+        push @good_proxis, $task->{proxy};
     }
 };
 
@@ -73,8 +73,6 @@ sub check($$$)
         $coro->desc('check');
         $coro->{proxy} = $task->{proxy}; #-- Для вывода timeout
         $coro->on_destroy($cb_check);
-
-        # $engine->prepare($task, $cnf);
 
         my $status = 
         with_coro_timeout {
@@ -126,7 +124,7 @@ sub checker($$%)
                 while $queue->size && $thrs_available--;
         }
     );
-     
+
     #-- Exit watchers
     my $ew = AnyEvent->timer(after => 5, interval => 1, cb =>
         sub
@@ -139,7 +137,7 @@ sub checker($$%)
             }
         }
     );
-     
+
     my $sw = AnyEvent->signal(signal => 'INT', cb =>
         sub
         {
@@ -151,5 +149,5 @@ sub checker($$%)
 
     EV::run;
 }
- 
-1; 
+
+1;

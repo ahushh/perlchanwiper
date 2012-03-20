@@ -12,6 +12,7 @@ our $chan_config =
             net_error     => ['Service Unavailable Connection', 502],
             post_error    => [
                               'your message is too long',
+                              'temporarily unavailable', 
                              ],
             wrong_captcha => [
                               'Неправильно введена капча',

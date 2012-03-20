@@ -40,7 +40,8 @@
 ** TODO Done Починить loglevel и verbose
 ** TODO Автобамп отдельно от бампа.
 ** TODO Оформить моды в ооп-стиле
-** TODO Добавить в response chan_error
+** TODO Done Добавить в response chan_error
+** TODO Рекурсивный поиск картинок
 * Captcha
 ** GUI смотрелка капчи
 ** Постинг без капчи (для вакабы?)

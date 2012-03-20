@@ -10,7 +10,8 @@ our @EXPORT_OK = qw(random get_proxylist html2text merge_hashes parse_cookies sa
 #------------------------------------------------------------------------------------------------
 # Importing utility packages
 #------------------------------------------------------------------------------------------------
- 
+use Data::Random qw(rand_set);
+
 #------------------------------------------------------------------------------------------------
 # CORO TIMEOUT
 #------------------------------------------------------------------------------------------------
@@ -27,17 +28,17 @@ sub with_coro_timeout(&$$)
     delete $coro->{timeout_at};
     return $ret;
 }
- 
+
 #------------------------------------------------------------------------------------------------
 # PROXY
 #------------------------------------------------------------------------------------------------
 use LWP::Simple qw(get);
 use List::MoreUtils qw(uniq);
- 
+
 sub get_proxylist($$)
 {
     my ($path, $default_proxy_type) = @_;
-     
+
     $default_proxy_type = 'http'
 		unless defined $default_proxy_type;
     my @proxies;
@@ -81,20 +82,10 @@ sub random($$)
 }
 
 #------------------------------------------------------------------------------------------------
-# RANDOM ELEMENT OF ARRAY
-#------------------------------------------------------------------------------------------------
-#sub rand_set($)
-#{
-    #my $set = shift;
-    #my @set = @$set;
-    #return $set[ rand(scalar @set) ];
-#}
-
-#------------------------------------------------------------------------------------------------
 # STRIP ALL HTML CODE
 #------------------------------------------------------------------------------------------------
 use HTML::Entities;
- 
+
 sub html2text($)
 {
 	my $html = shift;
@@ -114,7 +105,7 @@ sub html2text($)
 # SAVE FILE
 #------------------------------------------------------------------------------------------------
 use File::Temp qw(tempfile);
- 
+
 sub save_file($$)
 {
     my ($content, $type, $template) = @_;
@@ -123,7 +114,7 @@ sub save_file($$)
     close($fh);
     return $filename;
 }
- 
+
 #------------------------------------------------------------------------------------------------
 # FIND GIVEN COOKIES AND RETURN THE STRING
 #------------------------------------------------------------------------------------------------
@@ -134,7 +125,6 @@ sub parse_cookies($$)
     for (@{ $list_of_nedeed_cookies })
     {
         return undef unless $headers =~ /($_=[a-zA-Z0-9]+?(;|\n))/g;
-        #$headers =~ /($_=[a-zA-Z0-9]+?(;|\n))/g;
         $cookies .= "$1 ";
     }
     return $cookies;
@@ -149,8 +139,16 @@ sub merge_hashes($$)
     my %gen_content;
 	for (keys %$content)
 	{
-        $gen_content{$fields->{$_}} = $content->{$_};
+        if (ref($content->{$_}) eq 'ARRAY')
+        {
+            $gen_content{$fields->{$_}} = ${ rand_set(set => $content->{$_}) };
+        }
+        else
+        {
+            $gen_content{$fields->{$_}} = $content->{$_};
+        }
 	}
+
     return \%gen_content;
 }
 

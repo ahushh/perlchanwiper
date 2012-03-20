@@ -417,16 +417,16 @@ sub ban_check($$$)
     {
         $content{ $self->{fields}{post}{nofile} } = 'on';
     }
-     
+
     $task->{content} = \%content;
- 
+
     #-- POSTING
     my ($code, $response) =
         http_post($task->{proxy},   $self->_get_post_url(%{ $cnf->{post_cnf} }),
                   $task->{headers}, $task->{content});
-               
+
     $response = encode('utf-8', $response); #-- Для корректной работы кириллицы и рэгэкспов
-     
+
     return $self->_check_ban_result($response, $code, $task, $cnf);
 
 }
