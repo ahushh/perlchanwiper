@@ -1,8 +1,9 @@
 package PCW::Modes::Delete;
- 
+
 use strict;
 use autodie;
 use Carp;
+use feature 'switch';
 
 #------------------------------------------------------------------------------------------------
 # Package Variables
@@ -51,17 +52,19 @@ my $cb_delete_post = sub
 {
     my ($msg, $task, $cnf) = @_;
     $stats{total}++;
-    if ($msg eq 'success')
+    given ($msg)
     {
-        $stats{deleted}++;
-    }
-    # TODO перезапуск при ошибке 
-    else
-    {
-        $stats{error}++;
+        when ('success')
+        {
+            $stats{deleted}++;
+        }
+        default
+        {
+            $stats{error}++;
+        }
     }
 };
- 
+
 sub delete_post($$$)
 {
     my ($engine, $task, $cnf) = @_;
@@ -99,13 +102,13 @@ sub delete($$$%)
     {
         @deletion_posts = @{ $cnf{delete_cnf}{by_id} };
     }
-    elsif ($cnf{delete_cnf}{find})
+    elsif ($cnf{delete_cnf}{threads} || $cnf{delete_cnf}{pages})
     {
-        @deletion_posts = get_posts_by_regexp($proxy, $engine, %cnf);
+        @deletion_posts = get_posts_by_regexp($proxy, $engine, $cnf{delete_cnf});
     }
     else
     {
-        Carp::croak("Option 'by_id' or 'find' should be specified.");
+        Carp::croak("Should be specified how to find posts (by_id/threads/pages).");
     }
 
     for my $postid (@deletion_posts)

@@ -3,16 +3,15 @@ package PCW::Modes::Wipe;
 use strict;
 use autodie;
 use Carp;
+use feature 'switch';
 
-#use Exporter 'import';
-#our @EXPORT_OK = qw(wipe);
 #------------------------------------------------------------------------------------------------
 # Package Variables
 #------------------------------------------------------------------------------------------------
 our $CAPTCHA_DIR = 'captcha';
 our $LOGLEVEL   = 0;
 our $VERBOSE = 0;
- 
+
 #------------------------------------------------------------------------------------------------
 # Importing Coro packages
 #------------------------------------------------------------------------------------------------
@@ -23,21 +22,23 @@ use Coro::Timer;
 use Coro;
 use EV;
 use Time::HiRes;
- 
+
 #------------------------------------------------------------------------------------------------
 # Importing utility packages
 #------------------------------------------------------------------------------------------------
 use File::Basename;
 use File::Copy qw(move);
-use File::Spec; 
- 
+use File::Spec;
+
 #------------------------------------------------------------------------------------------------
 # Importing internal PCW packages
 #------------------------------------------------------------------------------------------------
 use PCW::Core::Log     qw(echo_msg echo_proxy);
 use PCW::Core::Utils   qw(with_coro_timeout);
 use PCW::Core::Captcha qw(captcha_report_bad);
- 
+
+use PCW::Modes::Common qw(get_posts_by_regexp);
+
 #------------------------------------------------------------------------------------------------
 # Local package variables and procedures
 #------------------------------------------------------------------------------------------------
@@ -62,22 +63,24 @@ sub show_stats
 #------------------------------------------------------------------------------------------------
 #-- Coro callback
 my $cb_wipe_get = sub
-{ 
+{
     my ($msg, $task, $cnf) = @_;
     return unless @_;
 
-    if ($msg eq 'success')
+    given ($msg)
     {
-        $prepare_queue->put($task);
-    }
-    elsif ($msg =~ /net_error|timeout/)
-    {
-        $failed_proxy{ $task->{proxy} }++;
-    }
-    else
-    {
-        #-- WTF?! TODO: to find out
-        $failed_proxy{ $task->{proxy} } = 0;
+        when ('success')
+        {
+            $prepare_queue->put($task);
+        }
+        when (/net_error|timeout/)
+        {
+            $failed_proxy{ $task->{proxy} }++;
+        }
+        default
+        {
+            $failed_proxy{ $task->{proxy} } = 0;
+        }
     }
 };
 
@@ -116,22 +119,25 @@ my $cb_wipe_prepare = sub
     my ($msg, $task, $cnf) = @_;
     return unless @_;
 
-    if ($msg eq 'success')
+    given ($msg)
     {
-        $post_queue->put($task);
-    }
-    elsif ($msg eq 'no_captcha')
-    {
-        my $new_task = {proxy => $task->{proxy} };
-        $get_queue->put($new_task);
-    }
-    elsif ($msg =~ /net_error|timeout/)
-    {
-        $failed_proxy{ $task->{proxy} }++;
-    }
-    else
-    {
-        $failed_proxy{ $task->{proxy} } = 0;
+        when ('success')
+        {
+            $post_queue->put($task);
+        }
+        when ('no_captcha')
+        {
+            my $new_task = {proxy => $task->{proxy} };
+            $get_queue->put($new_task);
+        }
+        when (/net_error|timeout/)
+        {
+            $failed_proxy{ $task->{proxy} }++;
+        }
+        default 
+        {
+            $failed_proxy{ $task->{proxy} } = 0;
+        }
     }
 };
 
@@ -169,43 +175,46 @@ my $cb_wipe_post = sub
 
     $stats{total}++;
     my $new_task = {};
-    if ($msg eq 'success') 
+    given ($msg)
     {
-        #-- Move successfully recognized captcha in the specified dir 
-        if ($cnf->{save_captcha} && $task->{path_to_captcha})
+        when ('success')
         {
-            my ($name, $path, $suffix) = fileparse($task->{path_to_captcha}, 'png', 'jpeg', 'jpg', 'gif');
-            move $task->{path_to_captcha}, File::Spec->catfile($CAPTCHA_DIR, $task->{captcha_text} ."--". time .".$suffix");
-        }
-        $stats{posted}++;
+            #-- Move successfully recognized captcha in the specified dir 
+            if ($cnf->{save_captcha} && $task->{path_to_captcha})
+            {
+                my ($name, $path, $suffix) = fileparse($task->{path_to_captcha}, 'png', 'jpeg', 'jpg', 'gif');
+                move $task->{path_to_captcha}, File::Spec->catfile($CAPTCHA_DIR, $task->{captcha_text} ."--". time .".$suffix");
+            }
+            $stats{posted}++;
 
-        if ($cnf->{flood_limit} && $cnf->{loop})
-        {
-            my $now = Time::HiRes::time;
-            $new_task->{run_at} = $now + $cnf->{flood_limit};
+            if ($cnf->{flood_limit} && $cnf->{loop})
+            {
+                my $now = Time::HiRes::time;
+                $new_task->{run_at} = $now + $cnf->{flood_limit};
+            }
         }
-    }
-    elsif ($msg eq 'wrong_captcha')
-    {
-        $stats{wrong_captcha}++;
-        captcha_report_bad($cnf->{captcha_decode}, $task->{path_to_captcha});
-    }
-    elsif ($msg eq 'critical_error')
-    {
-        Carp::croak("Critical chan error. Going on is purposelessly.");
-    }
-    elsif ($msg eq 'flood')
-    {
-        $stats{error}++;
-        if ($cnf->{flood_limit} && $cnf->{loop})
+        when ('wrong_captcha')
         {
-            my $now = Time::HiRes::time;
-            $new_task->{run_at} = $now + $cnf->{flood_limit};
+            $stats{wrong_captcha}++;
+            captcha_report_bad($cnf->{captcha_decode}, $task->{path_to_captcha});
         }
-    }
-    else
-    {
-        $stats{error}++;
+        when ('critical_error')
+        {
+            Carp::croak("Critical chan error. Going on is purposelessly.");
+        }
+        when ('flood')
+        {
+            $stats{error}++;
+            if ($cnf->{flood_limit} && $cnf->{loop})
+            {
+                my $now = Time::HiRes::time;
+                $new_task->{run_at} = $now + $cnf->{flood_limit};
+            }
+        }
+        default
+        {
+            $stats{error}++;
+        }
     }
 
     if ($msg =~ /net_error|timeout/)
@@ -247,27 +256,6 @@ sub wipe_post($$$)
 #------------------------------------------------------------------------------------------------
 #---------------------------------------  MAIN WIPE  --------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub get_threads($$$)
-{
-    my ($proxy, $engine, $cnf) = @_;
-    my @threads;
-    my $task = {proxy => $proxy };
-    for my $page (@{ $cnf->{random_reply}{pages} })
-    {
-        my %local_post_cnf = %{ $cnf->{post_cnf} };
-        $local_post_cnf{page} = $page;
-
-        #-- Get the page
-        echo_msg($LOGLEVEL >= 1, "Downloading $page page...");
-        my ($html, undef, $status) = $engine->get_page($task, \%local_post_cnf);
-        echo_msg($LOGLEVEL >= 1, "Page $page downloaded: $status");
-
-        my %allthreads = $engine->get_all_threads($html);
-        @threads = (@threads, keys(%allthreads));
-    }
-    return \@threads;
-}
-
 sub wipe($$%)
 {
     my ($self, $engine, %cnf) =  @_;
@@ -275,11 +263,19 @@ sub wipe($$%)
     #-- Initialization
     if ($cnf{random_reply})
     {
-        $cnf{post_cnf}{thread} = get_threads("http://no_proxy", $engine, \%cnf);
-        my @ttr = @{ $cnf{post_cnf}{thread} };
-        echo_msg(1, sprintf "%d threads were found", scalar @ttr);
+        $PCW::Modes::Common::VERBOSE  = $VERBOSE;
+        $PCW::Modes::Common::LOGLEVEL = $LOGLEVEL;
+        my @posts = get_posts_by_regexp("http://no_proxy", $engine, $cnf{random_reply});
+        if (@posts)
+        {
+            $get_queue->put({ proxy => $_ }) for (@{ $cnf{proxies} });
+            $cnf{post_cnf}{thread} = \@posts;
+        }
     }
-    $get_queue->put({ proxy => $_ }) for (@{ $cnf{proxies} });
+    else
+    {
+        $get_queue->put({ proxy => $_ }) for (@{ $cnf{proxies} });
+    }
 
     #-- Timeout watcher
     my $tw = AnyEvent->timer(after => 0.5, interval => 1, cb =>
@@ -314,7 +310,7 @@ sub wipe($$%)
                               {
                                   #-- Refresh the thread list
                                   async {
-                                      $cnf{post_cnf}{thread} = get_threads("http://no_proxy", $engine, \%cnf);
+                                      $cnf{post_cnf}{thread} = get_posts_by_regexp("http://no_proxy", $engine, $cnf{random_reply});
                                   };
                                   cede;
                               }

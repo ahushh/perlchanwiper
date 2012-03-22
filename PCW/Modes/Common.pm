@@ -26,63 +26,64 @@ use PCW::Core::Log   qw(echo_msg echo_proxy);
 #------------------------------------------------------------------------------------------------
 sub get_posts_by_regexp($$%)
 {
-    my ($proxy, $engine, %cnf) =  @_;
+    my ($proxy, $engine, $cnf) =  @_;
 
-    my @deletion_posts;
+    my @posts;
     my $get_task = {
         proxy    => $proxy,
     };
 
     my %all_posts = ();
     #-- Search posts in the threads
-    if ($cnf{delete_cnf}{thread})
+    if ($cnf->{threads})
     {
-        for my $thread (@{ $cnf{delete_cnf}{thread} })
+        for my $thread (@{ $cnf->{threads} })
         {
-            my %local_delete_cnf = %{ $cnf{delete_cnf} }; 
-            $local_delete_cnf{thread} = $thread;
+            my %local_cnf = %{ $cnf };
+            $local_cnf{thread} = $thread;
 
             #-- Get the thread
             echo_msg(1, "Downloading $thread thread...");
-            my ($html, undef, $status) = $engine->get_thread($get_task, \%local_delete_cnf);
+            my ($html, undef, $status) = $engine->get_thread($get_task, \%local_cnf);
             echo_msg(1, "Thread $thread downloaded: $status");
 
             %all_posts = (%all_posts, $engine->get_all_replies($html));
         }
     }
     #-- Search thread on the pages
-    if ($cnf{delete_cnf}{page})
+    if ($cnf->{pages})
     {
-        for my $page (@{ $cnf{delete_cnf}{page} })
+        for my $page (@{ $cnf->{pages} })
         {
-            my %local_delete_cnf = %{ $cnf{delete_cnf} }; 
-            $local_delete_cnf{page} = $page;
+            my %local_cnf = %{ $cnf };
+            $local_cnf{page} = $page;
 
             #-- Get the page
             echo_msg(1, "Downloading $page page...");
-            my ($html, undef, $status) = $engine->get_page($get_task, \%local_delete_cnf);
+            my ($html, undef, $status) = $engine->get_page($get_task, \%local_cnf);
             echo_msg(1, "Page $page downloaded: $status");
 
             %all_posts = (%all_posts, $engine->get_all_threads($html));
         }
     }
-    unless ($cnf{delete_cnf}{page} || $cnf{delete_cnf}{thread})
+    unless ($cnf->{pages} || $cnf->{thread})
     {
-        Carp::croak("Options 'thread' or/and 'page' should be specified.");
+        Carp::croak("Options 'threads' or/and 'pages' should be specified.");
     }
 
     echo_msg(1, sprintf "%d posts and threads were found", scalar keys %all_posts);
 
-    my $pattern = $cnf{delete_cnf}{find};
-    for (keys %all_posts)
+    my $pattern = $cnf->{regexp};
+    if ($pattern)
     {
-        if ($all_posts{$_} =~ /$pattern/mg)
-        {
-            push @deletion_posts, $_;
-        }
+        @posts = grep { $all_posts{$_} =~ /$pattern/mg } keys(%all_posts);
+        echo_msg(1, sprintf "%d posts and threads matched the pattern", scalar @posts);
     }
-    echo_msg(1, sprintf "%d posts and threads matched the pattern", scalar @deletion_posts);
-    return @deletion_posts;
+    else
+    {
+        @posts = keys %all_posts;
+    }
+    return @posts;
 }
 
 1;
