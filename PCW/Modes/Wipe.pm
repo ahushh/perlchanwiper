@@ -310,7 +310,8 @@ sub wipe($$%)
                               {
                                   #-- Refresh the thread list
                                   async {
-                                      $cnf{post_cnf}{thread} = get_posts_by_regexp("http://no_proxy", $engine, $cnf{random_reply});
+                                      my @posts = get_posts_by_regexp("http://no_proxy", $engine, $cnf{random_reply});
+                                      $cnf{post_cnf}{thread} = \@posts;
                                   };
                                   cede;
                               }
