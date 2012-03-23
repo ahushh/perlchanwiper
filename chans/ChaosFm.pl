@@ -1,6 +1,6 @@
 our $chan_config =
 {
-    name               => 'Chaos.fm',
+    name               => 'хаосач',
     engine             => 'Wakaba',
     captcha_extension  => 'gif',
 

@@ -80,7 +80,7 @@ sub _get_captcha_url($%)
 #}
 
 # $self, %args -> (string)
-sub get_catalog_url($%)
+sub _get_catalog_url($%)
 {
     my ($self, %config) = @_;
     Carp::croak("Board is not set!")
@@ -106,14 +106,21 @@ sub get_catalog_url($%)
 #{
 #}
 
-#-- TODO:
-#-- Вызывать отсюда get_catalog_url/_get_thread_url, get_catalog/get_thread
-#-- потому что реализация будет неизвестна.
-sub is_thread_on_page
+# $self, %cnf -> (boolean)
+# %cnf:
+#  (integer) => thread
+#  (integer) => page
+#  (string)  => board
+#  (string)  => proxy
+sub _is_thread_on_page_catalog($%)
 {
-    my ($self, $html, $page, $thread) = @_;
+    my ($self, %cnf) = @_;
 
     my $pattern = $self->{html}{catalog_regexp};
+    my $task    = { proxy => $cnf{proxy} };
+    my $c_cnf   = { board => $cnf{board} };
+    my ($html, undef, $status) = $self->get_catalog($task, $c_cnf);
+    echo_msg(1, "Catalog was downloaded: $status");
 
     my (%threads, $count);
     while ($html =~ /$pattern/sg)
@@ -123,13 +130,31 @@ sub is_thread_on_page
     }
 
     my $n    = $self->{threads_per_page};
-    my $from = ($page + 1) * $n;
+    my $from = ($cnf{page} + 1) * $n;
     my $to   = $from + $n;
     for ($from..$to)
     {
-        return $_ if ($thread eq $threads{$_});
+        return $_ if ($cnf{thread} eq $threads{$_});
     }
     return undef;
+}
+# $self, %cnf -> (boolean)
+# %cnf:
+#  (integer) => thread
+#  (integer) => page
+#  (string)  => board
+#  (string)  => proxy
+sub is_thread_on_page($%)
+{
+    my ($self, %cnf) = @_;
+    if ($self->{urls}{catalog})
+    {
+        $self->_is_thread_on_page_catalog(%cnf);
+    }
+    else
+    {
+        PCW::Engine::Simple::is_thread_on_page($self, %cnf);
+    }
 }
 
 #------------------------------------------------------------------------------------------------
@@ -374,17 +399,17 @@ sub prepare($$$$)
 #------------------------------------------------------------------------------------------------
 #----------------------------------  OTHER METHODS  ---------------------------------------------
 #------------------------------------------------------------------------------------------------
-# $self, $task, $cnf -> $response, $response, $headers, $status_line
+# $self, $task, $cnf -> $response, $response $headers, $status_line
 #sub get_page($$$)
 #{
 #}
 
-# $self, $task, $cnf -> $response, $response, $headers, $status_line
+# $self, $task, $cnf -> $response, $response $headers, $status_line
 #sub get_thread($$$)
 #{
 #}
 
-# $self, $task, $cnf -> $response, $response, $headers, $status_line
+# $self, $task, $cnf -> $response, $response $headers, $status_line
 sub get_catalog($$$)
 {
     my ($self, $task, $cnf) = @_;

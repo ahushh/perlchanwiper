@@ -98,13 +98,13 @@ sub delete($$$%)
     $PCW::Modes::Common::LOGLEVEL = $LOGLEVEL;
 
     my @deletion_posts;
-    if ($cnf{delete_cnf}{by_id})
+    if ($cnf{find}{by_id})
     {
-        @deletion_posts = @{ $cnf{delete_cnf}{by_id} };
+        @deletion_posts = @{ $cnf{find}{by_id} };
     }
-    elsif ($cnf{delete_cnf}{threads} || $cnf{delete_cnf}{pages})
+    elsif ($cnf{find}{threads} || $cnf{find}{pages})
     {
-        @deletion_posts = get_posts_by_regexp($proxy, $engine, $cnf{delete_cnf});
+        @deletion_posts = get_posts_by_regexp($proxy, $engine, $cnf{find});
     }
     else
     {
@@ -115,8 +115,8 @@ sub delete($$$%)
     {
         my $task = {
             proxy    => $proxy,
-            board    => $cnf{delete_cnf}->{board},
-            password => $cnf{delete_cnf}->{password},
+            board    => $cnf{board},
+            password => $cnf{password},
             delete   => $postid,
         };
         $delete_queue->put($task);

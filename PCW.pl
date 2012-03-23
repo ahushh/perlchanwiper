@@ -101,7 +101,7 @@ sub info()
 {
     say "Perl Chan Wiper v$VERSION";
     say "~" x 30;
-    say "Chan: $chan";
+    say "Chan: $chan (". $chan_config->{name} .')';
     say "Engine: ". $chan_config->{engine};
     say "Work mode: $mode";
     say "Common config: $common_config";
@@ -142,7 +142,7 @@ sub usage
  
     local $" = ', ';
     print <<DESU
-PerlChanWiper - cli tool for imageboard
+PerlChanWiper - a multifunction CLI tool for different imageboards
  
 Usage: $0 [chan] [mode]...
 
@@ -205,10 +205,10 @@ sub load_engine()
 }
  
 #-----------------------------------------------------------------------------
-init();            
+init();
 check_user_error();
 load_configs();     #-- load %mode_config
-load_proxies();     
+load_proxies();
 load_agents();
 load_chan();        #-- load $chan_config
 load_engine();

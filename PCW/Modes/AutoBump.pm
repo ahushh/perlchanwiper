@@ -40,7 +40,7 @@ use PCW::Modes::Common qw(get_posts_by_regexp);
 #------------------------------------------------------------------------------------------------
 my $bump_queue   = Coro::Channel->new();
 my $delete_queue = Coro::Channel->new();
-my %stats = (error => 0, bumped => 0, total => 0, deleted => 0);
+my %stats = (error => 0, bumped => 0, total => 0, deleted => 0, wait => 0);
 
 my $run_at = 0;
 my @proxies;
@@ -49,6 +49,7 @@ sub show_stats
 {
     print "\nBumped: $stats{bumped}\n";
     print "Deleted: $stats{deleted}\n";
+    print "Wait: $stats{wait}\n";
     print "Error: $stats{error}\n";
     print "Total: $stats{total}\n";
 };
@@ -71,17 +72,24 @@ my $cb_bump_thread = sub
     if ($msg eq 'success')
     {
         $stats{bumped}++;
-        if ($cnf->{bump_if}{time})
-        {
-            my $now = Time::HiRes::time;
-            $run_at = $now + $cnf->{bump_if}{time};
-        }
+
+        my $now = Time::HiRes::time;
+        $run_at = $now + $cnf->{interval};
+        echo_msg(1, "sleep ". $cnf->{interval} ." seconds...");
+
         echo_msg($LOGLEVEL >= 4, "run_cleanup(): try to start");
         run_cleanup($engine, $task, $cnf->{silent}) if ($cnf->{silent});
     }
     elsif ($msg eq 'wrong_captcha')
     {
         $stats{error}++;
+    }
+    elsif ($msg eq 'wait')
+    {
+        $stats{wait}++;
+        my $now = Time::HiRes::time;
+        $run_at = $now + $cnf->{interval};
+        echo_msg(1, "sleep ". $cnf->{interval} ." seconds...");
     }
     else #-- Меняем прокси на следующую
     {
@@ -98,6 +106,35 @@ my $cb_bump_thread = sub
     $bump_queue->put($task);
 };
 
+sub is_need_to_bump($$$)
+{
+    my ($engine, $task, $cnf) = @_;
+    my %check_cnf = ( proxy => $task->{proxy}, board => $cnf->{post_cnf}{board}, thread => $cnf->{post_cnf}{thread} );
+    if ($cnf->{bump_if} && $cnf->{bump_if}{not_on_page} >= 1)
+    {
+        echo_msg(1, "Checking whether thread needs to bump..");
+        $check_cnf{page} = $cnf->{bump_if}{not_on_page} - 1;
+        my $is_it = $engine->is_thread_on_page(%check_cnf);
+        if ($is_it)
+        {
+            echo_msg(1, "Thread doesn't need to bump");
+            return undef;
+        }
+    }
+    elsif ($cnf->{bump_if} && $cnf->{bump_if}{on_page} >= 1)
+    {
+        echo_msg(1, "Checking whether thread needs to bump..");
+        $check_cnf{page} = $cnf->{bump_if}{on_page} - 1;
+        my $is_it = $engine->is_thread_on_page(%check_cnf);
+        unless ($is_it)
+        {
+            echo_msg(1, "Thread doesn't need to bump");
+            return undef;
+        }
+    }
+    return 1;
+}
+
 sub bump_thread($$$)
 {
     my ($engine, $task, $cnf) = @_;
@@ -106,6 +143,8 @@ sub bump_thread($$$)
         $coro->desc('bump');
         $coro->{proxy} = $task->{proxy}; #-- Для вывода timeout
         $coro->on_destroy($cb_bump_thread);
+        $coro->cancel('wait', $engine, $task, $cnf)
+            unless is_need_to_bump($engine, $task, $cnf);
         my $status = 
         with_coro_timeout {
             my $status = $engine->get($task, $cnf);
@@ -147,7 +186,7 @@ sub run_cleanup($$$)
 {
     my ($engine, $task, $cnf) = @_;
     echo_msg(1, "Start deleting posts...");
-    my @deletion_posts = get_posts_by_regexp($task->{proxy}, $engine, %{ $cnf });
+    my @deletion_posts = get_posts_by_regexp($task->{proxy}, $engine, $cnf->{find});
 
     echo_msg($LOGLEVEL >= 4, "run_cleanup(): \@deletion_posts: @deletion_posts");
 
@@ -155,11 +194,11 @@ sub run_cleanup($$$)
     {
         my $task = {
             proxy    => $task->{proxy},
-            board    => $cnf->{delete_cnf}{board},
-            password => $cnf->{delete_cnf}{password},
+            board    => $cnf->{board},
+            password => $cnf->{password},
             delete   => $postid,
         };
-        $delete_queue->put($task); 
+        $delete_queue->put($task);
     }
 }
 
@@ -204,28 +243,19 @@ sub bump($$%)
     );
 
     #-- Bump watcher
-    my $bw = AnyEvent->timer(after => 0.5, interval => $cnf{interval}, cb =>
+    my $bw = AnyEvent->timer(after => 0.5, interval => 1, cb =>
+    # my $bw = AnyEvent->timer(after => 0.5, interval => $cnf{interval}, cb =>
         sub
         {
             my @bump_coro   = grep { $_->desc ? ($_->desc eq 'bump')   : 0 } Coro::State::list;
             my @delete_coro = grep { $_->desc ? ($_->desc eq 'delete') : 0 } Coro::State::list;
 
             my $now = Time::HiRes::time;
-            echo_msg($LOGLEVEL >= 4, "time left before run new deletion: ". int($run_at - $now));
+            echo_msg($LOGLEVEL >= 4, "time left before run a new bumping: ". int($run_at - $now));
+
             return if (scalar @bump_coro or scalar @delete_coro);
 
-            if ($cnf{bump_if}{time})
-            {
-                return if ($now < $run_at);
-            }
-            elsif ($cnf{bump_if}{on_page})
-            {
-                return unless $engine->is_thread_on_page(%cnf);
-            }
-            elsif ($cnf{bump_if}{not_on_page})
-            {
-                return if $engine->is_thread_on_page(%cnf);
-            }
+            return if ($now < $run_at);
 
             my $task = $bump_queue->get;
             echo_msg($LOGLEVEL >= 4, "bump_thread();");

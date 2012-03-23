@@ -1,6 +1,6 @@
 our $chan_config =
 {
-    name               => '0chan.ru',
+    name               => 'Нульчик-стульчик',
     engine             => 'EFGKusaba',
     captcha_extension  => 'png',
     cookies            => ['PHPSESSID'],
@@ -62,7 +62,7 @@ our $chan_config =
         page      => "http://www.0chan.ru/%s/%d.html",
         zero_page => "http://www.0chan.ru/%s",
         thread    => "http://www.0chan.ru/%s/res/%d.html",
-        catalog   => "http://www.0chan.ru/%s/catalog.html",
+        # catalog   => "http://www.0chan.ru/%s/catalog.html",
     },
 
     html => {

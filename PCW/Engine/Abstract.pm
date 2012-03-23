@@ -80,6 +80,7 @@ sub get_all_threads($$)
 # %cnf:
 #  (integer) => thread
 #  (integer) => page
+#  (string)  => proxy
 sub is_thread_on_page($%)
 {
     Carp::croak("This method is abstract and cannot be called directly.");
