@@ -3,7 +3,7 @@ our $chan_config =
     name               => 'Dva-ch',
     engine             => 'Wakaba',
     captcha_extension  => 'gif',
-     
+
     response => {
         post => {
             banned        => [403, 'CDN', 'Доступ к отправке сообщений с этого ip закрыт'],

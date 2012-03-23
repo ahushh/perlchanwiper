@@ -256,6 +256,19 @@ sub wipe_post($$$)
 #------------------------------------------------------------------------------------------------
 #---------------------------------------  MAIN WIPE  --------------------------------------------
 #------------------------------------------------------------------------------------------------
+# sub test($$%)
+# {
+#     my ($self, $engine, %cnf) =  @_;
+#     if ($engine->is_thread_on_page(proxy => "http://no_proxy", page => 0, thread => 10015026, board => 'b'))
+#     {
+#         print "YES\n";
+#     }
+#     else
+#     {
+#         print "NO";
+#     }
+# }
+
 sub wipe($$%)
 {
     my ($self, $engine, %cnf) =  @_;
@@ -369,7 +382,7 @@ sub wipe($$%)
                     !@post_coro    && $post_queue->size
                    )
                 {
-                    echo_msg($LOGLEVEL >= 2, "#~~~ Start posting. ~~~#");
+                    echo_msg(1, "#~~~ Start posting. ~~~#");
                     wipe_post($engine, $post_queue->get, \%cnf) 
                         while $post_queue->size && $thrs_available--;
                 }

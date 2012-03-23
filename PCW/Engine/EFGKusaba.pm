@@ -1,3 +1,4 @@
+
 package PCW::Engine::EFGKusaba;
 
 use strict;
@@ -76,7 +77,7 @@ sub _get_captcha_url($$%)
 #}
 
 # $self, %args -> (string)
-# sub get_catalog_url($%)
+# sub _get_catalog_url($%)
 # {
 # }
 
@@ -97,10 +98,13 @@ sub _get_captcha_url($$%)
 #{
 #}
 
-#-- TODO:
-#-- Вызывать отсюда get_catalog_url/_get_thread_url, get_catalog/get_thread
-#-- потому что реализация будет неизвестна.
-# sub is_thread_on_page
+# $self, %cnf -> (boolean)
+# %cnf:
+#  (integer) => thread
+#  (integer) => page
+#  (string)  => board
+#  (string)  => proxy
+# sub is_thread_on_page($%)
 # {
 # }
 

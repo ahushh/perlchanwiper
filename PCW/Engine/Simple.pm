@@ -144,15 +144,23 @@ sub get_all_threads($$)
     return %threads;
 }
 
-#-- TODO: реализовать для общего случая.
 # $self, %cnf -> (boolean)
 # %cnf:
 #  (integer) => thread
 #  (integer) => page
+#  (string)  => board
+#  (string)  => proxy
 sub is_thread_on_page($%)
 {
     my ($self, %config) = @_;
-    Carp::croak("Пока что не сделано...");
+    my $task = { proxy => $config{proxy} };
+    my $cnf  = { page  => $config{page}, board => $config{board} };
+
+    my ($page, undef, $status) = $self->get_page($task, $cnf);
+    echo_msg(1, "Page ". $config{page} ." downloaded: $status");
+    my %threads = $self->get_all_threads($page);
+
+    return grep { $_ == $config{thread} } keys(%threads);
 }
 
 #------------------------------------------------------------------------------------------------

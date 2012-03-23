@@ -14,8 +14,10 @@ our $msg = {
     #-- #string#     — чтение файла по строчно
     #-- #boundary#   — чтение файла блоками
     #-------------------------------------------------------------------------------------------------------
-    text => "[code]#boundary#[/code]",
-    text => '@~fortune psalms bible~@',
+    text => "[code]#string#[/code]",
+    text => "autobump testing\n%date%",
+    #text => '@~fortune psalms bible~@',
+    #text => '@~fortune~@',
     #-------------------------------------------------------------------------------------------------------
     #-- #delirium# config
     delirium => {
@@ -50,7 +52,6 @@ our $msg = {
         path     => "$ENV{HOME}/poetry/cas.txt",   #-- путь к файлу
         path     => "/usr/share/emacs/23.4/lisp/sha1.el",   #-- путь к файлу
         path     => "$ENV{HOME}/cuw",   #-- путь к файлу
-
     },
 };
 
@@ -120,9 +121,9 @@ our $img = {
 our $captcha_decode = {
     #-------------------------------------------------------------------------------------------------------
     #-- antigate mode
-    #mode   => 'antigate',
-    #key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
-    #opt    => {},
+    # mode   => 'antigate',
+    # key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
+    # opt    => {},
     #-------------------------------------------------------------------------------------------------------
     #-- captchabot mode
     #mode   => 'captchabot',
@@ -131,16 +132,16 @@ our $captcha_decode = {
     #-------------------------------------------------------------------------------------------------------
     #-- hand mode
     #-- Ручной ввод капчи.
-    # mode   => 'hand',
-    # imgv   => '/usr/bin/feh',     #-- путь до программы просмотра изображений
-    # arg    => '-d --geometry 400x300 -Z', #-- аргументы
+    mode   => 'hand',
+    imgv   => '/usr/bin/feh',     #-- путь до программы просмотра изображений
+    arg    => '-d --geometry 400x300 -Z', #-- аргументы
     #-- gui hand mode
     #-- Ручной ввод капчи через GUI.
     #-- Необходим Gtk2
     #-- Работает криво.
-    #mode   => 'guihand',
+    # mode   => 'guihand',
     #-- tesseract OCR
     #-- Необходим convert (ImageMagick) и сам tesseract
-    mode => 'tesseract',
+    # mode => 'tesseract',
 };
 

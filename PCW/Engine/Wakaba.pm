@@ -111,6 +111,7 @@ sub _get_captcha_url($$%)
 # %cnf:
 #  (integer) => thread
 #  (integer) => page
+#  (string)  => proxy
 #sub is_thread_on_page
 #{
 #}
