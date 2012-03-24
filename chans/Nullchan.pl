@@ -1,3 +1,5 @@
+use constant HOST => 'www.0chan.ru';
+
 our $chan_config =
 {
     name               => 'Нульчик-стульчик',
@@ -33,36 +35,36 @@ our $chan_config =
 
     fields => {
         post => {
-            'captcha'    => 'captcha',
-            'board'      => 'board',
-            'msg'        => 'message',
-            'img'        => 'imagefile',
-            'thread'     => 'replythread',
-            'email'      => 'em',
-            'subject'    => 'subject',
-            'password'   => 'postpassword',
-            'name'       => 'name',
-            'nofile'     => 'nofile',
-            'mm'         => 'mm',
-             MAX_FILE_SIZE => 'MAX_FILE_SIZE',
+            captcha    => 'captcha',
+            board      => 'board',
+            msg        => 'message',
+            img        => 'imagefile',
+            thread     => 'replythread',
+            email      => 'em',
+            subject    => 'subject',
+            password   => 'postpassword',
+            name       => 'name',
+            nofile     => 'nofile',
+            mm         => 'mm',
+            MAX_FILE_SIZE => 'MAX_FILE_SIZE',
         },
 
         delete => {
-            board    => 'board',
-            delete   => 'delete',
+            board      => 'board',
+            delete     => 'delete',
             deletepost => 'deletepost',
-            password => 'postpassword',
+            password   => 'postpassword',
         },
     },
 
     urls => {
-        post      => "https://www.0chan.ru/board.php",
-        delete    => "https://www.0chan.ru/board.php",
-        captcha   => "https://www.0chan.ru/captcha.php",
-        page      => "http://www.0chan.ru/%s/%d.html",
-        zero_page => "http://www.0chan.ru/%s",
-        thread    => "http://www.0chan.ru/%s/res/%d.html",
-        # catalog   => "http://www.0chan.ru/%s/catalog.html",
+        post      => 'https://'. HOST .'/board.php',
+        delete    => 'https://'. HOST .'/board.php',
+        captcha   => 'https://'. HOST .'/captcha.php',
+        page      => 'http://'. HOST .'/%s/%d.html',
+        zero_page => 'http://'. HOST .'/%s',
+        thread    => 'http://'. HOST .'/%s/res/%d.html',
+        # catalog   => 'http://'. HOST .'/%s/catalog.html',
     },
 
     html => {
@@ -73,7 +75,7 @@ our $chan_config =
 
     headers => {
         post => {
-            'Host'               =>   'www.0chan.ru',
+            'Host'               =>   HOST,
             'Accept'             =>   'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Charset'     =>   'windows-1251,utf-8;q=0.7,*;q=0,7',
             'Accept-Encoding'    =>   'gzip, deflate',
@@ -81,7 +83,7 @@ our $chan_config =
             'Connection'         =>   'keep-alive',
         },
         captcha => {
-            'Host'               =>   'www.0chan.ru',
+            'Host'               =>   HOST,
             'Accept'             =>   'image/png,image/*;q=0.8,*/*;q=0.5',
             'Accept-Charset'     =>   'windows-1251,utf-8;q=0.7,*;q=0,7',
             'Accept-Encoding'    =>   'gzip, deflate',
@@ -90,8 +92,8 @@ our $chan_config =
         },
 
         default => {
-            'Host'               =>   'www.0chan.ru',
-            'Referer'            =>   "https://0chan.ru/",
+            'Host'               =>   HOST,
+            'Referer'            =>   'https://'. HOST .'/',
             'Connection'         =>   'keep-alive',
         },
     },

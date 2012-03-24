@@ -1,9 +1,9 @@
 package PCW::Modes::Common;
+#-----------------------------------------------------------------------
+# Функции общие для всех модов
+#-----------------------------------------------------------------------
 
 #-----------------------------------------------------------------------
-# Функции, общие для всех модов
-#-----------------------------------------------------------------------
-
 use strict;
 use autodie;
 use Carp;
@@ -47,7 +47,7 @@ sub get_posts_by_regexp($$%)
             my ($html, undef, $status) = $engine->get_page($get_task, \%local_cnf);
             echo_msg(1, "Page $page downloaded: $status");
 
-            %threads   = (%threads, $engine->get_all_threads($html))
+            %threads = (%threads, $engine->get_all_threads($html))
         }
         echo_msg(1, sprintf "%d threads were found", scalar keys %threads);
     }

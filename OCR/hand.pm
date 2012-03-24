@@ -1,5 +1,5 @@
 use strict;
- 
+
 sub decode_captcha($$)
 {
     my ($captcha_decode, $file_path) = @_;
@@ -12,5 +12,5 @@ sub decode_captcha($$)
 }
 
 sub abuse($$) { }
- 
+
 1;

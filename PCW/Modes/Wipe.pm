@@ -3,14 +3,14 @@ package PCW::Modes::Wipe;
 use strict;
 use autodie;
 use Carp;
-use feature 'switch';
+use feature qw(switch say);
 
 #------------------------------------------------------------------------------------------------
 # Package Variables
 #------------------------------------------------------------------------------------------------
 our $CAPTCHA_DIR = 'captcha';
-our $LOGLEVEL   = 0;
-our $VERBOSE = 0;
+our $LOGLEVEL    = 0;
+our $VERBOSE     = 0;
 
 #------------------------------------------------------------------------------------------------
 # Importing Coro packages
@@ -51,11 +51,11 @@ my %stats         = (error => 0, posted => 0, wrong_captcha => 0, total => 0);
 sub show_stats
 {
     my @good = grep { $failed_proxy{$_} == 0 } keys %failed_proxy;
-    print "\nSuccessfully posted: $stats{posted}\n";
-    print "Wrong captcha: $stats{wrong_captcha}\n";
-    print "Other failed: $stats{error}\n";
-    print "Total posted: $stats{total}\n";
-    print "Good proxies: ", scalar @good, "\n";
+    say "\nSuccessfully posted: $stats{posted}";
+    say "Wrong captcha: $stats{wrong_captcha}";
+    say "Other failed: $stats{error}";
+    say "Total posted: $stats{total}";
+    say "Good proxies: ", scalar @good
 };
 
 #------------------------------------------------------------------------------------------------
@@ -256,19 +256,6 @@ sub wipe_post($$$)
 #------------------------------------------------------------------------------------------------
 #---------------------------------------  MAIN WIPE  --------------------------------------------
 #------------------------------------------------------------------------------------------------
-# sub test($$%)
-# {
-#     my ($self, $engine, %cnf) =  @_;
-#     if ($engine->is_thread_on_page(proxy => "http://no_proxy", page => 0, thread => 10015026, board => 'b'))
-#     {
-#         print "YES\n";
-#     }
-#     else
-#     {
-#         print "NO";
-#     }
-# }
-
 sub wipe($$%)
 {
     my ($self, $engine, %cnf) =  @_;

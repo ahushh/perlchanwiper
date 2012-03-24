@@ -1,7 +1,7 @@
 use strict;
 use Carp;
 use WebService::Antigate;
- 
+
 sub decode_captcha($$)
 {
     my ($captcha_decode, $file_path) = @_;
@@ -17,7 +17,7 @@ sub decode_captcha($$)
     my $id = $recognizer->upload(%$opt);
     unless ($id)
     {
-        warn "Can't upload a captcha: ", $recognizer->errno;
+        warn "Couldn't upload a captcha: ", $recognizer->errno;
         return undef;
     }
     #-- Используем аргументы как хранилищие id и путей капч

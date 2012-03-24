@@ -3,13 +3,14 @@ package PCW::Modes::AutoBump;
 use strict;
 use autodie;
 use Carp;
+use feature qw(switch say);
 
 #------------------------------------------------------------------------------------------------
 # Package Variables
 #------------------------------------------------------------------------------------------------
 our $LOGLEVEL = 0;
 our $VERBOSE  = 0;
- 
+
 #------------------------------------------------------------------------------------------------
 # Importing Coro packages
 #------------------------------------------------------------------------------------------------
@@ -20,13 +21,13 @@ use Coro::Timer;
 use Coro;
 use EV;
 use Time::HiRes;
- 
+
 #------------------------------------------------------------------------------------------------
 # Importing utility packages
 #------------------------------------------------------------------------------------------------
 use File::Basename;
 use File::Copy qw(move);
- 
+
 #------------------------------------------------------------------------------------------------
 # Importing internal PCW packages
 #------------------------------------------------------------------------------------------------
@@ -34,7 +35,7 @@ use PCW::Core::Log     qw(echo_msg echo_proxy);
 use PCW::Core::Utils   qw(with_coro_timeout);
 use PCW::Core::Captcha qw(captcha_report_bad);
 use PCW::Modes::Common qw(get_posts_by_regexp);
- 
+
 #------------------------------------------------------------------------------------------------
 # Local package variables and procedures
 #------------------------------------------------------------------------------------------------
@@ -47,11 +48,11 @@ my @proxies;
 
 sub show_stats
 {
-    print "\nBumped: $stats{bumped}\n";
-    print "Deleted: $stats{deleted}\n";
-    print "Wait: $stats{wait}\n";
-    print "Error: $stats{error}\n";
-    print "Total: $stats{total}\n";
+    say "\nBumped: $stats{bumped}";
+    say "Deleted: $stats{deleted}";
+    say "Wait: $stats{wait}";
+    say "Error: $stats{error}";
+    say "Total: $stats{total}";
 };
 
 #------------------------------------------------------------------------------------------------
