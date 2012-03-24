@@ -23,7 +23,6 @@ sub cap($)
             $text = $entry->get_text;
             $w->destroy;
             Gtk2->main_quit;
-            
         },
     );
     $vbox->pack_start($entry, 0, 0, 0);

@@ -3,7 +3,7 @@ package PCW::Modes::Delete;
 use strict;
 use autodie;
 use Carp;
-use feature 'switch';
+use feature qw(switch say);
 
 #------------------------------------------------------------------------------------------------
 # Package Variables
@@ -39,9 +39,9 @@ my %stats  = (error => 0, deleted => 0, total => 0);
 
 sub show_stats()
 {
-    print "\nSuccessfully deleted: $stats{deleted}\n";
-    print "Error: $stats{error}\n";
-    print "Total: $stats{total}\n";
+    say "\nSuccessfully deleted: $stats{deleted}";
+    say "Error: $stats{error}";
+    say "Total: $stats{total}";
 };
 
 #------------------------------------------------------------------------------------------------

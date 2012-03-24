@@ -1,12 +1,19 @@
-use constant HOST => 'lina.sytes.net';
+#-- Сюда вписать доменное имя
+use constant HOST => 'chan-example.com';
 
 our $chan_config =
 {
-    name               => 'Линач',
+    #-- Имя имиджюорды. Необязатльено для заполнения
+    name               => '',
     engine             => 'Kusaba',
     captcha_extension  => 'gif',
+    #-- Закомментировать, если отключена капча
     cookies            => ['PHPSESSID'],
+    #-- Колличество тредов на страницу.
+    #-- Нужно только автобампа и только если включен каталог
     threads_per_page   => 20,
+    #-- Ключ рекапчи
+    recaptcha_key      => '',
 
     response => {
         post => {
@@ -54,11 +61,12 @@ our $chan_config =
     urls => {
         post      => 'http://'. HOST .'/board.php',
         delete    => 'http://'. HOST .'/board.php',
+        #-- Закомментировать, если капча отключена вообще или стоит recaptcha
         #captcha  => 'http://'. HOST .'/captcha.php',
-        captcha   => '',
         page      => 'http://'. HOST .'/%s/%d.html',
         zero_page => 'http://'. HOST .'/%s',
         thread    => 'http://'. HOST .'/%s/res/%d.html',
+        #-- Закомментировать, если каталог отключен
         catalog   => 'http://'. HOST .'/%s/catalog.html',
     },
 

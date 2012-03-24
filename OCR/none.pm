@@ -1,7 +1,7 @@
 use strict;
- 
+
 #-- Просто заглушка
- 
+
 sub decode_captcha($$)
 {
     return 'none';

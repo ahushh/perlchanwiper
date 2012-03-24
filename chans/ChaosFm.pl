@@ -1,3 +1,5 @@
+use constant HOST => 'chaos.fm';
+
 our $chan_config =
 {
     name               => 'хаосач',
@@ -34,18 +36,18 @@ our $chan_config =
 
     fields => {
         post => {
-            'captcha'    => 'captcha',
-            'msg'        => 'field4',
-            'img'        => 'file',
-            'thread'     => 'parent',
-            'email'      => 'field2',
-            'subject'    => 'field3',
-            'password'   => 'password',
-            'name'       => 'name',
-            'link'       => 'link',
-            'gb2'        => 'gb2',
-            'task'       => 'task',
-            'nofile'     => 'nofile',
+            captcha  => 'captcha',
+            msg      => 'field4',
+            img      => 'file',
+            thread   => 'parent',
+            email    => 'field2',
+            subject  => 'field3',
+            password => 'password',
+            name     => 'name',
+            link     => 'link',
+            gb2      => 'gb2',
+            task     => 'task',
+            nofile   => 'nofile',
         },
 
         delete => {
@@ -54,14 +56,14 @@ our $chan_config =
             task     => 'task',
         },
     },
-     
+
     urls => {
-        post      => "http://chaos.fm/%s/wakaba.pl",
-        delete    => "http://chaos.fm/%s/wakaba.pl",
-        captcha   => "http://chaos.fm/%s/captcha.pl?key=%s&dummy=%s?",
-        page      => "http://chaos.fm/%s/%d.html",
-        zero_page => "http://chaos.fm/%s",
-        thread    => "http://chaos.fm/%s/res/%d.html",
+        post      => 'http://'. HOST .'/%s/wakaba.pl',
+        delete    => 'http://'. HOST .'/%s/wakaba.pl',
+        captcha   => 'http://'. HOST .'/%s/captcha.pl?key=%s&dummy=%s?',
+        page      => 'http://'. HOST .'/%s/%d.html',
+        zero_page => 'http://'. HOST .'/%s',
+        thread    => 'http://'. HOST .'/%s/res/%d.html',
     },
 
     html => {
@@ -71,7 +73,7 @@ our $chan_config =
 
     headers => {
         post => {
-            'Host'               =>   'chaos.fm',
+            'Host'               =>   HOST,
             'Accept'             =>   'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Charset'     =>   'windows-1251,utf-8;q=0.7,*;q=0,7',
             'Accept-Encoding'    =>   'gzip, deflate',
@@ -80,7 +82,7 @@ our $chan_config =
         },
 
         captcha => {
-            'Host'               =>   'chaos.fm',
+            'Host'               =>   HOST,
             'Accept'             =>   'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Charset'     =>   'windows-1251,utf-8;q=0.7,*;q=0,7',
             'Accept-Encoding'    =>   'gzip, deflate',
@@ -89,8 +91,8 @@ our $chan_config =
         },
 
         default => {
-            'Host'               =>   'chaos.fm',
-            'Referer'            =>   "http://chaos.fm/",
+            'Host'               =>   HOST,
+            'Referer'            =>   'http://'. HOST .'/',
             'Connection'         =>   'keep-alive',
         },
     },

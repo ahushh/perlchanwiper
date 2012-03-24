@@ -1,11 +1,13 @@
+use constant HOST => 'scichan.ru';
+
 our $chan_config =
 {
-    name               => 'Scichan',
+    name               => 'Сцычан',
     engine             => 'Kusaba',
     captcha_extension  => 'gif',
     #cookies            => ['PHPSESSID'],
     threads_per_page   => 20,
-     
+
     response => {
         post => {
             banned        => [403, 'CDN'],
@@ -28,36 +30,36 @@ our $chan_config =
 
     fields => {
         post => {
-            'captcha'    => 'captcha',
-            'board'      => 'board',
-            'msg'        => 'message',
-            'img'        => 'imagefile',
-            'thread'     => 'replythread',
-            'email'      => 'em',
-            'subject'    => 'subject',
-            'password'   => 'postpassword',
-            'name'       => 'name',
-            'nofile'     => 'nofile',
-             MAX_FILE_SIZE => 'MAX_FILE_SIZE',
+            captcha    => 'captcha',
+            board      => 'board',
+            msg        => 'message',
+            img        => 'imagefile',
+            thread     => 'replythread',
+            email      => 'em',
+            subject    => 'subject',
+            password   => 'postpassword',
+            name       => 'name',
+            nofile     => 'nofile',
+            MAX_FILE_SIZE => 'MAX_FILE_SIZE',
         },
 
         delete => {
-            board    => 'board',
-            delete   => 'post[]',
+            board      => 'board',
+            delete     => 'post[]',
             deletepost => 'deletepost',
-            password => 'postpassword',
+            password   => 'postpassword',
         },
     },
-     
+
     urls => {
-        post      => "http://scichan.ru/board.php",
-        delete    => "http://scichan.ru/board.php",
-        #captcha  => "http://scichan.ru/captcha.php",
-        captcha   => "",
-        page      => "http://scichan.ru/%s/%d.html",
-        zero_page => "http://scichan.ru/%s",
-        thread    => "http://scichan.ru/%s/res/%d.html",
-        catalog   => "http://scichan.ru/%s/catalog.html",
+        post      => 'http://'. HOST .'/board.php',
+        delete    => 'http://'. HOST .'/board.php',
+        #captcha  => 'http://'. HOST .'/captcha.php',
+        captcha   => '',
+        page      => 'http://'. HOST .'/%s/%d.html',
+        zero_page => 'http://'. HOST .'/%s',
+        thread    => 'http://'. HOST .'/%s/res/%d.html',
+        catalog   => 'http://'. HOST .'/%s/catalog.html',
     },
 
     html => {
@@ -67,7 +69,7 @@ our $chan_config =
 
     headers => {
         post => {
-            'Host'               =>   'scichan.ru',
+            'Host'               =>   HOST,
             'Accept'             =>   'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Charset'     =>   'windows-1251,utf-8;q=0.7,*;q=0,7',
             'Accept-Encoding'    =>   'gzip, deflate',
@@ -75,7 +77,7 @@ our $chan_config =
             'Connection'         =>   'keep-alive',
         },
         captcha => {
-            'Host'               =>   'scichan.ru',
+            'Host'               =>   HOST,
             'Accept'             =>   'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Charset'     =>   'windows-1251,utf-8;q=0.7,*;q=0,7',
             'Accept-Encoding'    =>   'gzip, deflate',
@@ -84,8 +86,8 @@ our $chan_config =
         },
 
         default => {
-            'Host'               =>   'scichan.ru',
-            'Referer'            =>   "http://scichan.ru/",
+            'Host'               =>   HOST,
+            'Referer'            =>   'http://'. HOST .'/',
             'Connection'         =>   'keep-alive',
         },
     },

@@ -2,14 +2,14 @@ package PCW::Core::Captcha;
 
 use strict;
 use Carp;
- 
-use File::Spec; 
+
+use File::Spec;
 
 use Exporter 'import';
 our @EXPORT_OK = qw(captcha_recognizer captcha_report_bad);
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
- 
+
 sub captcha_recognizer($$)
 {
     my ($captcha_decode, $file_path) = @_;

@@ -1,26 +1,37 @@
-use constant HOST => 'lina.sytes.net';
+#-- Сюда вписать доменное имя
+use constant HOST => 'chan-example.com';
 
 our $chan_config =
 {
-    name               => 'Линач',
-    engine             => 'Kusaba',
+    #-- Имя имиджюорды. Необязатльено для заполнения
+    name               => '',
+    engine             => 'Wakaba',
     captcha_extension  => 'gif',
-    cookies            => ['PHPSESSID'],
-    threads_per_page   => 20,
+    #-- Ключ рекапчи
+    recaptcha_key      => '',
 
     response => {
         post => {
-            banned        => [403, 'CDN'],
+            banned        => [403, 'CDN', 'Доступ к отправке сообщений с этого ip закрыт'],
             net_error     => ['Service Unavailable Connection', 502],
             post_error    => [
+                              'Этот файл уже был загружен',
+                              'Либо изображение слишком большое, либо его вообще не было. Ага.',
                              ],
             wrong_captcha => [
+                              'Не введен код подтверждения',
+                              'Неверный код подтверждения',
                              ],
             flood         => [
+                              'Ошибка: Флудить нельзя. Ваше первое сообщение уже принято',
+                              'Обнаружен флуд, файл отклонен',
                              ],
             critical_error => [
+                              'Треда не существует',
+                              'В этом разделе для начала треда нужно загрузить файл',
+                              'Вы ничего не написали в сообщении',
                               ],
-            success       => [302],
+            success       => ['Go West', 'wakaba.html'],
         },
         delete => {
             success => [303],
@@ -31,35 +42,34 @@ our $chan_config =
     fields => {
         post => {
             captcha    => 'captcha',
-            board      => 'board',
-            msg        => 'message',
-            img        => 'imagefile',
-            thread     => 'replythread',
-            email      => 'em',
-            subject    => 'subject',
-            password   => 'postpassword',
+            msg        => 'field4',
+            img        => 'file',
+            thread     => 'parent',
+            email      => 'field2',
+            subject    => 'field3',
+            password   => 'password',
             name       => 'name',
+            link       => 'link',
+            gb2        => 'gb2',
+            task       => 'task',
             nofile     => 'nofile',
-            MAX_FILE_SIZE => 'MAX_FILE_SIZE',
         },
 
         delete => {
-            board      => 'board',
-            delete     => 'post[]',
-            deletepost => 'deletepost',
-            password   => 'postpassword',
+            delete   => 'delete',
+            password => 'password',
+            task     => 'task',
         },
     },
 
     urls => {
-        post      => 'http://'. HOST .'/board.php',
-        delete    => 'http://'. HOST .'/board.php',
-        #captcha  => 'http://'. HOST .'/captcha.php',
-        captcha   => '',
+        post      => 'http://'. HOST .'/%s/wakaba.pl',
+        delete    => 'http://'. HOST .'/%s/wakaba.pl',
+        #-- Закомментировать, если капча отключена вообще или стоит recaptcha
+        captcha   => 'http://'. HOST .'/%s/captcha.pl?key=%s&dummy=%s?',
         page      => 'http://'. HOST .'/%s/%d.html',
         zero_page => 'http://'. HOST .'/%s',
         thread    => 'http://'. HOST .'/%s/res/%d.html',
-        catalog   => 'http://'. HOST .'/%s/catalog.html',
     },
 
     html => {

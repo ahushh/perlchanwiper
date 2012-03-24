@@ -3,6 +3,7 @@ package PCW::Modes::ProxyChecker;
 use strict;
 use autodie;
 use Carp;
+use feature qw(say);
 
 #------------------------------------------------------------------------------------------------
 # Package Variables
@@ -37,10 +38,10 @@ my %stats = (bad => 0, good => 0, total => 0);
 
 sub show_stats
 {
-    print "\nGood: $stats{good}\n";
-    print "Bad: $stats{bad}\n";
-    print "Total: $stats{total}\n";
-    print "Proxies: @good_proxis\n";
+    say "\nGood: $stats{good}";
+    say "Bad: $stats{bad}";
+    say "Total: $stats{total}";
+    say "Proxies: @good_proxis";
 };
 
 #------------------------------------------------------------------------------------------------

@@ -8,14 +8,17 @@ use feature 'state';
 use Exporter 'import';
 our @EXPORT_OK = qw(make_pic);
 
+#------------------------------------------------------------------------------------------------
 use File::Basename;
 use File::Copy;
 use File::Temp qw(tempfile tempdir);
 
+#------------------------------------------------------------------------------------------------
 use List::Util qw(shuffle);
 use Data::Random qw(rand_set rand_image);
 use PCW::Core::Utils qw(random);
 
+#------------------------------------------------------------------------------------------------
 sub make_pic($)
 {
     my $conf = shift;
@@ -27,7 +30,7 @@ sub make_pic($)
 }
 
 #------------------------------------------------------------------------------------------------
-#---------------------------------------- Images ------------------------------------------------
+#---------------------------------------- Modes -------------------------------------------------
 #------------------------------------------------------------------------------------------------
 sub no_img($)
 {
@@ -49,7 +52,7 @@ sub single_img($)
     my $data = shift;
     Carp::croak "Image file is not set!" unless my $path_to_img = $data->{path};
 	Carp::croak "The file size greaten then max size allowed!" if int((-s $path_to_img)/1024) > $data->{max_size};
-     
+
     return img_altering($path_to_img, $data->{altering})
         if $data->{altering};
     return $path_to_img;
@@ -59,7 +62,7 @@ sub dir_img($)
 {
     my $data = shift;
     my $dirs = $data->{path};
-     
+
     state @img_list;
     if (!@img_list)
     {
@@ -69,7 +72,7 @@ sub dir_img($)
         my $s;
         $s .= "$_," for (@$types);
         chop $s;
-         
+
         @img_list = (@img_list, glob "$_/*.{$s}")
             for (@$dirs);
 
@@ -78,10 +81,9 @@ sub dir_img($)
         @img_list = grep { int((-s $_)/1024) <= $data->{max_size} } @img_list
             if $data->{max_size};
     }
-     
 
     state $i = 0;
-     
+
     my $path_to_img;
     if ($data->{order} eq 'random')
     {
@@ -101,15 +103,15 @@ sub img_altering($)
 {
     my ($full_name, $conf) = @_;
     my ($name, $path, $suffix) = fileparse($full_name, 'png', 'jpeg', 'jpg', 'gif');
-     
+
     unless ($suffix)
     {
         warn "$full_name is not an image file.";
         return $full_name;
     }
-     
+
     my $mode = $conf->{mode};
-     
+
     my ($fh, $filename) = tempfile(UNLINK => 1, SUFFIX => ".$suffix");
 
     if ($mode eq 'addrand')
@@ -146,11 +148,11 @@ sub img_altering($)
     }
     else
     {
-        warn "Image altering methode '$mode' does not exist."; 
+        warn "Image altering methode '$mode' does not exist.";
         close($fh);
         return $full_name;
     }
     return $filename;
 }
- 
+
 1;

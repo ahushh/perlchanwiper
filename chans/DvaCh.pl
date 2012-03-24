@@ -1,3 +1,5 @@
+use constant HOST => 'dva-ch.ru';
+
 our $chan_config =
 {
     name               => 'Dva-ch',
@@ -35,18 +37,18 @@ our $chan_config =
 
     fields => {
         post => {
-            'captcha'    => 'captcha',
-            'msg'        => 'field4',
-            'img'        => 'file',
-            'thread'     => 'parent',
-            'email'      => 'field2',
-            'subject'    => 'field3',
-            'password'   => 'password',
-            'name'       => 'name',
-            'link'       => 'link',
-            'gb2'        => 'gb2',
-            'task'       => 'task',
-            'nofile'     => 'nofile',
+            captcha    => 'captcha',
+            msg        => 'field4',
+            img        => 'file',
+            thread     => 'parent',
+            email      => 'field2',
+            subject    => 'field3',
+            password   => 'password',
+            name       => 'name',
+            link       => 'link',
+            gb2        => 'gb2',
+            task       => 'task',
+            nofile     => 'nofile',
         },
 
         delete => {
@@ -55,14 +57,14 @@ our $chan_config =
             task     => 'task',
         },
     },
-     
+
     urls => {
-        post     => "http://dva-ch.ru/%s/wakaba.pl",
-        delete   => "http://dva-ch.ru/%s/wakaba.pl",
-        captcha  => "http://dva-ch.ru/%s/captcha.pl?key=%s&dummy=%s?",
-        page     => "http://dva-ch.ru/%s/%d.html",
-        zero_page    => "http://dva-ch.ru/%s",
-        thread   => "http://dva-ch.ru/%s/res/%d.html",
+        post      => 'http://'. HOST .'/%s/wakaba.pl',
+        delete    => 'http://'. HOST .'/%s/wakaba.pl',
+        captcha   => 'http://'. HOST .'/%s/captcha.pl?key=%s&dummy=%s?',
+        page      => 'http://'. HOST .'/%s/%d.html',
+        zero_page => 'http://'. HOST .'/%s',
+        thread    => 'http://'. HOST .'/%s/res/%d.html',
     },
 
     html => {
@@ -72,7 +74,7 @@ our $chan_config =
 
     headers => {
         post => {
-            'Host'               =>   'dva-ch.ru',
+            'Host'               =>   HOST,
             'Accept'             =>   'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Charset'     =>   'windows-1251,utf-8;q=0.7,*;q=0,7',
             'Accept-Encoding'    =>   'gzip, deflate',
@@ -80,7 +82,7 @@ our $chan_config =
             'Connection'         =>   'keep-alive',
         },
         captcha => {
-            'Host'               =>   'dva-ch.ru',
+            'Host'               =>   HOST,
             'Accept'             =>   'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Charset'     =>   'windows-1251,utf-8;q=0.7,*;q=0,7',
             'Accept-Encoding'    =>   'gzip, deflate',
@@ -89,8 +91,8 @@ our $chan_config =
         },
 
         default => {
-            'Host'               =>   'dva-ch.ru',
-            'Referer'            =>   "http://dva-ch.ru/",
+            'Host'               =>   HOST,
+            'Referer'            =>   'http://'. HOST .'/',
             'Connection'         =>   'keep-alive',
         },
     },

@@ -14,8 +14,8 @@ our $msg = {
     #-- #string#     — чтение файла по строчно
     #-- #boundary#   — чтение файла блоками
     #-------------------------------------------------------------------------------------------------------
-    text => "[code]#string#[/code]",
-    text => "autobump testing\n%date%",
+    #text => "[code]#string#[/code]\n[code]#string#[/code]",
+    text => "bump\n%date%",
     #text => '@~fortune psalms bible~@',
     #text => '@~fortune~@',
     #-------------------------------------------------------------------------------------------------------
@@ -121,9 +121,9 @@ our $img = {
 our $captcha_decode = {
     #-------------------------------------------------------------------------------------------------------
     #-- antigate mode
-    # mode   => 'antigate',
-    # key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
-    # opt    => {},
+    mode   => 'antigate',
+    key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
+    opt    => {},
     #-------------------------------------------------------------------------------------------------------
     #-- captchabot mode
     #mode   => 'captchabot',
@@ -132,9 +132,9 @@ our $captcha_decode = {
     #-------------------------------------------------------------------------------------------------------
     #-- hand mode
     #-- Ручной ввод капчи.
-    mode   => 'hand',
-    imgv   => '/usr/bin/feh',     #-- путь до программы просмотра изображений
-    arg    => '-d --geometry 400x300 -Z', #-- аргументы
+    #mode   => 'hand',
+    #imgv   => '/usr/bin/feh',     #-- путь до программы просмотра изображений
+    #arg    => '-d --geometry 400x300 -Z', #-- аргументы
     #-- gui hand mode
     #-- Ручной ввод капчи через GUI.
     #-- Необходим Gtk2
@@ -142,6 +142,6 @@ our $captcha_decode = {
     # mode   => 'guihand',
     #-- tesseract OCR
     #-- Необходим convert (ImageMagick) и сам tesseract
-    # mode => 'tesseract',
+    #mode => 'tesseract',
 };
 
