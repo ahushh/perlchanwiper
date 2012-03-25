@@ -18,6 +18,8 @@ use List::Util qw(shuffle);
 use Data::Random qw(rand_set rand_image);
 use PCW::Core::Utils qw(random);
 
+use Coro;
+my $lock = Coro::Semaphore->new;
 #------------------------------------------------------------------------------------------------
 sub make_pic($)
 {
@@ -64,6 +66,7 @@ sub dir_img($)
     my $dirs = $data->{path};
 
     state @img_list;
+    $lock->down;
     if (!@img_list)
     {
         my $types = $data->{types};
@@ -81,6 +84,7 @@ sub dir_img($)
         @img_list = grep { int((-s $_)/1024) <= $data->{max_size} } @img_list
             if $data->{max_size};
     }
+    $lock->up;
 
     state $i = 0;
 

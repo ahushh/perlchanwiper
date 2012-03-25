@@ -41,6 +41,8 @@ our $chan_config =
             password   => 'postpassword',
             name       => 'name',
             nofile     => 'nofile',
+            video      => 'embed',
+            video_type => 'embedtype',
             MAX_FILE_SIZE => 'MAX_FILE_SIZE',
         },
 

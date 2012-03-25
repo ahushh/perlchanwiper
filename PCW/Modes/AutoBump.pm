@@ -82,7 +82,7 @@ my $cb_bump_thread = unblock_sub
 
         my $now = Time::HiRes::time;
         $run_at = $now + $cnf->{interval};
-        echo_proxy(1, "green", $task->{proxy}, $task->{thread}, "sleep $cnf->{interval} seconds...");
+        echo_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "sleep $cnf->{interval} seconds...");
 
         echo_msg($LOGLEVEL >= 4, "run_cleanup(): try to start");
         run_cleanup($engine, $task, $cnf->{silent}) if ($cnf->{silent});
@@ -96,7 +96,7 @@ my $cb_bump_thread = unblock_sub
         $stats{wait}++;
         my $now = Time::HiRes::time;
         $run_at = $now + $cnf->{interval};
-        echo_proxy(1, "green", $task->{proxy}, $task->{thread}, "sleep $cnf->{interval} seconds...");
+        echo_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "sleep $cnf->{interval} seconds...");
     }
     else #-- Меняем прокси на следующую
     {

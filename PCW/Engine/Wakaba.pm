@@ -272,7 +272,7 @@ sub prepare($$$$)
 
     #---- Form data
     #-- Message
-    if ($cnf->{msg_data}{mode} ne 'no')
+    if ($cnf->{msg_data}{text})
     {
         my $text = make_text( $cnf->{msg_data} );
         $content{ $self->{fields}{post}{msg} } = $text;

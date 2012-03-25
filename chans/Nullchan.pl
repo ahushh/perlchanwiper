@@ -14,7 +14,9 @@ our $chan_config =
             net_error     => ['Service Unavailable Connection', 502],
             post_error    => [
                               'your message is too long',
-                              'temporarily unavailable', 
+                              'temporarily unavailable',
+                              'Это видео уже опубликовано',
+                              'Unable to connect to',
                              ],
             wrong_captcha => [
                               'Неправильно введена капча',
@@ -48,6 +50,8 @@ our $chan_config =
             name       => 'name',
             nofile     => 'nofile',
             mm         => 'mm',
+            video      => 'embed',
+            video_type => 'embedtype',
             MAX_FILE_SIZE => 'MAX_FILE_SIZE',
         },
 

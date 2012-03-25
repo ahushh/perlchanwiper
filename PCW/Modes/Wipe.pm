@@ -401,7 +401,8 @@ sub wipe($$%)
     );
 
     #-- Exit watchers
-    my $ew = AnyEvent->timer(after => 5, interval => 1, cb =>
+    #-- Если ставить слишком малый interval, при одной прокси будет выходить когда не надо
+    my $ew = AnyEvent->timer(after => 5, interval => 5, cb =>
         sub
         {
             my @get_coro      = grep { $_->desc eq 'get'     } Coro::State::list;
