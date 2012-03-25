@@ -8,11 +8,17 @@ use feature ':5.10';
 use Exporter 'import';
 our @EXPORT_OK = qw(make_text);
 
+#------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------
 use List::Util qw(shuffle);
 use Data::Random qw(rand_set);
-
 use PCW::Core::Utils qw(random);
 
+use Coro;
+my $lock = Coro::Semaphore->new;
+
+#------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------
 sub interpolate($)
 {
     my $text = shift;
@@ -49,6 +55,8 @@ sub boundary_msg($)
     my $boundary = $data->{boundary} || '----';
     state @text;
     state $i = 0;
+
+    $lock->down;
     if (!@text)
     {
         open(my $fh, '<', $data->{path});
@@ -57,6 +65,8 @@ sub boundary_msg($)
 		@text = split /$boundary/, $text;
         close $fh;
     }
+    $lock->up;
+
     my $msg;
     if ($data->{order} eq 'random')
     {
@@ -76,12 +86,16 @@ sub string_msg($)
     state @text;
     state $i = 0;
     $i = 0 if ($i >= scalar @text);
+
+    $lock->down;
     if (!@text)
     {
         open(my $fh, "<", $data->{path});
         @text = <$fh>;
         close $fh;
     }
+    $lock->up;
+
     my $num_str = $data->{num_str};
     my $msg;
     for (@text)

@@ -29,6 +29,7 @@ use PCW::Core::Captcha  qw(captcha_recognizer);
 use PCW::Core::Net      qw(http_get http_post get_recaptcha);
 use PCW::Core::Log      qw(echo_msg echo_proxy);
 use PCW::Data::Images   qw(make_pic);
+use PCW::Data::Video    qw(make_vid);
 use PCW::Data::Text     qw(make_text);
 
 #------------------------------------------------------------------------------------------------
@@ -280,13 +281,19 @@ sub prepare($$$$)
 
     #---- Form data
     #-- Message
-    if ($cnf->{msg_data}{mode} ne 'no')
+    if ($cnf->{msg_data}{text})
     {
         my $text = make_text( $cnf->{msg_data} );
         $content{ $self->{fields}{post}{msg} } = $text;
     }
-    #-- Image
-    if ($cnf->{img_data}{mode} ne 'no')
+    #-- Image and video
+    if ($cnf->{vid_data}{mode} ne 'no')
+    {
+        my $video_id = make_vid( $cnf->{vid_data} );
+        $content{ $self->{fields}{post}{video}      } = $video_id;
+        $content{ $self->{fields}{post}{video_type} } = $cnf->{vid_data}{type};
+    }
+    elsif ($cnf->{img_data}{mode} ne 'no')
     {
         my $file_path = make_pic( $cnf->{img_data} );
         $content{ $self->{fields}{post}{img} } = ( $file_path ? [$file_path] : undef );
@@ -301,7 +308,6 @@ sub prepare($$$$)
     if ($content{board} eq 'b')
     {
         my $mm = compute_mm($content{mm} . $content{message} . $content{postpassword});
-
         #-- Add mm to post headers
         my $h = $task->{headers};
         my $c = $h->header('Cookie');

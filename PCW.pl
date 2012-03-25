@@ -173,13 +173,14 @@ DESU
 #-----------------------------------------------------------------------------
 sub load_configs()
 {
-    our ($img, $msg, $captcha_decode);
+    our ($img, $msg, $vid, $captcha_decode);
     require $common_config;
     require $mode_config;  #-- load %mode_config
     if ($mode =~ /bump|wipe/)
     {
         $mode_config{img_data} = $img;
         $mode_config{msg_data} = $msg;
+        $mode_config{vid_data} = $vid;
         $mode_config{captcha_decode} = $captcha_decode;
     }
 }
