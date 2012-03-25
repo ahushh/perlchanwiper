@@ -47,22 +47,38 @@ my $prepare_queue = Coro::Channel->new();
 my $post_queue    = Coro::Channel->new();
 my %failed_proxy  = ();
 my %stats         = (error => 0, posted => 0, wrong_captcha => 0, total => 0);
+my $start_time    = time;
 
-sub show_stats
+#-- Stats
+sub measure_speed($)
 {
-    my @good = grep { $failed_proxy{$_} == 0 } keys %failed_proxy;
+    my $u = shift;
+    my $d;
+    $d = 1   if $u eq 'second';
+    $d = 60  if $u eq 'minute';
+    $d = 360 if $u eq 'hour';
+    return sprintf "%.3f", ($stats{posted} / ((time - $start_time)/$d));
+}
+
+sub show_stats($)
+{
+    my $cnf = shift;
+
+    my $speed = measure_speed($cnf->{speedometer});
+    my @good  = grep { $failed_proxy{$_} == 0 } keys %failed_proxy;
     say "\nSuccessfully posted: $stats{posted}";
     say "Wrong captcha: $stats{wrong_captcha}";
     say "Other failed: $stats{error}";
     say "Total posted: $stats{total}";
-    say "Good proxies: ", scalar @good
+    say "Speed: $speed posts per $cnf->{speedometer}";
+    say "Good proxies: ", ( $cnf->{show_good_proxy} ? "@good" : scalar(@good) );
 };
 
 #------------------------------------------------------------------------------------------------
 #-----------------------------------------  WIPE GET --------------------------------------------
 #------------------------------------------------------------------------------------------------
 #-- Coro callback
-my $cb_wipe_get = sub
+my $cb_wipe_get = unblock_sub
 {
     my ($msg, $task, $cnf) = @_;
     return unless @_;
@@ -90,7 +106,7 @@ sub wipe_get($$$)
     async {
         my $coro = $Coro::current;
         $coro->desc('get');
-        $coro->{proxy} = $task->{proxy}; #-- Для вывода timeout
+        $coro->{task} = $task;
         $coro->on_destroy($cb_wipe_get);
 
         if ($task->{run_at})
@@ -114,7 +130,7 @@ sub wipe_get($$$)
 #--------------------------------------  WIPE PREPARE -------------------------------------------
 #------------------------------------------------------------------------------------------------
 #-- Coro callback
-my $cb_wipe_prepare = sub 
+my $cb_wipe_prepare = unblock_sub
 {
     my ($msg, $task, $cnf) = @_;
     return unless @_;
@@ -147,7 +163,7 @@ sub wipe_prepare($$$)
     async {
         my $coro = $Coro::current;
         $coro->desc('prepare');
-        $coro->{proxy} = $task->{proxy}; #-- Для вывода timeout
+        $coro->{task} = $task;
         $coro->on_destroy($cb_wipe_prepare);
         my $status =
         with_coro_timeout {
@@ -162,7 +178,7 @@ sub wipe_prepare($$$)
 #----------------------------------------  WIPE POST  -------------------------------------------
 #------------------------------------------------------------------------------------------------
 #-- Coro callback
-my $cb_wipe_post = sub 
+my $cb_wipe_post = unblock_sub
 {
     my ($msg, $task, $cnf) = @_;
     return unless @_;
@@ -226,6 +242,7 @@ my $cb_wipe_post = sub
     {
         $failed_proxy{ $task->{proxy} } = 0;
     }
+
     if ($cnf->{loop} && $msg ne 'banned' && $failed_proxy{ $task->{proxy} } < $cnf->{proxy_attempts})
     {
         echo_msg($LOGLEVEL >= 3, "push in the get queue: $task->{proxy}");
@@ -241,7 +258,7 @@ sub wipe_post($$$)
     {
         my $coro = $Coro::current;
         $coro->desc('post');
-        $coro->{proxy} = $task->{proxy}; #-- Для вывода timeout
+        $coro->{task} = $task;
         $coro->on_destroy($cb_wipe_post);
 
         my $status = 
@@ -285,9 +302,9 @@ sub wipe($$%)
             my @prepare_coro  = grep { $_->desc eq 'prepare' } Coro::State::list;
             my @post_coro     = grep { $_->desc eq 'post'    } Coro::State::list;
 
-            echo_msg($LOGLEVEL >= 2, sprintf "run: %d captcha, %d post, %d prepare coros.",
+            echo_msg($LOGLEVEL >= 3, sprintf "run: %d captcha, %d post, %d prepare coros.",
                 scalar @get_coro, scalar @post_coro, scalar @prepare_coro);
-            echo_msg($LOGLEVEL >= 2, sprintf "queue: %d captcha, %d post, %d prepare coros.",
+            echo_msg($LOGLEVEL >= 3, sprintf "queue: %d captcha, %d post, %d prepare coros.",
                 $get_queue->size, $post_queue->size, $prepare_queue->size);
 
             for my $coro (@post_coro, @get_coro)
@@ -295,8 +312,9 @@ sub wipe($$%)
                 my $now = Time::HiRes::time;
                 if ($coro->{timeout_at} && $now > $coro->{timeout_at})
                 {
-                    echo_proxy(1, 'red', $coro->{proxy}, uc($coro->{desc}), '[TIMEOUT]');
-                    $coro->cancel('timeout');
+                    echo_proxy(1, 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
+                    $coro->cancel('timeout', $coro->{task}, \%cnf);
+                    # $coro->cancel('timeout');
                 }
             }
         }
@@ -305,7 +323,7 @@ sub wipe($$%)
     #-- Find threads watcher
     my $ftw = AnyEvent->timer(after    => $cnf{random_reply}{interval},
                               interval => $cnf{random_reply}{interval},
-                              cb =>
+                              cb       =>
                               sub
                               {
                                   #-- Refresh the thread list
@@ -392,14 +410,15 @@ sub wipe($$%)
             if (!(scalar @get_coro)      &&
                 !(scalar @post_coro)     &&
                 !(scalar @prepare_coro)  &&
-                !($get_queue->size)      && 
+                !($get_queue->size)      &&
                 !($post_queue->size)     &&
                 !($prepare_queue->size)  or
                 #-- post limit was reached
                 ( $cnf{post_limit} ? ($stats{posted} >= $cnf{post_limit}) : undef ))
             {
                 EV::break;
-                show_stats();
+                show_stats($cnf{on_exit});
+                exit;
             }
         }
     );
@@ -408,7 +427,7 @@ sub wipe($$%)
         sub
         {
             EV::break;
-            show_stats();
+            show_stats($cnf{on_exit});
             exit;
         }
     );

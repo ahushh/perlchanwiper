@@ -28,7 +28,7 @@ sub echo_msg($;$$)
     return 0 unless $p;
 
     printf "[%s]"    , get_time;
-    printf "[%-10s]" , $type    if $type;
+    printf "[%15s]" , $type    if $type;
     printf " %s\n"   , $msg     if $msg;
 
     return 1;

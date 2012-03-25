@@ -34,8 +34,9 @@ our $chan_config =
             success       => ['Go West', 'wakaba.html'],
         },
         delete => {
-            success => [303],
-            error   => ['Неверный пароль для удаления', 503, 504],
+            success        => [303],
+            wrong_password => ['Неправильный пароль.'],
+            error          => [''],
         },
     },
 

@@ -1,3 +1,4 @@
+
 use strict;
 #------------------------------------------------------------------------------------------------------------
 # MESSSAGE SETTINGS
@@ -14,10 +15,11 @@ our $msg = {
     #-- #string#     — чтение файла по строчно
     #-- #boundary#   — чтение файла блоками
     #-------------------------------------------------------------------------------------------------------
-    #text => "[code]#string#[/code]\n[code]#string#[/code]",
-    text => "bump\n%date%",
+    # text => "[code]#boundary#[/code]]",
+    # text => "bump\n%date%",
     #text => '@~fortune psalms bible~@',
-    #text => '@~fortune~@',
+    text => '@~fortune~@',
+    text => '%unixtime%',
     #-------------------------------------------------------------------------------------------------------
     #-- #delirium# config
     delirium => {
@@ -47,7 +49,7 @@ our $msg = {
     #-------------------------------------------------------------------------------------------------------
     #-- #string# config
     string => {
-        order    => 'normal',                #-- см. выше
+        order    => 'random',                #-- см. выше
         num_str  => 15,                       #-- количество счтиывемых строк за раз
         path     => "$ENV{HOME}/poetry/cas.txt",   #-- путь к файлу
         path     => "/usr/share/emacs/23.4/lisp/sha1.el",   #-- путь к файлу
@@ -142,6 +144,6 @@ our $captcha_decode = {
     # mode   => 'guihand',
     #-- tesseract OCR
     #-- Необходим convert (ImageMagick) и сам tesseract
-    #mode => 'tesseract',
+    # mode => 'tesseract',
 };
 

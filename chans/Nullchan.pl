@@ -24,12 +24,14 @@ our $chan_config =
                               'Flood detected',
                              ],
             critical_error => [
+                               'Неправильный ID треда',
                               ],
             success       => [302, 'BuildThread()', 'Updating pages', 504],
         },
         delete => {
-            success => ['Сообщение удалено.'],
-            error   => ['Неправильный пароль.', 503, 504],
+            success        => ['Сообщение удалено.'],
+            wrong_password => ['Неправильный пароль.'],
+            error          => [''],
         },
     },
 

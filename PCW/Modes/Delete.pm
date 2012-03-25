@@ -34,12 +34,14 @@ use PCW::Modes::Common qw(get_posts_by_regexp);
 #------------------------------------------------------------------------------------------------
 # Local package variables and procedures
 #------------------------------------------------------------------------------------------------
+my @proxies;
 my $delete_queue = Coro::Channel->new();
-my %stats  = (error => 0, deleted => 0, total => 0);
+my %stats  = (error => 0, wrong_password => 0, deleted => 0, total => 0);
 
 sub show_stats()
 {
     say "\nSuccessfully deleted: $stats{deleted}";
+    say "Wrong password: $stats{wrong_password}";
     say "Error: $stats{error}";
     say "Total: $stats{total}";
 };
@@ -48,7 +50,7 @@ sub show_stats()
 #----------------------------------  DELETE POST  -----------------------------------------------
 #------------------------------------------------------------------------------------------------
 #-- Coro callback
-my $cb_delete_post = sub
+my $cb_delete_post = unblock_sub
 {
     my ($msg, $task, $cnf) = @_;
     $stats{total}++;
@@ -57,6 +59,10 @@ my $cb_delete_post = sub
         when ('success')
         {
             $stats{deleted}++;
+        }
+        when ('wrong_password')
+        {
+            $stats{wrong_password}++;
         }
         default
         {
@@ -71,7 +77,7 @@ sub delete_post($$$)
     async {
         my $coro = $Coro::current;
         $coro->desc('delete');
-        $coro->{proxy} = $task->{proxy}; #-- Для вывода timeout
+        $coro->{task} = $task;
         $coro->on_destroy($cb_delete_post);
         my $status =
         with_coro_timeout {
@@ -136,8 +142,8 @@ sub delete($$$%)
                 my $now = Time::HiRes::time;
                 if ($coro->{timeout_at} && $now > $coro->{timeout_at})
                 {
-                    echo_proxy(1, 'red', $coro->{proxy}, uc($coro->{desc}), '[TIMEOUT]');
-                    $coro->cancel('timeout');
+                    echo_proxy(1, 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
+                    $coro->cancel('timeout', $coro->{task}, \%cnf);
                 }
             }
         }
@@ -170,6 +176,7 @@ sub delete($$$%)
             {
                 EV::break;
                 show_stats();
+                exit;
             }
         }
     );

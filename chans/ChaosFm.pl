@@ -30,7 +30,8 @@ our $chan_config =
         },
         delete => {
             success => [303],
-            error   => ['Неверный пароль для удаления', 503, 504],
+            wrong_password => ['Неправильный пароль.'],
+            error          => [''],
         },
     },
 
