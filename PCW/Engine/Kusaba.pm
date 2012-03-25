@@ -120,7 +120,7 @@ sub _is_thread_on_page_catalog($%)
     my $task    = { proxy => $cnf{proxy} };
     my $c_cnf   = { board => $cnf{board} };
     my ($html, undef, $status) = $self->get_catalog($task, $c_cnf);
-    echo_msg(1, "Catalog was downloaded: $status");
+    echo_msg($self->{loglevel} >= 2, "Catalog was downloaded: $status");
 
     my (%threads, $count);
     while ($html =~ /$pattern/sg)

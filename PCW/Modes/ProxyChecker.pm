@@ -47,7 +47,7 @@ sub show_stats
 #------------------------------------------------------------------------------------------------
 #---------------------------------------  CHECK  -------------------------------------------------
 #------------------------------------------------------------------------------------------------
-my $cb_check = sub
+my $cb_check = unblock_sub
 {
     my ($msg, $task, $cnf) = @_;
     #-- Delete temporary files
@@ -72,7 +72,7 @@ sub check($$$)
     async {
         my $coro = $Coro::current;
         $coro->desc('check');
-        $coro->{proxy} = $task->{proxy}; #-- Для вывода timeout
+        $coro->{task} = $task;
         $coro->on_destroy($cb_check);
 
         my $status = 
@@ -100,16 +100,16 @@ sub checker($$%)
         {
             my @checker_coro = grep { $_->desc eq 'check' } Coro::State::list;
 
-            echo_msg($LOGLEVEL >= 2, sprintf "run: %d coros.", scalar @checker_coro);
-            echo_msg($LOGLEVEL >= 2, sprintf "queue: %d coros.", $queue->size);
+            echo_msg($LOGLEVEL >= 3, sprintf "run: %d coros.", scalar @checker_coro);
+            echo_msg($LOGLEVEL >= 3, sprintf "queue: %d coros.", $queue->size);
 
             for my $coro (@checker_coro)
             {
                 my $now = Time::HiRes::time;
                 if ($coro->{timeout_at} && $now > $coro->{timeout_at})
                 {
-                    echo_proxy(1, 'red', $coro->{proxy}, uc($coro->{desc}), '[TIMEOUT]');
-                    $coro->cancel('timeout');
+                    echo_proxy(1, 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
+                    $coro->cancel('timeout', $coro->{task}, \%cnf);
                 }
             }
         }
@@ -135,6 +135,7 @@ sub checker($$%)
             {
                 EV::break;
                 show_stats();
+                exit;
             }
         }
     );

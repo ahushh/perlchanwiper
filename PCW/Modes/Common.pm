@@ -43,13 +43,13 @@ sub get_posts_by_regexp($$%)
             $local_cnf{page} = $page;
 
             #-- Get the page
-            echo_msg(1, "Downloading $page page...");
+            echo_msg($LOGLEVEL >= 2, "Downloading $page page...");
             my ($html, undef, $status) = $engine->get_page($get_task, \%local_cnf);
-            echo_msg(1, "Page $page downloaded: $status");
+            echo_msg($LOGLEVEL >= 2, "Page $page downloaded: $status");
 
             %threads = (%threads, $engine->get_all_threads($html))
         }
-        echo_msg(1, sprintf "%d threads were found", scalar keys %threads);
+        echo_msg($LOGLEVEL >= 2, sprintf "%d threads were found", scalar keys %threads);
     }
     #-- Search posts in the threads
     my %replies = ();
@@ -67,15 +67,15 @@ sub get_posts_by_regexp($$%)
             $local_cnf{thread} = $thread;
 
             #-- Get the thread
-            echo_msg(1, "Downloading $thread thread...");
+            echo_msg($LOGLEVEL >= 2, "Downloading $thread thread...");
             my ($html, undef, $status) = $engine->get_thread($get_task, \%local_cnf);
-            echo_msg(1, "Thread $thread downloaded: $status");
+            echo_msg($LOGLEVEL >= 2, "Thread $thread downloaded: $status");
 
             my %r    = $engine->get_all_replies($html);
             %replies = (%replies, %r);
-            echo_msg(1, sprintf "%d replies were found in $thread thread", scalar keys %r);
+            echo_msg($LOGLEVEL >= 2, sprintf "%d replies were found in $thread thread", scalar keys %r);
         }
-        echo_msg(1, sprintf "Total %d replies were found", scalar keys %replies);
+        echo_msg($LOGLEVEL >= 2, sprintf "Total %d replies were found", scalar keys %replies);
     }
 
     unless ($cnf->{pages} || $cnf->{threads})
@@ -84,13 +84,13 @@ sub get_posts_by_regexp($$%)
     }
 
     my %all_posts = (%threads, %replies);
-    echo_msg(1, sprintf "%d threads and replies were found", scalar keys %all_posts);
+    echo_msg($LOGLEVEL >= 2, sprintf "%d threads and replies were found", scalar keys %all_posts);
 
     my $pattern = $cnf->{regexp};
     if ($pattern)
     {
         @posts = grep { $all_posts{$_} =~ /$pattern/mg } keys(%all_posts);
-        echo_msg(1, sprintf "%d post(s) matched the pattern", scalar @posts);
+        echo_msg($LOGLEVEL >= 2, sprintf "%d post(s) matched the pattern", scalar @posts);
     }
     else
     {

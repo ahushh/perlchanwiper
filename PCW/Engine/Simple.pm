@@ -157,7 +157,7 @@ sub is_thread_on_page($%)
     my $cnf  = { page  => $config{page}, board => $config{board} };
 
     my ($page, undef, $status) = $self->get_page($task, $cnf);
-    echo_msg(1, "Page ". $config{page} ." downloaded: $status");
+    echo_msg($self->{loglevel} >= 2, "Page $config{page} downloaded: $status");
     my %threads = $self->get_all_threads($page);
 
     return grep { $_ == $config{thread} } keys(%threads);
@@ -325,21 +325,21 @@ sub _check_delete_result($$$$$)
         my $color;
         given ($type)
         {
-            when (/error/)   { $color = 'red'    }
-            when (/success/) { $color = 'green'  }
+            when (/error|wrong_password/) { $color = 'red'    }
+            when (/success/)              { $color = 'green'  }
         }
 
         for (@{ $self->{response}{delete}{$type} })
         {
             if ($response =~ /$_/ || $code =~ /$_/)
             {
-                echo_proxy(1, $color, 'No. '. $task->{delete}, 'DELETE',
+                echo_proxy(1, $color, $task->{proxy}, "DELETE $task->{delete}",
                             sprintf("[%s](%d){%s}", uc($type), $code, ($self->{verbose} ? html2text($response) : $_)));
                 return($type);
             }
         }
     }
-    echo_proxy(1, 'yellow', 'No. '. $task->{delete}, 'DELETE',
+    echo_proxy(1, 'yellow', $task->{proxy}, "DELETE $task->{delete}",
         sprintf("[%s](%d){%s}", 'UNKNOWN', $code, ($self->{verbose} ? html2text($response) : 'unknown error')));
     return('unknown');
 }
