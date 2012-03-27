@@ -13,8 +13,8 @@ List::MoreUtils
 List::Util
 Term::ANSIColor
 WWW::ProxyChecker
-WebService::Antigate
 Image::OCR::Tesseract
+Data::Random
 /;
 
 `sudo cpan -i @modules`;
