@@ -3,8 +3,8 @@ use constant HOST => 'chan-example.com';
 
 our $chan_config =
 {
-    #-- Имя имиджюорды. Необязатльено для заполнения
-    name               => '',
+    #-- Описание. Необязатльено для заполнения
+    description        => '',
     engine             => 'Wakaba',
     captcha_extension  => 'gif',
     #-- Ключ рекапчи

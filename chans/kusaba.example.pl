@@ -3,8 +3,8 @@ use constant HOST => 'chan-example.com';
 
 our $chan_config =
 {
-    #-- Имя имиджюорды. Необязатльено для заполнения
-    name               => '',
+    #-- Описание. Необязатльено для заполнения
+    description        => '',
     engine             => 'Kusaba',
     captcha_extension  => 'gif',
     #-- Закомментировать, если отключена капча
@@ -17,20 +17,29 @@ our $chan_config =
 
     response => {
         post => {
-            banned        => [403, 'CDN'],
+            banned        => [403, 'CDN', 'banned', 'забанены'],
             net_error     => ['Service Unavailable Connection', 502],
             post_error    => [
+                              'your message is too long',
+                              'temporarily unavailable',
+                              'Это видео уже опубликовано',
+                              'Unable to connect to',
                              ],
             wrong_captcha => [
+                              'Неправильно введена капча',
                              ],
             flood         => [
+                              'Вы постите очень часто.',
+                              'Flood detected',
                              ],
             critical_error => [
+                               'Неправильный ID треда',
                               ],
-            success       => [302],
+            success       => [302, 'BuildThread()', 'Updating pages'],
+
         },
         delete => {
-            success         => [303],
+            success        => [303],
             wrong_password => ['Неправильный пароль.'],
             error          => [''],
         },
@@ -76,6 +85,7 @@ our $chan_config =
     html => {
         replies_regexp => '(?<post><td class="reply" id="reply(?<id>\d+)">.+?</td>)',
         threads_regexp => '(?<thread><span class="filesize">.+?<a name="(?<id>\d+)"></a>.+?<br clear="left" /><hr />)',
+        catalog_regexp => '/res/(?<id>\d+).html',
     },
 
     headers => {

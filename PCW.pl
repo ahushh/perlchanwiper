@@ -105,7 +105,7 @@ sub info()
 {
     say "Perl Chan Wiper v$VERSION";
     say "~" x 30;
-    say "Chan: $chan ". ($chan_config ? "($chan_config->{name})" : "");
+    say "Chan: $chan ". ($chan_config ? "($chan_config->{description})" : "");
     say "Engine: ". $chan_config->{engine};
     say "Work mode: $mode";
     say "Mode config: $mode_config";
@@ -154,7 +154,7 @@ Usage: $0 [chan] [mode]...
 Options:
     --chan          Chan name (@chans)
     --mode          Work mode (@modes)
-    --proxy         Proxy file (default is '$proxy_file')
+    --proxy         Proxy list (default is '$proxy_file')
     --proxytype     Default proxy protocol (default is '$proxy_type')
     --ua            User agents list file (default is '$useragents')
     --cconfig       Common config file (default is '$common_config')

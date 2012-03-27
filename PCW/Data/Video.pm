@@ -9,7 +9,9 @@ use Exporter 'import';
 our @EXPORT_OK = qw(make_vid);
 
 #------------------------------------------------------------------------------------------------
+use PCW::Core::Log qw(echo_msg);
 use Data::Random qw(rand_set);
+use List::MoreUtils qw(uniq);
 use LWP::Simple qw(get);
 
 use Coro;
@@ -18,6 +20,7 @@ my $lock = Coro::Semaphore->new;
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
 my %types = ( youtube => ['watch\?v=(?<id>(\w|-)+)&?',
+                          'data-video-ids="(?<id>(\w|-)+)"',
                          ],
             );
 
@@ -48,14 +51,8 @@ sub file_vid($)
         my $raw  = <$fh>;
         close $fh;
 
-        for my $pattern (@{ $types{ $data->{type} } })
-        {
-             while ($raw =~ /$pattern/mg)
-            {
-                push @vid_list, $+{id};
-            }
-        }
-     }
+        @vid_list = split /\s+/, $raw;
+    }
     $lock->up;
 
     state $i = 0;
@@ -82,14 +79,17 @@ sub download_vid($)
     $lock->down;
     if (!@vid_list)
     {
+        echo_msg(1, "Start fetching video IDs...");
         my $raw;
-        for my $page (1..$data->{pages})
+        for my $query (@{ $data->{search}})
         {
-            my $url = $search_urls{ $data->{type} };
-            $url =~ s/\{search\}/$data->{search}/e;
-            $url =~ s/\{page\}/$page/e;
-            $raw .= get($url);
-            say "$url downloaded";
+            for my $page (1..$data->{pages})
+            {
+                my $url = $search_urls{ $data->{type} };
+                $url =~ s/\{search\}/$query/e;
+                $url =~ s/\{page\}/$page/e;
+                $raw .= get($url);
+            }
         }
         for my $pattern (@{ $types{ $data->{type} } })
         {
@@ -98,7 +98,16 @@ sub download_vid($)
                 push @vid_list, $+{id};
             }
         }
-     }
+        @vid_list = uniq @vid_list;
+        echo_msg(1, "Fetched ". scalar(@vid_list) ." IDs");
+        if (my $path = $data->{save})
+        {
+            open(my $fh, '>', $path);
+            print $fh "@vid_list";
+            close $fh;
+            echo_msg(1, "Video IDs saved to $path");
+        }
+    }
     $lock->up;
 
     state $i = 0;

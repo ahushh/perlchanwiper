@@ -2,7 +2,7 @@ use constant HOST => 'www.0chan.ru';
 
 our $chan_config =
 {
-    name               => 'Нульчик-стульчик',
+    description        => 'Нульчик-стульчик',
     engine             => 'EFGKusaba',
     captcha_extension  => 'png',
     cookies            => ['PHPSESSID'],
@@ -70,7 +70,7 @@ our $chan_config =
         page      => 'http://'. HOST .'/%s/%d.html',
         zero_page => 'http://'. HOST .'/%s',
         thread    => 'http://'. HOST .'/%s/res/%d.html',
-        # catalog   => 'http://'. HOST .'/%s/catalog.html',
+        catalog   => 'http://'. HOST .'/%s/catalog.html',
     },
 
     html => {

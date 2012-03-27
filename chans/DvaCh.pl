@@ -2,7 +2,7 @@ use constant HOST => 'dva-ch.ru';
 
 our $chan_config =
 {
-    name               => 'Dva-ch',
+    description        => 'Dva-ch',
     engine             => 'Wakaba',
     captcha_extension  => 'gif',
 

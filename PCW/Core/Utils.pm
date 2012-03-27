@@ -90,8 +90,8 @@ sub html2text($)
 {
 	my $html = shift;
     decode_entities($html);
-    $html =~ s!<style.+?>.*?</style>!!sg ;
-    $html =~ s!<script.+?>.*?</script>!!sg; 
+    $html =~ s!<style.+?>.*?</style>!!sg;
+    $html =~ s!<script.+?>.*?</script>!!sg;
     $html =~ s/{.*?}//sg;		#-- style
     $html =~ s/<!--.*?-->//sg;	#-- comments
     $html =~ s/<.*?>//sg;		#-- tags

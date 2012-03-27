@@ -10,7 +10,7 @@ use base 'PCW::Engine::Simple';
 #------------------------------------------------------------------------------------------------
 # Features
 #------------------------------------------------------------------------------------------------
-use feature qw(switch); 
+use feature qw(switch say);
 
 #------------------------------------------------------------------------------------------------
 # Importing utility packages
@@ -131,8 +131,9 @@ sub _is_thread_on_page_catalog($%)
     }
 
     my $n    = $self->{threads_per_page};
-    my $from = ($cnf{page} + 1) * $n;
+    my $from = $cnf{page} * $n;
     my $to   = $from + $n;
+
     for ($from..$to)
     {
         return $_ if ($cnf{thread} eq $threads{$_});
