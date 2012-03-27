@@ -1,3 +1,12 @@
+#Контакты
+ahushh@gmail.com
+#Описание
+Консольная вайпалка/бампалка для имиджборд на движках Kusaba и Wakaba
+##Режимы работы
+* wipe — вайп доски/тредов/рандомных тредов
+* autobump — автобампалка, следящая за положение треда на доске
+* proxychecker — прокси чекер специально для чанов. но сыроват
+* delete — удалялка постов
 #Примеры использования
          ./PCW.pl --mode wipe --chan Nullchan --proxy proxy/my/0chan
          ./PCW.pl --mode delete --chan Nullchan --loglevel 2 --verbose
