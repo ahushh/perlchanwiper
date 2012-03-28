@@ -134,9 +134,11 @@ sub _is_thread_on_page_catalog($%)
     my $from = $cnf{page} * $n;
     my $to   = $from + $n;
 
+    #echo_msg($self->{loglevel} >= 4, "n: $n; from: $from; to: $to");
     for ($from..$to)
     {
-        return $_ if ($cnf{thread} eq $threads{$_});
+        #echo_msg($self->{loglevel} >= 4, "cnf{thread}: $cnf{thread}; threads{\$_}: $threads{$_}; \$_:$_");
+        return $_ if ($threads{$_} and $cnf{thread} eq $threads{$_});
     }
     return undef;
 }
