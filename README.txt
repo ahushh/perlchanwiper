@@ -52,7 +52,7 @@ FAQ
 ---
 Как установить диапазон символов, которые будет распознавать tesseract?
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-Создать конфиг (например `englishletters') в tessdate/configs - обычно
+Создать конфиг (например 'englishletters') в tessdate/configs - обычно
 `/usr/share/tesseract/tessdata/configs`
 или
 `/usr/share/tesseract-ocr/tessdata/configs`

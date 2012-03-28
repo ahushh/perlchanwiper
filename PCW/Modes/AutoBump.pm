@@ -64,6 +64,26 @@ sub show_stats
 #------------------------------------------------------------------------------------------------
 #--------------------------------------  BUMP THREAD  -------------------------------------------
 #------------------------------------------------------------------------------------------------
+my $run_cleanup = unblock_sub
+{
+    my ($engine, $task, $cnf) = @_;
+    echo_proxy(1, "green", $task->{proxy}, $task->{thread}, "Start deleting posts...");
+    my @deletion_posts = get_posts_by_regexp($task->{proxy}, $engine, $cnf->{find});
+
+    echo_msg($LOGLEVEL >= 4, "run_cleanup(): \@deletion_posts: @deletion_posts");
+
+    for my $postid (@deletion_posts)
+    {
+        my $task = {
+            proxy    => $task->{proxy},
+            board    => $cnf->{board},
+            password => $cnf->{password},
+            delete   => $postid,
+        };
+        $delete_queue->put($task);
+    }
+};
+ 
 #-- Coro callback
 my $cb_bump_thread = unblock_sub
 {
@@ -85,9 +105,10 @@ my $cb_bump_thread = unblock_sub
         echo_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "sleep $cnf->{interval} seconds...");
 
         echo_msg($LOGLEVEL >= 4, "run_cleanup(): try to start");
-        run_cleanup($engine, $task, $cnf->{silent}) if ($cnf->{silent});
+        &$run_cleanup($engine, $task, $cnf->{silent}) if ($cnf->{silent});
     }
-    elsif ($msg eq 'wrong_captcha')
+    #elsif ($msg eq 'wrong_captcha')
+    elsif ($msg =~ /wrong_captcha|no_captcha/)
     {
         $stats{error}++;
     }
@@ -162,10 +183,10 @@ sub bump_thread($$$)
         my $status =
         with_coro_timeout {
             my $status = $engine->get($task, $cnf);
-            $coro->cancel($status, $task, $cnf) if ($status ne 'success');
+            $coro->cancel($status, $engine, $task, $cnf) if ($status ne 'success');
 
             $status = $engine->prepare($task, $cnf);
-            $coro->cancel($status, $task, $cnf) if ($status ne 'success');
+            $coro->cancel($status, $engine, $task, $cnf) if ($status ne 'success');
 
             $status = $engine->post($task, $cnf);
         } $coro, $cnf->{timeout};
@@ -216,25 +237,25 @@ sub delete_post($$$)
     cede;
 }
 
-sub run_cleanup($$$)
-{
-    my ($engine, $task, $cnf) = @_;
-    echo_proxy(1, "green", $task->{proxy}, $task->{thread}, "Start deleting posts...");
-    my @deletion_posts = get_posts_by_regexp($task->{proxy}, $engine, $cnf->{find});
+#sub run_cleanup($$$)
+#{
+    #my ($engine, $task, $cnf) = @_;
+    #echo_proxy(1, "green", $task->{proxy}, $task->{thread}, "Start deleting posts...");
+    #my @deletion_posts = get_posts_by_regexp($task->{proxy}, $engine, $cnf->{find});
 
-    echo_msg($LOGLEVEL >= 4, "run_cleanup(): \@deletion_posts: @deletion_posts");
+    #echo_msg($LOGLEVEL >= 4, "run_cleanup(): \@deletion_posts: @deletion_posts");
 
-    for my $postid (@deletion_posts)
-    {
-        my $task = {
-            proxy    => $task->{proxy},
-            board    => $cnf->{board},
-            password => $cnf->{password},
-            delete   => $postid,
-        };
-        $delete_queue->put($task);
-    }
-}
+    #for my $postid (@deletion_posts)
+    #{
+        #my $task = {
+            #proxy    => $task->{proxy},
+            #board    => $cnf->{board},
+            #password => $cnf->{password},
+            #delete   => $postid,
+        #};
+        #$delete_queue->put($task);
+    #}
+#};
 
 #------------------------------------------------------------------------------------------------
 #---------------------------------------  BUMP MAIN  --------------------------------------------
