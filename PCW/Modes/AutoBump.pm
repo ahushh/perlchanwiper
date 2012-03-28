@@ -49,12 +49,12 @@ my %del_stats    = (error => 0, deleted => 0, total => 0, wrong_password => 0);
 
 sub show_stats
 {
-    say "\nBump stats:";
+    say "\n~~~Bump stats~~~";
     say "Bumped: $stats{bumped}";
     say "Wait: $stats{wait}";
     say "Error: $stats{error}";
     say "Total: $stats{total}";
-    say "Delete stats:";
+    say "~~~Delete stats~~~";
     say "Successfully deleted: $del_stats{deleted}";
     say "Wrong password: $del_stats{wrong_password}";
     say "Error: $del_stats{error}";
