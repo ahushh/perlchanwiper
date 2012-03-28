@@ -20,7 +20,6 @@ our $msg = {
     # text => "bump\n%date%",
     # text => '@~fortune psalms bible~@',
     text => '%unixtime%',
-    text => '',
     #-------------------------------------------------------------------------------------------------------
     #-- #delirium# config
     delirium => {
@@ -135,10 +134,10 @@ our $vid = {
     #-------------------------------------------------------------------------------------------------------
     #-- download mode
     #-- Искать видео на соответствующем видеохостинге
-    mode     => 'download',
+    #mode     => 'download',
     save     => "$ENV{HOME}/youtube", #-- сохранить найденные id видео в файл, разделяются пробелом
     order    => 'random',   #-- см. где-то выше
-    pages    => 30,       #-- Колличество страниц, с которых будут взяты видео
+    pages    => 3,       #-- Колличество страниц, с которых будут взяты видео
     search   => ['suiseiseki', 'rozen+maiden+desu'], #-- Поисковые запросы. Пробелы заменять на символ +
 };
 
@@ -170,5 +169,7 @@ our $captcha_decode = {
     # mode   => 'guihand',
     #-- tesseract OCR
     #-- Необходим convert (пакет ImageMagick) и сам tesseract
-    mode => 'tesseract',
+    mode   => 'tesseract',
+    #lang   => 'eng',           #-- eng, rus; если используется конфиг, можно и не указывать, наверно.
+    config => 'englishletters', #-- название конфига для tesseract. см README
 };

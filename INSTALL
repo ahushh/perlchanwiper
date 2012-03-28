@@ -1,12 +1,15 @@
 # Установка всех необходимых модулей: perl ./INSTALL
-# На все появляющиеся вопросы жмякаем Enter
-# Для распознавания капчи с помощью tesseract нужно установить пакет tesseract-ocr и imagemagick
+# На все появляющиеся вопросы от cpan жмякаем Enter
 #
-# Проверялось на Ubuntu 12.04 LTS
+# Для распознавания капчи с помощью tesseract нужно установить пакет tesseract-ocr и imagemagick
+# apt-get install tesseract-ocr imagemagick
+#
+# Проверялось на Ubuntu 12.04 LTS (perl 5.12.0)
 
 use strict;
 
 my @base = qw/
+YAML
 AnyEvent
 Carp
 Coro
@@ -25,8 +28,6 @@ WWW::ProxyChecker
 /;
 
 my @ocr = qw/
-YAML
-Image::OCR::Tesseract
 /;
 
 system "sudo cpan @base @checker @ocr";
