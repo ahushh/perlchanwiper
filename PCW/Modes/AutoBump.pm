@@ -83,7 +83,7 @@ my $run_cleanup = unblock_sub
         $delete_queue->put($task);
     }
 };
- 
+
 #-- Coro callback
 my $cb_bump_thread = unblock_sub
 {
@@ -107,7 +107,6 @@ my $cb_bump_thread = unblock_sub
         echo_msg($LOGLEVEL >= 4, "run_cleanup(): try to start");
         &$run_cleanup($engine, $task, $cnf->{silent}) if ($cnf->{silent});
     }
-    #elsif ($msg eq 'wrong_captcha')
     elsif ($msg =~ /wrong_captcha|no_captcha/)
     {
         $stats{error}++;
@@ -237,26 +236,6 @@ sub delete_post($$$)
     cede;
 }
 
-#sub run_cleanup($$$)
-#{
-    #my ($engine, $task, $cnf) = @_;
-    #echo_proxy(1, "green", $task->{proxy}, $task->{thread}, "Start deleting posts...");
-    #my @deletion_posts = get_posts_by_regexp($task->{proxy}, $engine, $cnf->{find});
-
-    #echo_msg($LOGLEVEL >= 4, "run_cleanup(): \@deletion_posts: @deletion_posts");
-
-    #for my $postid (@deletion_posts)
-    #{
-        #my $task = {
-            #proxy    => $task->{proxy},
-            #board    => $cnf->{board},
-            #password => $cnf->{password},
-            #delete   => $postid,
-        #};
-        #$delete_queue->put($task);
-    #}
-#};
-
 #------------------------------------------------------------------------------------------------
 #---------------------------------------  BUMP MAIN  --------------------------------------------
 #------------------------------------------------------------------------------------------------
@@ -296,7 +275,6 @@ sub bump($$%)
 
     #-- Bump watcher
     my $bw = AnyEvent->timer(after => 0.5, interval => 1, cb =>
-    # my $bw = AnyEvent->timer(after => 0.5, interval => $cnf{interval}, cb =>
         sub
         {
             my @bump_coro   = grep { $_->desc ? ($_->desc eq 'bump')   : 0 } Coro::State::list;
@@ -313,7 +291,7 @@ sub bump($$%)
         }
     );
 
-	#-- Delete watcher
+    #-- Delete watcher
     my $dw = AnyEvent->timer(after => 1, interval => 2, cb =>
         sub
         {

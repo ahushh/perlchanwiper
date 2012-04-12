@@ -216,7 +216,7 @@ my $cb_wipe_post = unblock_sub
         }
         when ('critical_error')
         {
-            Carp::croak("Critical chan error. Going on is purposelessly.");
+            Carp::croak("Critical chan error. Going on is maybe purposelessly.");
         }
         when ('flood')
         {
@@ -234,7 +234,6 @@ my $cb_wipe_post = unblock_sub
     }
 
     if ($msg =~ /net_error|timeout/)
-    #if ($msg =~ /net_error|timeout|unknown/)
     {
         $failed_proxy{ $task->{proxy} }++;
     }
@@ -314,7 +313,6 @@ sub wipe($$%)
                 {
                     echo_proxy(1, 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
                     $coro->cancel('timeout', $coro->{task}, \%cnf);
-                    # $coro->cancel('timeout');
                 }
             }
         }

@@ -10,7 +10,7 @@ use Carp;
 use Term::ANSIColor;
 use feature qw(switch say);
 
-#-- Поменять 1 на 0, если нужно выключить цветные логи
+#-- Change from 1 to 0 to disable colored output
 use constant COLORED => 1;
 #------------------------------------------------------------------------------------------------
 #---------------------------------------------- LOG ---------------------------------------------
@@ -21,7 +21,7 @@ sub get_time()
     $sec  = "0$sec"  if (length $sec == 1);
     $min  = "0$min"  if (length $min == 1);
     $hour = "0$hour" if (length $hour == 1);
-    "$hour:$min:$sec";
+    return "$hour:$min:$sec";
 }
 
 sub echo_msg($;$$)
@@ -29,9 +29,9 @@ sub echo_msg($;$$)
     my ($p, $msg, $type) = @_;
     return 0 unless $p;
 
-    printf "[%s]"    , get_time;
+    printf "[%s]"   , get_time;
     printf "[%15s]" , $type    if $type;
-    printf " %s\n"   , $msg     if $msg;
+    printf " %s\n"  , $msg     if $msg;
 
     return 1;
 }

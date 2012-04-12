@@ -245,14 +245,13 @@ sub get($$$$)
 
 # Helper function
 #-- Вычисляется кука mm через отдельную программу на крестах.
-#-- Из-за передачи данныех через аргументы работет только с ascii-символоами.
 #-- TODO: переписать вычисление mm на перле
 sub compute_mm($)
 {
     no autodie;
     my $s = shift;
     open my $mm, '-|', 'lib/mm', $s
-        or die "Could not find lib/mm: $!";
+        or Carp::croak "Could not find lib/mm: $!";
     my $result = <$mm>;
     close($mm);
     return $result;
