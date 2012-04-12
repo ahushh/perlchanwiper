@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '0.2';
+our $VERSION = '0.2-r31';
 
 use strict;
 use autodie;
@@ -176,13 +176,11 @@ sub load_configs()
     our ($img, $msg, $vid, $captcha_decode);
     require $common_config;
     require $mode_config;  #-- load %mode_config
-    if ($mode =~ /bump|wipe/)
-    {
-        $mode_config{img_data} = $img;
-        $mode_config{msg_data} = $msg;
-        $mode_config{vid_data} = $vid;
-        $mode_config{captcha_decode} = $captcha_decode;
-    }
+
+    $mode_config{img_data} = $img;
+    $mode_config{msg_data} = $msg;
+    $mode_config{vid_data} = $vid;
+    $mode_config{captcha_decode} = $captcha_decode;
 }
 
 sub load_proxies()
@@ -210,7 +208,6 @@ sub load_engine()
     Carp::croak($@) if ($@);
     $engine = $package->new(%$chan_config, agents => \@agents, loglevel => $loglevel, verbose => $verbose);
 }
-
 #-----------------------------------------------------------------------------
 init();
 check_user_error();
@@ -220,36 +217,35 @@ load_agents();
 load_chan();        #-- load $chan_config
 load_engine();
 #-----------------------------------------------------------------------------
-
-#-----------------------------------------------------------------------------
-info(); #-- Show info
-#config_checker($mode, %args);                 #-- Check for common config errors
+info();                         #-- Show info
+#config_checker($mode, %args);  #-- Check for common config errors
 ##-----------------------------------------------------------------------------
-
-##-----------------------------------------------------------------------------
-if ($mode =~ /wipe/)
+use Coro;
+given ($mode)
 {
-    $PCW::Modes::Wipe::LOGLEVEL = $loglevel;
-    $PCW::Modes::Wipe::VERBOSE  = $verbose;
-    PCW::Modes::Wipe->wipe($engine, proxies => \@proxies, %mode_config);
+    when ('wipe')
+    {
+        $PCW::Modes::Wipe::LOGLEVEL = $loglevel;
+        $PCW::Modes::Wipe::VERBOSE  = $verbose;
+        PCW::Modes::Wipe->wipe($engine, proxies => \@proxies, %mode_config);
+    }
+    when ('delete')
+    {
+        $PCW::Modes::Delete::LOGLEVEL = $loglevel;
+        $PCW::Modes::Delete::VERBOSE  = $verbose;
+        PCW::Modes::Delete->delete($engine, proxies => \@proxies, %mode_config);
+    }
+    when ('proxychecker')
+    {
+        $PCW::Modes::ProxyChecker::LOGLEVEL = $loglevel;
+        $PCW::Modes::ProxyChecker::VERBOSE  = $verbose;
+        PCW::Modes::ProxyChecker->checker($engine, proxies => \@proxies, %mode_config);
+    }
+    when ('autobump')
+    {
+        $PCW::Modes::AutoBump::LOGLEVEL = $loglevel;
+        $PCW::Modes::AutoBump::VERBOSE  = $verbose;
+        PCW::Modes::AutoBump->bump($engine, proxies => \@proxies, %mode_config);
+    }
 }
-elsif ($mode =~ /delete/)
-{
-    $PCW::Modes::Delete::LOGLEVEL = $loglevel;
-    $PCW::Modes::Delete::VERBOSE  = $verbose;
-    PCW::Modes::Delete->delete($engine, proxies => \@proxies, %mode_config);
-}
-elsif ($mode =~ /proxychecker/)
-{
-    $PCW::Modes::ProxyChecker::LOGLEVEL = $loglevel;
-    $PCW::Modes::ProxyChecker::VERBOSE  = $verbose;
-    PCW::Modes::ProxyChecker->checker($engine, proxies => \@proxies, %mode_config);
-}
-elsif ($mode =~ /autobump/)
-{
-    $PCW::Modes::AutoBump::LOGLEVEL = $loglevel;
-    $PCW::Modes::AutoBump::VERBOSE  = $verbose;
-    PCW::Modes::AutoBump->bump($engine, proxies => \@proxies, %mode_config);
-}
-
 #__END__

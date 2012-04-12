@@ -22,10 +22,10 @@ open my $fh, "<", $proxy_list;
 
 push @raw_proxies, $1
     while $raw_proxies =~ /((http|socks4?:\/\/)?      #-- protocol
-							   ((\w|\d)+:(\w|\d)+@)?     #-- user login and password
-							   (\d+\.\d+\.\d+.\d+\:\d+)| #-- e.g., 192.168.1.1:80
-							   ((\w|\d|\.)+\.\w+:\d+)    #-- e.g., my.awesome.proxy.com:80
-						   )/gsx;
+                               ((\w|\d)+:(\w|\d)+@)?     #-- user login and password
+                               (\d+\.\d+\.\d+.\d+\:\d+)| #-- e.g., 192.168.1.1:80
+                               ((\w|\d|\.)+\.\w+:\d+)    #-- e.g., my.awesome.proxy.com:80
+                           )/gsx;
 
 my @proxies;
 # for my $type ('http', 'socks', 'socks4')

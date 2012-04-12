@@ -26,7 +26,7 @@ sub make_pic($)
     my $conf = shift;
     my $img_mode = $conf->{mode} . '_img';
     Carp::croak sprintf "Image mode '%s' doesn't exist!\n", $conf->{mode}
-			unless exists &{ $img_mode };
+            unless exists &{ $img_mode };
     my $create_img = \&{ $img_mode };
     return &$create_img($conf);
 }
@@ -52,8 +52,10 @@ sub rand_img($)
 sub single_img($)
 {
     my $data = shift;
-    Carp::croak "Image file is not set!" unless my $path_to_img = $data->{path};
-	Carp::croak "The file size greaten then max size allowed!" if int((-s $path_to_img)/1024) > $data->{max_size};
+    Carp::croak "Image file is not set!"
+            unless my $path_to_img = $data->{path};
+    Carp::croak "The file size greaten then max size allowed!"
+            if int((-s $path_to_img)/1024) > $data->{max_size};
 
     return img_altering($path_to_img, $data->{altering})
         if $data->{altering};
@@ -110,7 +112,7 @@ sub img_altering($)
 
     unless ($suffix)
     {
-        warn "$full_name is not an image file.";
+        warn "$full_name is not an image file. Skipping altering";
         return $full_name;
     }
 
@@ -120,15 +122,15 @@ sub img_altering($)
 
     if ($mode eq 'addrand')
     {
-		open my $img_fh, "<", $full_name;
-		my $img;
-		{
-			local $/ = undef;
-			$img = <$img_fh>;
+        open my $img_fh, "<", $full_name;
+        my $img;
+        {
+            local $/ = undef;
+            $img = <$img_fh>;
             close($img_fh);
-		}
-		print $fh $img;
-		my $n = $conf->{number_nums};
+        }
+        print $fh $img;
+        my $n = $conf->{number_nums};
         for (my $i = 0; $i < $n; $i++)
         {
             print $fh int(rand(10));
@@ -140,19 +142,19 @@ sub img_altering($)
     	close($fh);
         my $convert = $conf->{convert};
         my $args    = $conf->{args};
-		my $k = random($conf->{min}, $conf->{max});
-		system("$convert $args -resize $k% $full_name $filename");
+        my $k       = random($conf->{min}, $conf->{max});
+        system("$convert $args -resize $k% $full_name $filename");
     }
     elsif ($mode eq 'convert')
     {
     	close($fh);
         my $convert = $conf->{convert};
         my $args    = $conf->{args};
-		system("$convert $args $full_name $filename");
+        system("$convert $args $full_name $filename");
     }
     else
     {
-        warn "Image altering methode '$mode' does not exist.";
+        warn "Image altering method '$mode' doesn't exist. Skipping altering...";
         close($fh);
         return $full_name;
     }

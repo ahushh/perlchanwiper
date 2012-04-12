@@ -7,7 +7,7 @@ ahushh@gmail.com
 ##Режимы работы
 * wipe — вайп доски/тредов/рандомных тредов
 * autobump — автобампалка, следящая за положение треда на доске и удаляющая за собой посты
-* proxychecker — прокси чекер специально для чанов. но сыроват
+* proxychecker — прокси чекер специально для чанов
 * delete — удалялка постов
   
 ##Файлы и каталоги
@@ -51,12 +51,24 @@ ahushh@gmail.com
       
 `tessedit_char_whitelist abcdefghijklmnopqrstuvwxyz `
   
+На месте `abcdefghijklmnopqrstuvwxyz  указываются допустимые для распознавания символы.
+  
 Или так (распознаваться будут только цифры):
   
 `tessedit_char_whitelist 0123456789`
   
-На месте abcdefghijklmnopqrstuvwxyz указываются допустимые для распознавания символы.
-  
-Отредактировать общий (./config.pl) примерно так:
+Отредактировать общий конфиг (./config.pl):
   
 `config => 'englishletters',`
+   
+#### Не работают socks-прокси!
+В файле `PCW/Core/Net.pm` раскомментировать строку `#use LWP::Protocol::socks;`.
+   
+Установить модуль `LWP::Protocol::socks` через CPAN:
+
+`sudo cpan LWP::Protocol::socks` — если повезет, оно соберется и заработает. Но я бы не надеялся.
+
+или через пакеты дистрибутива. Например, для apt-based:
+   
+`apt-get install liblwp-protocol-socks-perl`
+

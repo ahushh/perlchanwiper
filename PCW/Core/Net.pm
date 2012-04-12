@@ -27,9 +27,9 @@ sub get_recaptcha($$)
                           'Cache-Control'      =>   'max-age=0',
                          };
     my $ua = LWP::UserAgent->new(
-     'agent'           => 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US) AppleWebKit/A.B (KHTML, like Gecko) Chrome/X.Y.Z.W Safari/A.B.', 
-     'default_headers' => HTTP::Headers->new($google_headers),
-    );
+                                 'agent'           => 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US) AppleWebKit/A.B (KHTML, like Gecko) Chrome/X.Y.Z.W Safari/A.B.',
+                                 'default_headers' => HTTP::Headers->new($google_headers),
+                                );
     $ua->proxy([qw/http https/] => $proxy) if $proxy !~ 'no_proxy';
     $ua->cookie_jar( {} );
     my $response = $ua->get($key_url . $key);
@@ -62,10 +62,10 @@ sub http_post($$$$)
     $ua->cookie_jar( {} );
     $ua->proxy([qw/http https/] => $proxy) if $proxy !~ 'no_proxy';
     my $response = $ua->post(
-							 $url,
-							 'Content_Type' => 'multipart/form-data',
-							 'Content'      => $content,
-							);
+                             $url,
+                             'Content_Type' => 'multipart/form-data',
+                             'Content'      => $content,
+                            );
     return $response->code, $response->decoded_content, $response->status_line;
 }
 

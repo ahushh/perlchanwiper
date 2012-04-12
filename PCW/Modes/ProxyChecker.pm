@@ -55,7 +55,7 @@ my $cb_check = unblock_sub
         if $cnf->{img_data}{altering} && $task->{file_path} && -e $task->{file_path};
 
     $stats{total}++;
-    if ($msg =~ /banned|critical_error|net_error/)
+    if ($msg =~ /banned|critical_error|net_error|unknown/)
     {
         $stats{bad}++;
     }

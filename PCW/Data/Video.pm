@@ -19,6 +19,7 @@ my $lock = Coro::Semaphore->new;
 
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
+#-- Regexp to parse ID's
 my %types = ( youtube => ['watch\?v=(?<id>(\w|-)+)&?',
                           'data-video-ids="(?<id>(\w|-)+)"',
                          ],
@@ -79,7 +80,7 @@ sub download_vid($)
     $lock->down;
     if (!@vid_list)
     {
-        echo_msg(1, "Start fetching video IDs...");
+        echo_msg(1, "Start fetching video ID's...");
         my $raw;
         for my $query (@{ $data->{search}})
         {
@@ -99,13 +100,13 @@ sub download_vid($)
             }
         }
         @vid_list = uniq @vid_list;
-        echo_msg(1, "Fetched ". scalar(@vid_list) ." IDs");
+        echo_msg(1, "Fetched ". scalar(@vid_list) ." ID's");
         if (my $path = $data->{save})
         {
             open(my $fh, '>', $path);
             print $fh "@vid_list";
             close $fh;
-            echo_msg(1, "Video IDs saved to $path");
+            echo_msg(1, "Video ID's saved to $path");
         }
     }
     $lock->up;
