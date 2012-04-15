@@ -6,12 +6,6 @@ use Carp;
 use feature qw(switch say);
 
 #------------------------------------------------------------------------------------------------
-# Package Variables
-#------------------------------------------------------------------------------------------------
-our $LOGLEVEL = 0;
-our $VERBOSE  = 0;
-
-#------------------------------------------------------------------------------------------------
 # Importing Coro packages
 #------------------------------------------------------------------------------------------------
 use AnyEvent;
@@ -19,7 +13,6 @@ use Coro::State;
 use Coro::LWP;
 use Coro::Timer;
 use Coro;
-use EV;
 use Time::HiRes;
 
 #------------------------------------------------------------------------------------------------
@@ -30,50 +23,71 @@ use PCW::Core::Net   qw(http_get);
 use PCW::Core::Utils qw(with_coro_timeout);
 
 use PCW::Modes::Common qw(get_posts_by_regexp);
+#------------------------------------------------------------------------------------------------
+# Package Variables
+#------------------------------------------------------------------------------------------------
+our $LOGLEVEL = 0;
+our $VERBOSE  = 0;
+#------------------------------------------------------------------------------------------------
+# Local variables
+#------------------------------------------------------------------------------------------------
+my $delete_queue;
+my $watchers = {};
 
 #------------------------------------------------------------------------------------------------
-# Local package variables and procedures
 #------------------------------------------------------------------------------------------------
-my @proxies;
-my $delete_queue = Coro::Channel->new();
-my %stats  = (error => 0, wrong_password => 0, deleted => 0, total => 0);
-
-sub show_stats()
+sub new($%)
 {
-    say "\nSuccessfully deleted: $stats{deleted}";
-    say "Wrong password: $stats{wrong_password}";
-    say "Error: $stats{error}";
-    say "Total: $stats{total}";
-};
+    my ($class, %args) = @_;
+    my $engine   = delete $args{engine};
+    my $proxies  = delete $args{proxies};
+    my $conf     = delete $args{conf};
+    my $loglevel = delete $args{loglevel} || 1;
+    my $verbose  = delete $args{verbose}  || 0;
+    $LOGLEVEL = $loglevel;
+    $VERBOSE  = $verbose;
+    # TODO: check for errors in the chan-config file
+    my @k = keys %args;
+    Carp::croak("These options aren't defined: @k")
+        if %args;
 
+    my $self = {};
+    $self->{engine}   = $engine;
+    $self->{proxies}  = $proxies;
+    $self->{conf}     = $conf;
+    $self->{loglevel} = $loglevel;
+    $self->{verbose}  = $verbose;
+    bless $self, $class;
+}
 #------------------------------------------------------------------------------------------------
 #----------------------------------  DELETE POST  -----------------------------------------------
 #------------------------------------------------------------------------------------------------
 #-- Coro callback
 my $cb_delete_post = unblock_sub
 {
-    my ($msg, $task, $cnf) = @_;
-    $stats{total}++;
+    my ($msg, $task, $self) = @_;
+    $self->{stats}{total}++;
     given ($msg)
     {
         when ('success')
         {
-            $stats{deleted}++;
+            $self->{stats}{deleted}++;
         }
         when ('wrong_password')
         {
-            $stats{wrong_password}++;
+            $self->{stats}{wrong_password}++;
         }
         default
         {
-            $stats{error}++;
+            $self->{stats}{error}++;
         }
     }
 };
 
 sub delete_post($$$)
 {
-    my ($engine, $task, $cnf) = @_;
+    my ($self, $task) = @_;
+    my $engine = $self->{engine};
     async {
         my $coro = $Coro::current;
         $coro->desc('delete');
@@ -81,9 +95,9 @@ sub delete_post($$$)
         $coro->on_destroy($cb_delete_post);
         my $status =
         with_coro_timeout {
-            $engine->delete($task, $cnf);
-        } $coro, $cnf->{delete_timeout};
-        $coro->cancel($status, $task, $cnf);
+            $engine->delete($task, $self->{conf});
+        } $coro, $self->{conf}{delete_timeout};
+        $coro->cancel($status, $task, $self);
     };
     cede;
 }
@@ -91,105 +105,115 @@ sub delete_post($$$)
 #------------------------------------------------------------------------------------------------
 #------------------------------------  MAIN DELETE  ---------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub delete($$$%)
+sub _pre_init($)
 {
-    my ($self, $engine, %cnf) =  @_;
+    my $self = shift;
+    $self->{is_running} = 1;
+    $self->{stats}      = {error => 0, wrong_password => 0, deleted => 0, total => 0};
+    $delete_queue       = Coro::Channel->new();
+}
 
-    my $proxy = shift @{ $cnf{proxies} };
-    echo_msg($LOGLEVEL >= 2, "Used proxy: $proxy");
-    #-------------------------------------------------------------------
-    #-- Initialization
-    #-------------------------------------------------------------------
-    $PCW::Modes::Common::VERBOSE  = $VERBOSE;
-    $PCW::Modes::Common::LOGLEVEL = $LOGLEVEL;
-
-    my @deletion_posts;
-    if ($cnf{find}{by_id})
-    {
-        @deletion_posts = @{ $cnf{find}{by_id} };
-    }
-    elsif ($cnf{find}{threads} || $cnf{find}{pages})
-    {
-        @deletion_posts = get_posts_by_regexp($proxy, $engine, $cnf{find});
-    }
-    else
-    {
-        Carp::croak("Should be specified how to find posts (by_id/threads/pages).");
-    }
-
-    for my $postid (@deletion_posts)
-    {
-        my $task = {
-            proxy    => $proxy,
-            board    => $cnf{board},
-            password => $cnf{password},
-            delete   => $postid,
-        };
-        $delete_queue->put($task);
-    }
-    #-------------------------------------------------------------------
-    #-------------------------------------------------------------------
-    #-- Timeout watcher
-    my $tw = AnyEvent->timer(after => 0.5, interval => 1, cb =>
-        sub
+sub start($)
+{
+    my $self = shift;
+    async {
+        $self->_pre_init();
+        #-------------------------------------------------------------------
+        my $proxy = shift @{ $self->{proxies} };
+        echo_msg($LOGLEVEL >= 2, "Used proxy: $proxy");
+        $PCW::Modes::Common::VERBOSE  = $VERBOSE;
+        $PCW::Modes::Common::LOGLEVEL = $LOGLEVEL;
+        my @deletion_posts;
+        if ($self->{conf}{find}{by_id})
         {
-            my @delete_coro  = grep { $_->desc eq 'delete' } Coro::State::list;
-
-            echo_msg($LOGLEVEL >= 3, sprintf "run: %d; queue: %d", scalar @delete_coro, $delete_queue->size);
-
-            for my $coro (@delete_coro)
-            {
-                my $now = Time::HiRes::time;
-                if ($coro->{timeout_at} && $now > $coro->{timeout_at})
-                {
-                    echo_proxy(1, 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
-                    $coro->cancel('timeout', $coro->{task}, \%cnf);
-                }
-            }
+            @deletion_posts = @{ $self->{conf}{find}{by_id} };
         }
-    );
+        elsif ($self->{conf}{find}{threads} || $self->{conf}{find}{pages})
+        {
+            @deletion_posts = get_posts_by_regexp($proxy, $self->{engine}, $self->{conf}{find});
+        }
+        else
+        {
+            Carp::croak("Should be specified how to find posts (by_id/threads/pages).");
+        }
+        for my $postid (@deletion_posts)
+        {
+            my $task = {
+                        proxy    => $proxy,
+                        board    => $self->{conf}{board},
+                        password => $self->{conf}{password},
+                        delete   => $postid,
+                       };
+            $delete_queue->put($task);
+        }
+        $self->_init_watchers();
+        while ($self->{is_running})
+        {
+            Coro::Timer::sleep 1;
+        }
+    };
+    cede;
+}
 
-	#-- Delete watcher
-    my $dw = AnyEvent->timer(after => 0.5, interval => 2, cb =>
+sub stop($)
+{
+    my $self = shift;
+    $self->{is_running} = 0;
+}
+
+sub _init_watchers($)
+{
+    my $self = shift;
+    #-- Timeout watcher
+    $watchers->{timeout} =
+        AnyEvent->timer(after => 0.5, interval => 1, cb =>
+                        sub
+                        {
+                            my @delete_coro  = grep { $_->desc eq 'delete' } Coro::State::list;
+                            echo_msg($LOGLEVEL >= 3, sprintf "run: %d; queue: %d", scalar @delete_coro, $delete_queue->size);
+                            for my $coro (@delete_coro)
+                            {
+                                my $now = Time::HiRes::time;
+                                if ($coro->{timeout_at} && $now > $coro->{timeout_at})
+                                {
+                                    echo_proxy(1, 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
+                                    $coro->cancel('timeout', $coro->{task}, $self);
+                                }
+                            }
+                        }
+                       );
+
+    #-- Delete watcher
+    $watchers->{delete}
+        = AnyEvent->timer(after => 0.5, interval => 2, cb =>
         sub
         {
             my @delete_coro  = grep { $_->desc eq 'delete' } Coro::State::list;
             my $thrs_available = -1;
             #-- Max delete threads limit
-            if ($cnf{max_del_thrs})
+            if ($self->{conf}{max_del_thrs})
             {
-                my $n = $cnf{max_del_thrs} - scalar @delete_coro;
+                my $n = $self->{conf}{max_del_thrs} - scalar @delete_coro;
                 $thrs_available = $n > 0 ? $n : 0;
             }
 
-            delete_post($engine, $delete_queue->get, \%cnf)
+            $self->delete_post($delete_queue->get)
                 while $delete_queue->size && $thrs_available--;
         }
     );
 
     #-- Exit watchers
-    my $ew = AnyEvent->timer(after => 1, interval => 2, cb =>
+    $watchers->{exit} =
+        AnyEvent->timer(after => 1, interval => 2, cb =>
         sub
         {
             my @delete_coro  = grep { $_->desc eq 'delete' } Coro::State::list;
             if (!@delete_coro && !$delete_queue->size)
             {
-                EV::break;
-                show_stats();
-                exit;
+                $self->stop;
             }
         }
     );
-    my $sw = AnyEvent->signal(signal => 'INT', cb =>
-        sub
-        {
-            EV::break;
-            show_stats();
-            exit;
-        }
-    );
-
-    EV::run;
 }
 
 1;

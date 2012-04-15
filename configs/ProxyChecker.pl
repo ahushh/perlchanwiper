@@ -12,5 +12,5 @@ our %mode_config = (
         password   => "fNfR3",
     },
     max_thrs   => 100, #-- максимальное колличество запущенных потоков
-    timeout    => 360,
+    timeout    => 60,
 );
