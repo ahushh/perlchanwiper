@@ -158,6 +158,9 @@ sub start($)
 sub stop($)
 {
     my $self = shift;
+    $_->cancel for (grep {$_->desc =~ /delete/ } Coro::State::list);
+    $watchers     = {};
+    $delete_queue = undef;
     $self->{is_running} = 0;
 }
 

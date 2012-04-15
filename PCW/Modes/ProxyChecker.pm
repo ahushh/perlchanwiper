@@ -69,7 +69,7 @@ my $cb_check = unblock_sub
         if $self->{conf}{img_data}{altering} && $task->{file_path} && -e $task->{file_path};
 
     $self->{stats}{total}++;
-    if ($msg =~ /banned|critical_error|net_error|unknown/)
+    if ($msg =~ /banned|critical_error|net_error|unknown|timeout/)
     {
         $self->{stats}{bad}++;
     }
@@ -120,6 +120,9 @@ sub start($)
 sub stop($)
 {
     my $self = shift;
+    $_->cancel for (grep {$_->desc =~ /check/ } Coro::State::list);
+    $watchers = {};
+    $queue    = undef;
     $self->{is_running} = 0;
     my @g = @good_proxies;
     $self->{checked}    = \@g;

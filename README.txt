@@ -15,9 +15,9 @@ ahushh@gmail.com
 
 Файлы и каталоги
 ~~~~~~~~~~~~~~~~
-* cpcw         — запуск
+* pcw          — запуск
 * proxychecker — простой прокси чекер, работающий на основе WWW:ProxyChecker
-* config.pl    — общие настройки
+* config.pl    — настройки изображений/видео/текста, распознавания капчи
 * configs      — настройки для модов (Wipe, AutoBump, Delete, ProxyChecker)
 * OCR          — скрипты, распознающие капчу
 * captcha      — сохраненные файлы капчи (см. опцию 'save_captcha' режима wipe)
@@ -27,10 +27,13 @@ ahushh@gmail.com
 Примеры использования
 ---------------------
 Вайп:
-./cpcw --mode Wipe --chan Nullchan --proxy proxy/my/0chan
+./pcw --mode Wipe --chan Nullchan --proxy proxy/my/0chan
 
 Автобамп:
-./cpcw --mode AutoBump --chan Nullchan --loglevel 2
+./pcw --mode AutoBump --chan Nullchan --loglevel 2
+
+Можно так же сокращать имена параметров до очевидных:
+./pcw --mo AutoBump --ch Nullchan --l 2
 
 Примечания
 ----------
