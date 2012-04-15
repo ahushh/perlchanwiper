@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '0.2-r33';
+our $VERSION = '0.2-r34';
 
 use strict;
 use autodie;
@@ -12,23 +12,26 @@ use Carp;
 use feature qw/say switch/;
 #-----------------------------------------------------------------------------
 use Coro;
+use AnyEvent;
 use Coro::Timer qw/sleep/;
-use Getopt::Long;
-use File::Basename;
-use File::Temp qw/tempdir/;
+use Getopt::Long qw/:config bundling/;
 use File::Spec;
+use File::Basename;
 #-----------------------------------------------------------------------------
 use PCW::Core::Utils qw(get_proxylist);
+
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
-my $common_config = 'config.pl';
 our %mode_config;
 our $chan_config;
-our $mode_config;
 
 my @proxies;
 my @agents;
 my $engine;
+#-----------------------------------------------------------------------------
+my $common_config = 'config.pl';
+my $mode_config;
+
 #-----------------------------------------------------------------------------
 # Parse command line arguments
 #-----------------------------------------------------------------------------
@@ -41,7 +44,7 @@ my $useragents = 'UserAgents';
 my $proxy_file = 'proxy/no';
 my $proxy_type = 'http';
 
-sub init()
+sub parse_args()
 {
     my $help   = 0;
     my $result = GetOptions(
@@ -60,21 +63,19 @@ sub init()
         usage();
         exit 1;
     }
-    # $mode = lc($mode);
     $mode_config = File::Spec->catfile('configs', "$mode.pl")
         unless $mode_config;
 }
 
 sub check_user_error()
 {
-    my $modes_list = 'proxychecker|wipe|delete|autobump';
-
     Carp::croak("Chan config '$chan' does not exist")
         unless($chan || -e "chans/$chan.pl");
 
     Carp::croak("Common config '$common_config' does not exist")
         unless($common_config || -e $common_config);
 
+    my $modes_list = 'proxychecker|wipe|delete|autobump';
     Carp::croak("Mode '$mode' does not exist")
         unless($mode =~ /$modes_list/i);
 
@@ -215,9 +216,30 @@ sub load_mode()
 
 }
 #-----------------------------------------------------------------------------
+sub show_stats($)
+{
+    my %stats = %{ shift() };
+    say "~" x 30;
+    for my $k (keys %stats)
+    {
+        say "$k: $stats{$k}";
+    }
+}
+
+sub measure_speed($$$)
+{
+    my ($posted, $start_time, $u) = @_;
+    my $d;
+    $d = 1   if $u eq 'second';
+    $d = 60  if $u eq 'minute';
+    $d = 360 if $u eq 'hour';
+    return sprintf "%.3f", ($posted / ((time - $start_time)/$d));
+}
+
+#-----------------------------------------------------------------------------
 # RUN
 #-----------------------------------------------------------------------------
-init();
+parse_args();
 check_user_error();
 load_configs();     #-- load %mode_config
 load_proxies();
@@ -225,17 +247,36 @@ load_agents();
 load_chan();        #-- load $chan_config
 load_engine();
 my $m = load_mode();
+info();
 #-----------------------------------------------------------------------------
-info(); #-- Show info
+my $w = AnyEvent->signal (signal => "INT", cb => sub { $m->stop; });
+my $start_time = time;
+#-----------------------------------------------------------------------------
 $m->start;
 while ($m->{is_running})
 {
     sleep 1;
 }
-#say @{ $m->{checked} };
-use Data::Dumper;
-say Dumper($m->{stats});
-if ($mode eq 'ProxyChecker')
+
+given ($mode)
 {
-    say @{ $m->{checked} };
+    when ('ProxyChecker')
+    {
+        show_stats $m->{stats};
+        say @{ $m->{checked} };
+    }
+    when ('AutoBump')
+    {
+        show_stats $m->{stats}{bump};
+        show_stats $m->{stats}{delete};
+    }
+    when ('Wipe')
+    {
+        show_stats $m->{stats};
+        say sprintf("speed: %s posts per minute", measure_speed($m->{stats}{posted}, $start_time, 'minute'));
+    }
+    default
+    {
+        show_stats $m->{stats};
+    }
 }

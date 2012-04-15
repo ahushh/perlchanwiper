@@ -272,6 +272,7 @@ sub start($)
 {
     my $self = shift;
     async {
+        my $watchers = {};
         $self->_pre_init();
         #-- Initialization
         if ($self->{conf}{random_reply})
@@ -287,7 +288,7 @@ sub start($)
         }
         else
         {
-            $get_queue->put({ proxy => $_ }) for (@{ $self->{conf}{proxies} });
+            $get_queue->put({ proxy => $_ }) for (@{ $self->{proxies} });
         }
         $self->_init_watchers();
         while ($self->{is_running})
@@ -311,7 +312,7 @@ sub _pre_init($)
 
 sub _init_watchers($)
 {
-    my $self = shift;
+    my ($self) = shift;
     #-- Timeout watcher
     $watchers->{timeout} =
         AnyEvent->timer(after => 0.5, interval => 1, cb =>
@@ -449,6 +450,11 @@ sub _init_watchers($)
 sub stop($)
 {
     my $self = shift;
+    $_->cancel for (grep {$_->desc =~ /get|prepare|post/ } Coro::State::list);
+    $watchers      = {};
+    $get_queue     = undef;
+    $prepare_queue = undef;
+    $post_queue    = undef;
     $self->{is_running} = 0;
 }
 

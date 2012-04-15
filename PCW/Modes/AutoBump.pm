@@ -278,6 +278,10 @@ sub start($)
 sub stop($)
 {
     my $self = shift;
+    $_->cancel for (grep {$_->desc =~ /bump|delete/ } Coro::State::list);
+    $watchers      = {};
+    $bump_queue    = undef;
+    $delete_queue  = undef;
     $self->{is_running} = 0;
 }
 
