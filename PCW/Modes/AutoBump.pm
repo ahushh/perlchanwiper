@@ -6,12 +6,6 @@ use Carp;
 use feature qw(switch say);
 
 #------------------------------------------------------------------------------------------------
-# Package Variables
-#------------------------------------------------------------------------------------------------
-our $LOGLEVEL = 0;
-our $VERBOSE  = 0;
-
-#------------------------------------------------------------------------------------------------
 # Importing Coro packages
 #------------------------------------------------------------------------------------------------
 use AnyEvent;
@@ -19,7 +13,6 @@ use Coro::State;
 use Coro::LWP;
 use Coro::Timer;
 use Coro;
-use EV;
 use Time::HiRes;
 
 #------------------------------------------------------------------------------------------------
@@ -37,38 +30,49 @@ use PCW::Core::Captcha qw(captcha_report_bad);
 use PCW::Modes::Common qw(get_posts_by_regexp);
 
 #------------------------------------------------------------------------------------------------
-# Local package variables and procedures
+# Package Variables
 #------------------------------------------------------------------------------------------------
-#-- Время запуска следующего бампа
-my $run_at = 0;
-
-my $bump_queue   = Coro::Channel->new();
-my $delete_queue = Coro::Channel->new();
-my %stats        = (error => 0, bumped  => 0, total => 0, wait           => 0);
-my %del_stats    = (error => 0, deleted => 0, total => 0, wrong_password => 0);
-
-sub show_stats
+our $LOGLEVEL = 0;
+our $VERBOSE  = 0;
+#------------------------------------------------------------------------------------------------
+# Local variables
+#------------------------------------------------------------------------------------------------
+my $run_at       ;
+my $bump_queue   ;
+my $delete_queue ;
+my $watchers = {};
+#------------------------------------------------------------------------------------------------
+sub new($%)
 {
-    say "\n~~~Bump stats~~~";
-    say "Bumped: $stats{bumped}";
-    say "Wait: $stats{wait}";
-    say "Error: $stats{error}";
-    say "Total: $stats{total}";
-    say "~~~Delete stats~~~";
-    say "Successfully deleted: $del_stats{deleted}";
-    say "Wrong password: $del_stats{wrong_password}";
-    say "Error: $del_stats{error}";
-    say "Total: $del_stats{total}";
-};
+    my ($class, %args) = @_;
+    my $engine   = delete $args{engine};
+    my $proxies  = delete $args{proxies};
+    my $conf     = delete $args{conf};
+    my $loglevel = delete $args{loglevel} || 1;
+    my $verbose  = delete $args{verbose}  || 0;
+    $LOGLEVEL = $loglevel;
+    $VERBOSE  = $verbose;
+    # TODO: check for errors in the chan-config file
+    my @k = keys %args;
+    Carp::croak("These options aren't defined: @k")
+        if %args;
 
+    my $self = {};
+    $self->{engine}   = $engine;
+    $self->{proxies}  = $proxies;
+    $self->{conf}     = $conf;
+    $self->{loglevel} = $loglevel;
+    $self->{verbose}  = $verbose;
+    bless $self, $class;
+}
 #------------------------------------------------------------------------------------------------
 #--------------------------------------  BUMP THREAD  -------------------------------------------
 #------------------------------------------------------------------------------------------------
 my $run_cleanup = unblock_sub
 {
-    my ($engine, $task, $cnf) = @_;
+    my ($engine, $task, $self) = @_;
     echo_proxy(1, "green", $task->{proxy}, $task->{thread}, "Start deleting posts...");
-    my @deletion_posts = get_posts_by_regexp($task->{proxy}, $engine, $cnf->{find});
+    my @deletion_posts = get_posts_by_regexp($task->{proxy}, $self->{engine}, $self->{conf}{silent}{find});
 
     echo_msg($LOGLEVEL >= 4, "run_cleanup(): \@deletion_posts: @deletion_posts");
 
@@ -76,8 +80,8 @@ my $run_cleanup = unblock_sub
     {
         my $task = {
             proxy    => $task->{proxy},
-            board    => $cnf->{board},
-            password => $cnf->{password},
+            board    => $self->{silent}{conf}{board},
+            password => $self->{silent}{conf}{password},
             delete   => $postid,
         };
         $delete_queue->put($task);
@@ -87,36 +91,36 @@ my $run_cleanup = unblock_sub
 #-- Coro callback
 my $cb_bump_thread = unblock_sub
 {
-    my ($msg, $engine, $task, $cnf) = @_;
+    my ($msg, $task, $self) = @_;
     echo_msg($LOGLEVEL >= 4, "cb_bump_thread(): message: $msg");
     #-- Delete temporary files
     unlink($task->{path_to_captcha})
-        if !$cnf->{save_captcha} && $task->{path_to_captcha} && -e $task->{path_to_captcha};
+        if !$self->{conf}{save_captcha} && $task->{path_to_captcha} && -e $task->{path_to_captcha};
     unlink($task->{file_path})
-        if $cnf->{img_data}{altering} && $task->{file_path} && -e $task->{file_path};
+        if $self->{conf}{img_data}{altering} && $task->{file_path} && -e $task->{file_path};
 
-    $stats{total}++;
+    $self->{stats}{bump}{total}++;
     if ($msg eq 'success')
     {
-        $stats{bumped}++;
+        $self->{stats}{bump}{bumped}++;
 
         my $now = Time::HiRes::time;
-        $run_at = $now + $cnf->{interval};
-        echo_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "sleep $cnf->{interval} seconds...");
+        $run_at = $now + $self->{conf}{interval};
+        echo_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "sleep $self->{conf}{interval} seconds...");
 
         echo_msg($LOGLEVEL >= 4, "run_cleanup(): try to start");
-        &$run_cleanup($engine, $task, $cnf->{silent}) if ($cnf->{silent});
+        &$run_cleanup($self, $task) if ($self->{conf}{silent});
     }
     elsif ($msg =~ /wrong_captcha|no_captcha/)
     {
-        $stats{error}++;
+        $self->{stats}{bump}{error}++;
     }
     elsif ($msg eq 'wait')
     {
-        $stats{wait}++;
+        $self->{stats}{bump}{wait}++;
         my $now = Time::HiRes::time;
-        $run_at = $now + $cnf->{interval};
-        echo_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "sleep $cnf->{interval} seconds...");
+        $run_at = $now + $self->{conf}{interval};
+        echo_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "sleep $self->{conf}{interval} seconds...");
     }
     else #-- Меняем прокси на следующую
     {
@@ -128,15 +132,15 @@ my $cb_bump_thread = unblock_sub
     $bump_queue->put($task);
 };
 
-sub is_need_to_bump($$$)
+sub is_need_to_bump($$)
 {
-    my ($engine, $task, $cnf) = @_;
-    my $thread = $cnf->{post_cnf}{thread};
-    my %check_cnf = ( proxy => $task->{proxy}, board => $cnf->{post_cnf}{board}, thread => $cnf->{post_cnf}{thread} );
-    if ($cnf->{bump_if}{on_pages})
+    my ($self, $task) = @_;
+    my $engine = $self->{engine};
+    my %check_cnf = ( proxy => $task->{proxy}, board => $self->{conf}{post_cnf}{board}, thread => $task->{thread} );
+    if ($self->{conf}{bump_if}{on_pages})
     {
         echo_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "Checking whether thread needs to bump...");
-        my @pages = @{ $cnf->{bump_if}{on_pages} };
+        my @pages = @{ $self->{conf}{bump_if}{on_pages} };
         for my $page (@pages)
         {
             $check_cnf{page} = $page;
@@ -150,10 +154,10 @@ sub is_need_to_bump($$$)
         echo_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "Thread doesn't need to bump");
         return undef;
     }
-    elsif ($cnf->{bump_if}{not_on_pages})
+    elsif ($self->{conf}{bump_if}{not_on_pages})
     {
         echo_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "Checking whether thread needs to bump...");
-        my @pages = @{ $cnf->{bump_if}{not_on_pages} };
+        my @pages = @{ $self->{conf}{bump_if}{not_on_pages} };
         for my $page (@pages)
         {
             $check_cnf{page} = $page;
@@ -169,27 +173,28 @@ sub is_need_to_bump($$$)
     }
 }
 
-sub bump_thread($$$)
+sub bump_thread($$)
 {
-    my ($engine, $task, $cnf) = @_;
+    my ($self, $task) = @_;
+    my $engine = $self->{engine};
     async {
         my $coro = $Coro::current;
         $coro->desc('bump');
         $coro->{task} = $task;
         $coro->on_destroy($cb_bump_thread);
-        $coro->cancel('wait', $engine, $task, $cnf)
-            unless is_need_to_bump($engine, $task, $cnf);
+        $coro->cancel('wait', $task, $self)
+            unless is_need_to_bump($self, $task);
         my $status =
         with_coro_timeout {
-            my $status = $engine->get($task, $cnf);
-            $coro->cancel($status, $engine, $task, $cnf) if ($status ne 'success');
+            my $status = $engine->get($task, $self->{conf});
+            $coro->cancel($status, $task, $self) if ($status ne 'success');
 
-            $status = $engine->prepare($task, $cnf);
-            $coro->cancel($status, $engine, $task, $cnf) if ($status ne 'success');
+            $status = $engine->prepare($task, $self->{conf});
+            $coro->cancel($status, $task, $self) if ($status ne 'success');
 
-            $status = $engine->post($task, $cnf);
-        } $coro, $cnf->{timeout};
-        $coro->cancel($status, $engine, $task, $cnf);
+            $status = $engine->post($task, $self->{conf});
+        } $coro, $self->{conf}{timeout};
+        $coro->cancel($status, $task, $self);
     };
     cede;
 }
@@ -200,28 +205,29 @@ sub bump_thread($$$)
 #-- Coro callback
 my $cb_delete_post = unblock_sub
 {
-    my ($msg, $task, $cnf) = @_;
-    $del_stats{total}++;
+    my ($msg, $task, $self) = @_;
+    $self->{stats}{delete}{total}++;
     given ($msg)
     {
         when ('success')
         {
-            $del_stats{deleted}++;
+            $self->{stats}{delete}{deleted}++;
         }
         when ('wrong_password')
         {
-            $del_stats{wrong_password}++;
+            $self->{stats}{delete}{wrong_password}++;
         }
         default
         {
-            $del_stats{error}++;
+            $self->{stats}{delete}{error}++;
         }
     }
 };
 
-sub delete_post($$$)
+sub delete_post($$)
 {
-    my ($engine, $task, $cnf) = @_;
+    my ($self, $task) = @_;
+    my $engine = $self->{engine};
     async {
         my $coro = $Coro::current;
         $coro->desc('delete');
@@ -229,9 +235,9 @@ sub delete_post($$$)
         $coro->on_destroy($cb_delete_post);
         my $status =
         with_coro_timeout {
-            $engine->delete($task, $cnf);
-        } $coro, $cnf->{delete_timeout};
-        $coro->cancel($status, $task, $cnf);
+            $engine->delete($task, $self->{conf}{silent});
+        } $coro, $self->{conf}{silent}{delete_timeout};
+        $coro->cancel($status, $task, $self);
     };
     cede;
 }
@@ -239,88 +245,107 @@ sub delete_post($$$)
 #------------------------------------------------------------------------------------------------
 #---------------------------------------  BUMP MAIN  --------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub bump($$%)
+sub _pre_init($)
 {
-    my ($self, $engine, %cnf) =  @_;
+    my $self      = shift;
+    $run_at       = 0;
+    $bump_queue   = Coro::Channel->new();
+    $delete_queue = Coro::Channel->new();
+    $self->{is_running}    = 1;
+    $self->{stats}{bump}   = {error => 0, bumped  => 0, total => 0, wait           => 0};
+    $self->{stats}{delete} = {error => 0, deleted => 0, total => 0, wrong_password => 0};
 
-    #-- Initialization
-    $PCW::Modes::Common::VERBOSE = $VERBOSE;
-    $PCW::Modes::Common::LOGLEVEL = $LOGLEVEL;
-    my $proxy = shift @{ $cnf{proxies} };
-    $bump_queue->put({ proxy => $proxy, thread => $cnf{post_cnf}{thread} });
+}
 
-    #-- Timeout watcher
-    my $tw = AnyEvent->timer(after => 0.5, interval => 1, cb =>
-        sub
+sub start($)
+{
+    my $self = shift;
+    async {
+        $self->_pre_init();
+        $PCW::Modes::Common::VERBOSE = $VERBOSE;
+        $PCW::Modes::Common::LOGLEVEL = $LOGLEVEL;
+        my $proxy = shift @{ $self->{proxies} };
+        $bump_queue->put({ proxy => $proxy, thread => $self->{conf}{post_cnf}{thread} });
+        $self->_init_watchers();
+        while ($self->{is_running})
         {
-            my @bump_coro   = grep { $_->desc ? ($_->desc eq 'bump')   : 0 } Coro::State::list;
-            my @delete_coro = grep { $_->desc ? ($_->desc eq 'delete') : 0 } Coro::State::list;
-
-            echo_msg($LOGLEVEL >= 3, sprintf "run: %d bump, %d delete.",
-                scalar @bump_coro, scalar @delete_coro);
-            echo_msg($LOGLEVEL >= 3, sprintf "queue: %d bump, %d delete.",
-                $bump_queue->size, $delete_queue->size);
-
-            for my $coro (@bump_coro, @delete_coro)
-            {
-                my $now = Time::HiRes::time;
-                if ($coro->{timeout_at} && $now > $coro->{timeout_at})
-                {
-                    echo_proxy(1, 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
-                    $coro->cancel('timeout', $coro->{task}, \%cnf);
-                }
-            }
+            Coro::Timer::sleep 1;
         }
-    );
+    };
+    cede;
+}
+
+sub stop($)
+{
+    my $self = shift;
+    $self->{is_running} = 0;
+}
+
+sub _init_watchers($)
+{
+    my $self = shift;
+    #-- Timeout watcher
+    $watchers->{timeout} =
+        AnyEvent->timer(after => 0.5, interval => 1, cb =>
+                        sub
+                        {
+                            my @bump_coro   = grep { $_->desc ? ($_->desc eq 'bump')   : 0 } Coro::State::list;
+                            my @delete_coro = grep { $_->desc ? ($_->desc eq 'delete') : 0 } Coro::State::list;
+
+                            echo_msg($LOGLEVEL >= 3, sprintf "run: %d bump, %d delete.",
+                                     scalar @bump_coro, scalar @delete_coro);
+                            echo_msg($LOGLEVEL >= 3, sprintf "queue: %d bump, %d delete.",
+                                     $bump_queue->size, $delete_queue->size);
+
+                            for my $coro (@bump_coro, @delete_coro)
+                            {
+                                my $now = Time::HiRes::time;
+                                if ($coro->{timeout_at} && $now > $coro->{timeout_at})
+                                {
+                                    echo_proxy(1, 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
+                                    $coro->cancel('timeout', $coro->{task}, $self);
+                                }
+                            }
+                        }
+                       );
 
     #-- Bump watcher
-    my $bw = AnyEvent->timer(after => 0.5, interval => 1, cb =>
-        sub
-        {
-            my @bump_coro   = grep { $_->desc ? ($_->desc eq 'bump')   : 0 } Coro::State::list;
-            my @delete_coro = grep { $_->desc ? ($_->desc eq 'delete') : 0 } Coro::State::list;
+    $watchers->{bump} =
+        AnyEvent->timer(after => 0.5, interval => 1, cb =>
+                        sub
+                        {
+                            my @bump_coro   = grep { $_->desc ? ($_->desc eq 'bump')   : 0 } Coro::State::list;
+                            my @delete_coro = grep { $_->desc ? ($_->desc eq 'delete') : 0 } Coro::State::list;
 
-            #-- Ждем, если уже запущен бамп или удаление
-            return if (scalar @bump_coro or scalar @delete_coro);
-            my $now = Time::HiRes::time;
-            #-- Или если время еще не пришло
-            return if ($now < $run_at);
-
-            my $task = $bump_queue->get;
-            bump_thread($engine, $task, \%cnf);
-        }
-    );
+                            #-- Ждем, если уже запущен бамп или удаление
+                            return if (scalar @bump_coro or scalar @delete_coro);
+                            my $now = Time::HiRes::time;
+                            #-- Или если время еще не пришло
+                            return if ($now < $run_at);
+                            $self->bump_thread( $bump_queue->get );
+                        }
+                       );
 
     #-- Delete watcher
-    my $dw = AnyEvent->timer(after => 1, interval => 2, cb =>
-        sub
-        {
-            my @delete_coro = grep { $_->desc ? ($_->desc eq 'delete') : 0 } Coro::State::list;
+    $watchers->{delete} =
+        AnyEvent->timer(after => 1, interval => 2, cb =>
+                        sub
+                        {
+                            my @delete_coro = grep { $_->desc ? ($_->desc eq 'delete') : 0 } Coro::State::list;
 
-            my $thrs_available = -1;
-            #-- Max delete threads limit
-            if ($cnf{silent}->{max_del_thrs})
-            {
-                my $n = $cnf{silent}->{max_del_thrs} - scalar @delete_coro;
-                $thrs_available = $n > 0 ? $n : 0;
-            }
+                            my $thrs_available = -1;
+                            #-- Max delete threads limit
+                            if ($self->{conf}{silent}{max_del_thrs})
+                            {
+                                my $n = $self->{conf}{silent}{max_del_thrs} - scalar @delete_coro;
+                                $thrs_available = $n > 0 ? $n : 0;
+                            }
 
-            delete_post($engine, $delete_queue->get, $cnf{silent})
-                while $delete_queue->size && $thrs_available--;
-        }
-    ) if $cnf{silent};
-
-    #-- Signal watcher
-    my $sw = AnyEvent->signal(signal => 'INT', cb =>
-        sub
-        {
-            EV::break;
-            show_stats();
-            exit;
-        }
-    );
-
-    EV::run;
+                            #-- $self->{conf}{silent}
+                            $self->delete_post($delete_queue->get)
+                                while $delete_queue->size && $thrs_available--;
+                        }
+                       ) if $self->{conf}{silent};
 }
 
 1;

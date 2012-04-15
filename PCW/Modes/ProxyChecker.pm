@@ -6,12 +6,6 @@ use Carp;
 use feature qw(say);
 
 #------------------------------------------------------------------------------------------------
-# Package Variables
-#------------------------------------------------------------------------------------------------
-our $LOGLEVEL = 0;
-our $VERBOSE  = 0;
-
-#------------------------------------------------------------------------------------------------
 # Importing Coro packages
 #------------------------------------------------------------------------------------------------
 use AnyEvent;
@@ -19,7 +13,6 @@ use Coro::State;
 use Coro::LWP;
 use Coro::Timer;
 use Coro;
-use EV;
 use Time::HiRes;
 
 #------------------------------------------------------------------------------------------------
@@ -30,45 +23,67 @@ use PCW::Core::Utils   qw(with_coro_timeout);
 use PCW::Core::Captcha qw(captcha_report_bad);
 
 #------------------------------------------------------------------------------------------------
-# Local package variables and procedures
+# Package Variables
 #------------------------------------------------------------------------------------------------
-my @good_proxis;
-my $queue = Coro::Channel->new();
-my %stats = (bad => 0, good => 0, total => 0);
-
-sub show_stats
+our $LOGLEVEL = 0;
+our $VERBOSE  = 0;
+#------------------------------------------------------------------------------------------------
+# Local variables
+#------------------------------------------------------------------------------------------------
+my $queue             ;
+my $watchers     = {} ;
+my @good_proxies = () ;
+#------------------------------------------------------------------------------------------------
+sub new($%)
 {
-    say "\nGood: $stats{good}";
-    say "Bad: $stats{bad}";
-    say "Total: $stats{total}";
-    say "Proxies: @good_proxis";
-};
+    my ($class, %args) = @_;
+    my $engine   = delete $args{engine};
+    my $proxies  = delete $args{proxies};
+    my $conf     = delete $args{conf};
+    my $loglevel = delete $args{loglevel} || 1;
+    my $verbose  = delete $args{verbose}  || 0;
+    $LOGLEVEL = $loglevel;
+    $VERBOSE  = $verbose;
+    # TODO: check for errors in the chan-config file
+    my @k = keys %args;
+    Carp::croak("These options aren't defined: @k")
+        if %args;
+
+    my $self = {};
+    $self->{engine}   = $engine;
+    $self->{proxies}  = $proxies;
+    $self->{conf}     = $conf;
+    $self->{loglevel} = $loglevel;
+    $self->{verbose}  = $verbose;
+    bless $self, $class;
+}
 
 #------------------------------------------------------------------------------------------------
 #---------------------------------------  CHECK  -------------------------------------------------
 #------------------------------------------------------------------------------------------------
 my $cb_check = unblock_sub
 {
-    my ($msg, $task, $cnf) = @_;
+    my ($msg, $task, $self) = @_;
     #-- Delete temporary files
     unlink($task->{file_path})
-        if $cnf->{img_data}{altering} && $task->{file_path} && -e $task->{file_path};
+        if $self->{conf}{img_data}{altering} && $task->{file_path} && -e $task->{file_path};
 
-    $stats{total}++;
+    $self->{stats}{total}++;
     if ($msg =~ /banned|critical_error|net_error|unknown/)
     {
-        $stats{bad}++;
+        $self->{stats}{bad}++;
     }
     else
     {
-        $stats{good}++;
-        push @good_proxis, $task->{proxy};
+        $self->{stats}{good}++;
+        push @good_proxies, $task->{proxy};
     }
 };
 
 sub check($$$)
 {
-    my ($engine, $task, $cnf) = @_;
+    my ($self, $task) = @_;
+    my $engine = $self->{engine};
     async {
         my $coro = $Coro::current;
         $coro->desc('check');
@@ -77,79 +92,95 @@ sub check($$$)
 
         my $status = 
         with_coro_timeout {
-            $engine->ban_check($task, $cnf);
-        } $coro, $cnf->{timeout};
+            $engine->ban_check($task, $self->{conf});
+        } $coro, $self->{conf}{timeout};
 
-        $coro->cancel($status, $task, $cnf);
+        $coro->cancel($status, $task, $self);
     };
     cede;
 }
 #------------------------------------------------------------------------------------------------
 #------------------------------------  MAIN CHECKER  --------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub checker($$%)
+sub start($)
 {
-    my ($self, $engine, %cnf) =  @_;
-
-    #-- Initialization
-    $queue->put({ proxy => $_ }) for (@{ $cnf{proxies} });
-
-    #-- Timeout watcher
-    my $tw = AnyEvent->timer(after => 0.5, interval => 1, cb =>
-        sub
+    my $self = shift;
+    async {
+        $self->_pre_init();
+        $queue->put({ proxy => $_ }) for (@{ $self->{proxies} });
+        $self->_init_watchers();
+        while ($self->{is_running})
         {
-            my @checker_coro = grep { $_->desc eq 'check' } Coro::State::list;
-
-            echo_msg($LOGLEVEL >= 3, sprintf "run: %d coros.", scalar @checker_coro);
-            echo_msg($LOGLEVEL >= 3, sprintf "queue: %d coros.", $queue->size);
-
-            for my $coro (@checker_coro)
-            {
-                my $now = Time::HiRes::time;
-                if ($coro->{timeout_at} && $now > $coro->{timeout_at})
-                {
-                    echo_proxy(1, 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
-                    $coro->cancel('timeout', $coro->{task}, \%cnf);
-                }
-            }
+            Coro::Timer::sleep 1;
         }
-    );
+    };
+    cede;
+}
+
+sub stop($)
+{
+    my $self = shift;
+    $self->{is_running} = 0;
+    my @g = @good_proxies;
+    $self->{checked}    = \@g;
+}
+
+sub _pre_init($)
+{
+    my $self = shift;
+    $self->{is_running} = 1;
+    $self->{stats}      = {bad => 0, good => 0, total => 0};
+    $self->{checked}    = {};
+    $queue              = Coro::Channel->new();
+}
+
+sub _init_watchers($)
+{
+    my $self = shift;
+    #-- Timeout watcher
+    $watchers->{timeout} =
+        AnyEvent->timer(after => 0.5, interval => 1, cb =>
+                        sub
+                        {
+                            my @coros = grep { $_->desc eq 'check' } Coro::State::list;
+                            echo_msg($LOGLEVEL >= 3, sprintf "run: %d; queue: %d", scalar(@coros), $queue->size);
+
+                            for my $coro (@coros)
+                            {
+                                my $now = Time::HiRes::time;
+                                if ($coro->{timeout_at} && $now > $coro->{timeout_at})
+                                {
+                                    echo_proxy(1, 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
+                                    $coro->cancel('timeout', $coro->{task}, $self);
+                                }
+                            }
+                        }
+                       );
 
     #-- Watcher
-    my $w = AnyEvent->timer(after => 0.5, interval => 1, cb =>
-        sub
-        {
-            my @checker_coro = grep { $_->desc eq 'check' } Coro::State::list;
-            my $thrs_available = $cnf{max_thrs} - scalar @checker_coro;
-            check($engine, $queue->get, \%cnf)
-                while $queue->size && $thrs_available--;
-        }
-    );
+    $watchers->{check}
+        = AnyEvent->timer(after => 0.5, interval => 1, cb =>
+                          sub
+                          {
+                              my @checker_coro = grep { $_->desc eq 'check' } Coro::State::list;
+                              my $thrs_available = $self->{conf}{max_thrs} - scalar @checker_coro;
+                              $self->check($queue->get)
+                                  while $queue->size && $thrs_available--;
+                          }
+                         );
 
     #-- Exit watchers
-    my $ew = AnyEvent->timer(after => 5, interval => 1, cb =>
-        sub
-        {
-            my @checker_coro = grep { $_->desc =~ /check/ } Coro::State::list;
-            if (!(scalar @checker_coro))
-            {
-                EV::break;
-                show_stats();
-                exit;
-            }
-        }
-    );
-
-    my $sw = AnyEvent->signal(signal => 'INT', cb =>
-        sub
-        {
-            EV::break;
-            show_stats();
-            exit;
-        }
-    );
-
-    EV::run;
+    $watchers->{exit}
+        = AnyEvent->timer(after => 5, interval => 1, cb =>
+                          sub
+                          {
+                              my @checker_coro = grep { $_->desc =~ /check/ } Coro::State::list;
+                              if (!(scalar @checker_coro) && $queue->size == 0)
+                              {
+                                  $self->stop;
+                              }
+                          }
+                         );
 }
 
 1;

@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '0.2-r31';
+our $VERSION = '0.2-r33';
 
 use strict;
 use autodie;
@@ -10,22 +10,16 @@ use lib 'lib';
 #-----------------------------------------------------------------------------
 use Carp;
 use feature qw/say switch/;
-
 #-----------------------------------------------------------------------------
+use Coro;
+use Coro::Timer qw/sleep/;
 use Getopt::Long;
 use File::Basename;
 use File::Temp qw/tempdir/;
 use File::Spec;
-
 #-----------------------------------------------------------------------------
-use PCW::Modes::Wipe;
-use PCW::Modes::Delete;
-use PCW::Modes::AutoBump;
-use PCW::Modes::ProxyChecker;
 use PCW::Core::Utils qw(get_proxylist);
-
 #-----------------------------------------------------------------------------
-# Common variables
 #-----------------------------------------------------------------------------
 my $common_config = 'config.pl';
 our %mode_config;
@@ -35,7 +29,6 @@ our $mode_config;
 my @proxies;
 my @agents;
 my $engine;
-
 #-----------------------------------------------------------------------------
 # Parse command line arguments
 #-----------------------------------------------------------------------------
@@ -67,7 +60,7 @@ sub init()
         usage();
         exit 1;
     }
-    $mode = lc($mode);
+    # $mode = lc($mode);
     $mode_config = File::Spec->catfile('configs', "$mode.pl")
         unless $mode_config;
 }
@@ -121,14 +114,14 @@ sub info()
 #-----------------------------------------------------------------------------
 # Usage
 #-----------------------------------------------------------------------------
-sub usage
+sub usage()
 {
     my @modes;
     for my $path (glob "PCW/Modes/*.pm")
     {
         next if $path =~ /Common/;
         my ($mode, undef, undef) = fileparse($path, '.pm');
-        push @modes, lc($mode);
+        push @modes, $mode;
     }
     my @chans;
     for my $path (glob "chans/*.pl")
@@ -208,6 +201,21 @@ sub load_engine()
     Carp::croak($@) if ($@);
     $engine = $package->new(%$chan_config, agents => \@agents, loglevel => $loglevel, verbose => $verbose);
 }
+
+sub load_mode()
+{
+    my $package = "PCW::Modes::$mode";
+    eval("use $package");
+    Carp::croak($@) if ($@);
+    $package->new(engine   => $engine,
+                  proxies  => \@proxies,
+                  conf     => \%mode_config,
+                  loglevel => $loglevel,
+                  verbose  => $verbose);
+
+}
+#-----------------------------------------------------------------------------
+# RUN
 #-----------------------------------------------------------------------------
 init();
 check_user_error();
@@ -216,36 +224,18 @@ load_proxies();
 load_agents();
 load_chan();        #-- load $chan_config
 load_engine();
+my $m = load_mode();
 #-----------------------------------------------------------------------------
-info();                         #-- Show info
-#config_checker($mode, %args);  #-- Check for common config errors
-##-----------------------------------------------------------------------------
-use Coro;
-given ($mode)
+info(); #-- Show info
+$m->start;
+while ($m->{is_running})
 {
-    when ('wipe')
-    {
-        $PCW::Modes::Wipe::LOGLEVEL = $loglevel;
-        $PCW::Modes::Wipe::VERBOSE  = $verbose;
-        PCW::Modes::Wipe->wipe($engine, proxies => \@proxies, %mode_config);
-    }
-    when ('delete')
-    {
-        $PCW::Modes::Delete::LOGLEVEL = $loglevel;
-        $PCW::Modes::Delete::VERBOSE  = $verbose;
-        PCW::Modes::Delete->delete($engine, proxies => \@proxies, %mode_config);
-    }
-    when ('proxychecker')
-    {
-        $PCW::Modes::ProxyChecker::LOGLEVEL = $loglevel;
-        $PCW::Modes::ProxyChecker::VERBOSE  = $verbose;
-        PCW::Modes::ProxyChecker->checker($engine, proxies => \@proxies, %mode_config);
-    }
-    when ('autobump')
-    {
-        $PCW::Modes::AutoBump::LOGLEVEL = $loglevel;
-        $PCW::Modes::AutoBump::VERBOSE  = $verbose;
-        PCW::Modes::AutoBump->bump($engine, proxies => \@proxies, %mode_config);
-    }
+    sleep 1;
 }
-#__END__
+#say @{ $m->{checked} };
+use Data::Dumper;
+say Dumper($m->{stats});
+if ($mode eq 'ProxyChecker')
+{
+    say @{ $m->{checked} };
+}
