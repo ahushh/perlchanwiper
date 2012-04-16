@@ -33,7 +33,7 @@ ahushh@gmail.com
 ./pcw --mode AutoBump --chan Nullchan --loglevel 2
 
 Можно так же сокращать имена параметров до очевидных:
-./pcw --mo AutoBump --ch Nullchan --l 2
+./pcw --mo AutoBump --ch Nullchan --logl 2
 
 Примечания
 ----------

@@ -1,58 +1,65 @@
 package PCW::Core::Log;
-
-use Exporter 'import';
-our @EXPORT_OK = qw(echo_msg echo_msg_dbg echo_proxy echo_proxy_dbg);
+use feature qw(switch say);
 
 use strict;
 use autodie;
 use Carp;
 
 use Term::ANSIColor;
-use feature qw(switch say);
+use Time::Local;
+use POSIX qw/strftime/;
+use IO::Handle;
 
-#-- Change from 1 to 0 to disable colored output
-use constant COLORED => 1;
 #------------------------------------------------------------------------------------------------
-#---------------------------------------------- LOG ---------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub get_time()
+sub new($%)
 {
-    my ($sec, $min, $hour) = localtime; 
-    $sec  = "0$sec"  if (length $sec == 1);
-    $min  = "0$min"  if (length $min == 1);
-    $hour = "0$hour" if (length $hour == 1);
-    return "$hour:$min:$sec";
+    my ($class, %args) = @_;
+    my $level      = delete $args{level};
+    my $file       = delete $args{file};
+    my $colored    = delete $args{colored};
+
+    my @k = keys %args;
+    Carp::croak("These options aren't defined: @k")
+        if %args;
+
+    my $fh;
+    if ($file)
+    {
+        open $fh, '>', $file;
+        $fh->autoflush(1);
+    }
+    my $self = {};
+    $self->{level}   = $level;
+    $self->{file}    = $fh || *STDOUT;
+    $self->{colored} = $colored;
+    bless $self, $class;
+
 }
 
-sub echo_msg($;$$)
+sub msg($$;$$$)
 {
-    my ($p, $msg, $type) = @_;
-    return 0 unless $p;
+    my ($self, $l, $msg, $type, $color) = @_;
+    return 0 if $self->{level} < $l;
+    my $fh    = $self->{file};
+    undef $color unless $self->{colored};
 
-    printf "[%s]"   , get_time;
-    printf "[%15s]" , $type    if $type;
-    printf " %s\n"  , $msg     if $msg;
-
+    print  $fh strftime("[%H:%M:%S]", localtime(time));
+    printf $fh "[%15s]", $type if $type;
+    say    $fh colored [$color], " $msg" if $msg;
     return 1;
 }
 
-sub echo_proxy($$$$$)
+sub pretty_proxy($$$$$$)
 {
-    no warnings;
-    my $print_proxy = sub
-    {
-        my ($proxy, $color) = @_;
-        $color = '' unless COLORED;
-        print colored [$color], sprintf " %-40s ", $proxy;
-    };
+    my ($self, $l, $color, $proxy, $type, $msg) = @_;
+    return 0 if $self->{level} < $l;
+    my $fh    = $self->{file};
+    undef $color unless $self->{colored};
 
-    my ($p, $color, $proxy, $type, $msg) = @_;
-    return 0 unless $p;
-
-    echo_msg(1, '', $type);
-
-    &$print_proxy($proxy, $color);
-    say $msg;
+    $self->msg($l, undef, $type); #-- print time and type
+    print $fh colored [$color], sprintf(" %-40s ", $proxy);
+    say $fh $msg;
 
     return 1;
 }

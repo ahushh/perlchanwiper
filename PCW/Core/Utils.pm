@@ -16,8 +16,8 @@ use Data::Random qw(rand_set);
 # CORO TIMEOUT
 #------------------------------------------------------------------------------------------------
 use Coro;
-use Coro::State;
-use LWP::UserAgent;
+#use Coro::State;
+#use LWP::UserAgent;
 use Time::HiRes;
 
 sub with_coro_timeout(&$$)
@@ -108,7 +108,7 @@ use File::Temp qw(tempfile);
 
 sub save_file($$)
 {
-    my ($content, $type, $template) = @_;
+    my ($content, $type) = @_;
     my ($fh, $filename) = tempfile(UNLINK => 1, SUFFIX => ".$type");
     print $fh $content;
     close($fh);
@@ -116,7 +116,7 @@ sub save_file($$)
 }
 
 #------------------------------------------------------------------------------------------------
-# FINDS GIVEN COOKIES AND RETURNS AS STRING
+# FIND COOKIES IN THE HEADER STRING
 #------------------------------------------------------------------------------------------------
 sub parse_cookies($$)
 {

@@ -9,7 +9,6 @@ use Exporter 'import';
 our @EXPORT_OK = qw(make_vid);
 
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Log qw(echo_msg);
 use Data::Random qw(rand_set);
 use List::MoreUtils qw(uniq);
 use LWP::Simple qw(get);
@@ -80,7 +79,7 @@ sub download_vid($)
     $lock->down;
     if (!@vid_list)
     {
-        echo_msg(1, "Start fetching video ID's...");
+        say "Start fetching video ID's...";
         my $raw;
         for my $query (@{ $data->{search}})
         {
@@ -100,13 +99,13 @@ sub download_vid($)
             }
         }
         @vid_list = uniq @vid_list;
-        echo_msg(1, "Fetched ". scalar(@vid_list) ." ID's");
+        say "Fetched ". scalar(@vid_list) ." ID's";
         if (my $path = $data->{save})
         {
             open(my $fh, '>', $path);
             print $fh "@vid_list";
             close $fh;
-            echo_msg(1, "Video ID's saved to $path");
+            say "Video ID's saved to $path";
         }
     }
     $lock->up;
