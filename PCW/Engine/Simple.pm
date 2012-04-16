@@ -27,7 +27,6 @@ use HTTP::Headers;
 use PCW::Core::Utils    qw(merge_hashes parse_cookies html2text save_file);
 use PCW::Core::Captcha  qw(captcha_recognizer);
 use PCW::Core::Net      qw(http_get http_post get_recaptcha);
-use PCW::Core::Log      qw(echo_msg echo_proxy);
 use PCW::Data::Images   qw(make_pic);
 use PCW::Data::Text     qw(make_text);
 
@@ -43,14 +42,14 @@ sub new($%)
 {
     my ($class, %args) = @_;
     my $agents   = delete $args{agents};
-    my $loglevel = delete $args{loglevel} || 1;
+    my $log      = delete $args{log};
     my $verbose  = delete $args{verbose}  || 0;
 
     # TODO: check for errors in the chan-config file
     Carp::croak("Option 'agents' should be are set.")
         unless(@$agents);
 
-    my $self  = { loglevel => $loglevel, verbose => $verbose, agents => $agents, %args };
+    my $self  = { log => $log, verbose => $verbose, agents => $agents, %args };
     bless $self, $class;
 }
 
@@ -153,11 +152,12 @@ sub get_all_threads($$)
 sub is_thread_on_page($%)
 {
     my ($self, %config) = @_;
+    my $log  = $self->{log};
     my $task = { proxy => $config{proxy} };
     my $cnf  = { page  => $config{page}, board => $config{board} };
 
     my ($page, undef, $status) = $self->get_page($task, $cnf);
-    echo_msg($self->{loglevel} >= 2, "Page $config{page} downloaded: $status");
+    $log->msg(2, "Page $config{page} downloaded: $status");
     my %threads = $self->get_all_threads($page);
 
     return grep { $_ == $config{thread} } keys(%threads);
@@ -270,6 +270,7 @@ sub prepare($$$$)
 sub _check_post_result($$$$$)
 {
     my ($self, $response, $code, $task, $cnf) = @_;
+    my $log = $self->{log};
 
     for my $type (keys %{ $self->{response}{post} })
     {
@@ -285,14 +286,14 @@ sub _check_post_result($$$$$)
         {
             if ($response =~ /$_/ || $code =~ /$_/)
             {
-                echo_proxy(1, $color, $task->{proxy}, 'POST',
+                $log->pretty_proxy(1, $color, $task->{proxy}, 'POST',
                             sprintf("[%s](%d){%s}", uc($type), $code, ($self->{verbose} ? html2text($response) : $_)));
                 return($type);
             }
         }
     }
 
-    echo_proxy(1, 'yellow', $task->{proxy}, 'POST',
+    $log->pretty_proxy(1, 'yellow', $task->{proxy}, 'POST',
         sprintf("[%s](%d){%s}", 'UNKNOWN', $code, ($self->{verbose} ? html2text($response) : 'unknown error')));
     return('unknown');
 }
@@ -319,6 +320,7 @@ sub post($$$$)
 sub _check_delete_result($$$$$)
 {
     my ($self, $response, $code, $task, $cnf) = @_;
+    my $log = $self->{log};
 
     for my $type (keys %{ $self->{response}{delete} })
     {
@@ -333,13 +335,13 @@ sub _check_delete_result($$$$$)
         {
             if ($response =~ /$_/ || $code =~ /$_/)
             {
-                echo_proxy(1, $color, $task->{proxy}, "DELETE $task->{delete}",
+                $log->pretty_proxy(1, $color, $task->{proxy}, "DELETE $task->{delete}",
                             sprintf("[%s](%d){%s}", uc($type), $code, ($self->{verbose} ? html2text($response) : $_)));
                 return($type);
             }
         }
     }
-    echo_proxy(1, 'yellow', $task->{proxy}, "DELETE $task->{delete}",
+    $log->pretty_proxy(1, 'yellow', $task->{proxy}, "DELETE $task->{delete}",
         sprintf("[%s](%d){%s}", 'UNKNOWN', $code, ($self->{verbose} ? html2text($response) : 'unknown error')));
     return('unknown');
 }
@@ -371,6 +373,7 @@ sub delete($$$$)
 sub _check_ban_result($$$$$)
 {
     my ($self, $response, $code, $task, $cnf) = @_;
+    my $log = $self->{log};
 
     for my $type (keys %{ $self->{response}{post} })
     {
@@ -384,14 +387,14 @@ sub _check_ban_result($$$$$)
         {
             if ($response =~ /$_/ || $code =~ /$_/)
             {
-                echo_proxy(1, $color, $task->{proxy}, 'CHECK',
+                $log->pretty_proxy(1, $color, $task->{proxy}, 'CHECK',
                             sprintf("[%s](%d){%s}", uc($type), $code, ($self->{verbose} ? html2text($response) : $_)));
                 return($type);
             }
         }
     }
 
-    echo_proxy(1, 'yellow', $task->{proxy}, 'CHECK',
+    $log->pretty_proxy(1, 'yellow', $task->{proxy}, 'CHECK',
         sprintf("[%s](%d){%s}", 'UNKNOWN', $code, ($self->{verbose} ? html2text($response) : 'unknown error')));
 
     return('unknown');

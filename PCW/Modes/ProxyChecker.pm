@@ -5,6 +5,7 @@ use autodie;
 use Carp;
 use feature qw(say);
 
+use base 'PCW::Modes::Abstract';
 #------------------------------------------------------------------------------------------------
 # Importing Coro packages
 #------------------------------------------------------------------------------------------------
@@ -18,15 +19,9 @@ use Time::HiRes;
 #------------------------------------------------------------------------------------------------
 # Importing internal PCW packages
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Log     qw(echo_msg echo_proxy);
 use PCW::Core::Utils   qw(with_coro_timeout);
 use PCW::Core::Captcha qw(captcha_report_bad);
 
-#------------------------------------------------------------------------------------------------
-# Package Variables
-#------------------------------------------------------------------------------------------------
-our $LOGLEVEL = 0;
-our $VERBOSE  = 0;
 #------------------------------------------------------------------------------------------------
 # Local variables
 #------------------------------------------------------------------------------------------------
@@ -34,30 +29,9 @@ my $queue             ;
 my $watchers     = {} ;
 my @good_proxies = () ;
 #------------------------------------------------------------------------------------------------
-sub new($%)
-{
-    my ($class, %args) = @_;
-    my $engine   = delete $args{engine};
-    my $proxies  = delete $args{proxies};
-    my $conf     = delete $args{conf};
-    my $loglevel = delete $args{loglevel} || 1;
-    my $verbose  = delete $args{verbose}  || 0;
-    $LOGLEVEL = $loglevel;
-    $VERBOSE  = $verbose;
-    # TODO: check for errors in the chan-config file
-    my @k = keys %args;
-    Carp::croak("These options aren't defined: @k")
-        if %args;
-
-    my $self = {};
-    $self->{engine}   = $engine;
-    $self->{proxies}  = $proxies;
-    $self->{conf}     = $conf;
-    $self->{loglevel} = $loglevel;
-    $self->{verbose}  = $verbose;
-    bless $self, $class;
-}
-
+# sub new($%)
+# {
+# }
 #------------------------------------------------------------------------------------------------
 #---------------------------------------  CHECK  -------------------------------------------------
 #------------------------------------------------------------------------------------------------
@@ -140,20 +114,21 @@ sub _pre_init($)
 sub _init_watchers($)
 {
     my $self = shift;
+    my $log = $self->{log};
     #-- Timeout watcher
     $watchers->{timeout} =
         AnyEvent->timer(after => 0.5, interval => 1, cb =>
                         sub
                         {
                             my @coros = grep { $_->desc eq 'check' } Coro::State::list;
-                            echo_msg($LOGLEVEL >= 3, sprintf "run: %d; queue: %d", scalar(@coros), $queue->size);
+                            $log->msg(3, sprintf "run: %d; queue: %d", scalar(@coros), $queue->size);
 
                             for my $coro (@coros)
                             {
                                 my $now = Time::HiRes::time;
                                 if ($coro->{timeout_at} && $now > $coro->{timeout_at})
                                 {
-                                    echo_proxy(1, 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
+                                    $log->pretty_proxy(1, 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
                                     $coro->cancel('timeout', $coro->{task}, $self);
                                 }
                             }

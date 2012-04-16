@@ -7,7 +7,6 @@ use autodie;
 use Carp;
 
 use base 'PCW::Engine::Kusaba';
-
 #------------------------------------------------------------------------------------------------
 # Features
 #------------------------------------------------------------------------------------------------
@@ -27,7 +26,6 @@ use HTTP::Headers;
 use PCW::Core::Utils    qw(merge_hashes parse_cookies html2text save_file);
 use PCW::Core::Captcha  qw(captcha_recognizer);
 use PCW::Core::Net      qw(http_get http_post get_recaptcha);
-use PCW::Core::Log      qw(echo_msg echo_proxy);
 use PCW::Data::Images   qw(make_pic);
 use PCW::Data::Video    qw(make_vid);
 use PCW::Data::Text     qw(make_text);
@@ -190,6 +188,8 @@ sub _get_delete_content($$%)
 sub get($$$$)
 {
     my ($self, $task, $cnf) = @_;
+    my $log = $self->{log};
+
     my $post_headers = HTTP::Headers->new(%{ $self->_get_post_headers(%{ $cnf->{post_cnf} }) });
     $post_headers->user_agent(rand_set(set => $self->{agents}));
 
@@ -199,14 +199,14 @@ sub get($$$$)
     my ($captcha_img, $response_headers, $status_line) = http_get($task->{proxy}, $captcha_url, $cap_headers);
 
     #-- Check result
-    if ($status_line !~ /200/ or !$captcha_img or $captcha_img !~ /GIF|PNG|JFIF|JPEG|JPEH|JPG/)
+    if ($status_line !~ /200/ or !$captcha_img or $captcha_img !~ /GIF|PNG|JFIF|JPEG|JPEH|JPG/i)
     {
-        echo_proxy(1, 'red', $task->{proxy}, 'GET', sprintf "[ERROR]{%s}", html2text($status_line));
+        $log->pretty_proxy(1, 'red', $task->{proxy}, 'GET', sprintf "[ERROR]{%s}", html2text($status_line));
         return('banned');
     }
     else
     {
-        echo_proxy(1, 'green', $task->{proxy}, 'GET', "[SUCCESS]{$status_line}");
+        $log->pretty_proxy(1, 'green', $task->{proxy}, 'GET', "[SUCCESS]{$status_line}");
     }
     #-- Obtaining cookies
     if ($self->{cookies})
@@ -214,7 +214,7 @@ sub get($$$$)
         my $saved_cookies = parse_cookies($self->{cookies}, $response_headers);
         if (!$saved_cookies)
         {
-            echo_proxy(1, 'red', $task->{proxy}, 'COOKIES', '[ERROR]{required cookies not found/proxy does not supported cookies at all}');
+            $log->pretty_proxy(1, 'red', $task->{proxy}, 'COOKIES', '[ERROR]{required cookies not found/proxy does not supported cookies at all}');
             return('banned');
         }
         else
@@ -260,6 +260,7 @@ sub compute_mm($)
 sub prepare($$$$)
 {
     my ($self, $task, $cnf) = @_;
+    my $log = $self->{log};
 
     #-- Recognize captcha
     my %content = %{ merge_hashes( $self->_get_post_content(%{ $cnf->{post_cnf} }), $self->{fields}{post}) };
@@ -268,11 +269,11 @@ sub prepare($$$$)
         my $captcha_text = captcha_recognizer($cnf->{captcha_decode}, $task->{path_to_captcha});
         unless ($captcha_text)
         {
-            echo_proxy(1, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returns undef");
+            $log->pretty_proxy(1, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returns undef");
             return('no_captcha');
         }
 
-        echo_proxy(1, 'green', $task->{proxy}, 'PREPARE', "solved captcha: $captcha_text");
+        $log->pretty_proxy(1, 'green', $task->{proxy}, 'PREPARE', "solved captcha: $captcha_text");
         $content{ $self->{fields}{post}{captcha} } = $captcha_text;
         $task->{captcha_text}                      = $captcha_text;
     }

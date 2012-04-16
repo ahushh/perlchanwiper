@@ -44,12 +44,17 @@
 ** DONE Починить loglevel и verbose
 ** DONE Оформить моды в ооп-стиле (?)
    CLOSED: [2012-04-15 Вс. 11:59]
+** DONE Типа абстрактный класс для модов
+   CLOSED: [2012-04-16 Пн. 22:33]
+** DONE Modes::Common, get_posts_by_regexp
+   CLOSED: [2012-04-16 Пн. 22:33]
 ** DONE Добавить в response chan_error
 ** TODO Рекурсивный поиск картинок
 ** DONE Сделать ответ в рандомный тред по регэкспам (как в удалении)
    CLOSED: [2012-03-22 Чт. 16:46]
 ** TODO mode wipe: Перезапрос капчи, если расопзналась неправильно. Независит от loop.
-** TODO logfile
+** DONE logfile
+   CLOSED: [2012-04-16 Пн. 22:16]
 ** DONE $m->stop
    CLOSED: [2012-04-15 Вс. 20:46]
 * Test

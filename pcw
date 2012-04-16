@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '0.2-r34';
+our $VERSION = '0.2-r35';
 
 use strict;
 use autodie;
@@ -19,7 +19,7 @@ use File::Spec;
 use File::Basename;
 #-----------------------------------------------------------------------------
 use PCW::Core::Utils qw(get_proxylist);
-
+use PCW::Core::Log;
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 our %mode_config;
@@ -28,6 +28,7 @@ our $chan_config;
 my @proxies;
 my @agents;
 my $engine;
+my $logging;
 #-----------------------------------------------------------------------------
 my $common_config = 'config.pl';
 my $mode_config;
@@ -38,26 +39,31 @@ my $mode_config;
 #-- DEFAULT VALUES
 my $chan;
 my $mode;
-my $loglevel   = 1;
 my $verbose    = 0;
 my $useragents = 'UserAgents';
 my $proxy_file = 'proxy/no';
 my $proxy_type = 'http';
 
+my $loglevel   = 1;
+my $logfile    = undef;
+my $lognocolor = undef;
+
 sub parse_args()
 {
     my $help   = 0;
     my $result = GetOptions(
-        'chan=s'     => \$chan,
-        'mode=s'     => \$mode,
-        'proxy=s'    => \$proxy_file,
-        'ua=s'       => \$useragents,
-        'cconfig=s'  => \$common_config,
-        'mconfig=s'  => \$mode_config,
-        'loglevel=i' => \$loglevel,
-        'verbose'    => \$verbose,
-        'help|?'     => \$help,
-    );
+                            'chan=s'     => \$chan,
+                            'mode=s'     => \$mode,
+                            'proxy=s'    => \$proxy_file,
+                            'ua=s'       => \$useragents,
+                            'cconfig=s'  => \$common_config,
+                            'mconfig=s'  => \$mode_config,
+                            'loglevel=i' => \$loglevel,
+                            'logfile=s'  => \$logfile,
+                            'lognocolor' => \$lognocolor,
+                            'verbose'    => \$verbose,
+                            'help|?'     => \$help,
+                           );
     if ($help || !($mode && $chan))
     {
         usage();
@@ -108,6 +114,8 @@ sub info()
     say "Browsers loaded: ". scalar @agents;
     say "~" x 30;
     say "Log level: $loglevel";
+    say "Log file: ", ($logfile || "STDOUT");
+    say "Colored logging: ", ($lognocolor ? 'no' : 'yes');
     say "Verbose output: $verbose";
     say "~" x 30;
 }
@@ -120,7 +128,7 @@ sub usage()
     my @modes;
     for my $path (glob "PCW/Modes/*.pm")
     {
-        next if $path =~ /Common/;
+        next if $path =~ /Abstract/;
         my ($mode, undef, undef) = fileparse($path, '.pm');
         push @modes, $mode;
     }
@@ -148,14 +156,17 @@ Usage: $0 [chan] [mode]...
 Options:
     --chan          Chan name (@chans)
     --mode          Work mode (@modes)
-    --proxy         Proxy list (default is '$proxy_file')
+    --proxy         Path to file or url which contains proxies (default is '$proxy_file')
     --proxytype     Default proxy protocol (default is '$proxy_type')
     --ua            User agents list file (default is '$useragents')
     --cconfig       Common config file (default is '$common_config')
     --mconfig       Mode config file (default is 'configs/\$mode_name.pl')
-    --loglevel      Log level (1-4, 1 — the least and default)
     --verbose       Verbose output
     --help          Show this message and exit
+
+    --logfile       File for logging (STDOUT by default)
+    --lognocolor    Disable colored log output
+    --loglevel      1-4, 1 by default
 
 Supported chan engines: @engines
 Version $VERSION
@@ -195,12 +206,17 @@ sub load_chan()
     require "$package"; #-- load $chan_config
 }
 
+sub load_logging()
+{
+    $logging = PCW::Core::Log->new( file => $logfile, level => $loglevel, colored => !$lognocolor );
+}
+
 sub load_engine()
 {
     my $package = "PCW::Engine::". $chan_config->{engine};
     eval("use $package");
     Carp::croak($@) if ($@);
-    $engine = $package->new(%$chan_config, agents => \@agents, loglevel => $loglevel, verbose => $verbose);
+    $engine = $package->new(%$chan_config, agents => \@agents, log => $logging, verbose => $verbose);
 }
 
 sub load_mode()
@@ -211,7 +227,7 @@ sub load_mode()
     $package->new(engine   => $engine,
                   proxies  => \@proxies,
                   conf     => \%mode_config,
-                  loglevel => $loglevel,
+                  log      => $logging,
                   verbose  => $verbose);
 
 }
@@ -245,6 +261,7 @@ load_configs();     #-- load %mode_config
 load_proxies();
 load_agents();
 load_chan();        #-- load $chan_config
+load_logging();
 load_engine();
 my $m = load_mode();
 info();

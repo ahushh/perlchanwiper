@@ -5,6 +5,7 @@ use autodie;
 use Carp;
 use feature qw(switch say);
 
+use base 'PCW::Modes::Abstract';
 #------------------------------------------------------------------------------------------------
 # Importing Coro packages
 #------------------------------------------------------------------------------------------------
@@ -24,16 +25,12 @@ use File::Spec;
 #------------------------------------------------------------------------------------------------
 # Importing internal PCW packages
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Log     qw(echo_msg echo_proxy);
 use PCW::Core::Utils   qw(with_coro_timeout);
 use PCW::Core::Captcha qw(captcha_report_bad);
-use PCW::Modes::Common qw(get_posts_by_regexp);
 #------------------------------------------------------------------------------------------------
 # Package variables
 #------------------------------------------------------------------------------------------------
 our $CAPTCHA_DIR = 'captcha';
-our $LOGLEVEL    = 0;
-our $VERBOSE     = 0;
 #------------------------------------------------------------------------------------------------
 # Local variables
 #------------------------------------------------------------------------------------------------
@@ -43,30 +40,9 @@ my $prepare_queue ;
 my $post_queue    ;
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub new($%)
-{
-    my ($class, %args) = @_;
-    my $engine   = delete $args{engine};
-    my $proxies  = delete $args{proxies};
-    my $conf     = delete $args{conf};
-    my $loglevel = delete $args{loglevel} || 1;
-    my $verbose  = delete $args{verbose}  || 0;
-    $LOGLEVEL = $loglevel;
-    $VERBOSE  = $verbose;
-    # TODO: check for errors in the chan-config file
-    my @k = keys %args;
-    Carp::croak("These options aren't defined: @k")
-        if %args;
-
-    my $self = {};
-    $self->{engine}   = $engine;
-    $self->{proxies}  = $proxies;
-    $self->{conf}     = $conf;
-    $self->{loglevel} = $loglevel;
-    $self->{verbose}  = $verbose;
-    bless $self, $class;
-}
-
+# sub new($%)
+# {
+# }
 #------------------------------------------------------------------------------------------------
 #-----------------------------------------  WIPE GET --------------------------------------------
 #------------------------------------------------------------------------------------------------
@@ -97,6 +73,7 @@ sub wipe_get($$)
 {
     my ($self, $task) = @_;
     my $engine = $self->{engine};
+    my $log    = $self->{log};
     async {
         my $coro = $Coro::current;
         $coro->desc('get');
@@ -106,8 +83,8 @@ sub wipe_get($$)
         if ($task->{run_at})
         {
             my $now = Time::HiRes::time;
-            echo_proxy(1, 'green', $task->{proxy}, 'GET', sprintf("sleep %d...", $self->{conf}{flood_limit}));
-            echo_msg($LOGLEVEL >= 3, "sleep: ". int($task->{run_at} - $now) );
+            $log->pretty_proxy(1, 'green', $task->{proxy}, 'GET', sprintf("sleep %d...", $self->{conf}{flood_limit}));
+            $log->msg(3, "sleep: ". int($task->{run_at} - $now) );
             Coro::Timer::sleep( int($task->{run_at} - $now) );
         }
 
@@ -177,6 +154,7 @@ my $cb_wipe_post = unblock_sub
 {
     my ($msg, $task, $self) = @_;
     return unless @_;
+    my $log = $self->{log};
 
     #-- Delete temporary files
     unlink($task->{path_to_captcha})
@@ -239,7 +217,7 @@ my $cb_wipe_post = unblock_sub
 
     if ($self->{conf}{loop} && $msg ne 'banned' && $self->{failed_proxy}{ $task->{proxy} } < $self->{conf}{proxy_attempts})
     {
-        echo_msg($LOGLEVEL >= 3, "push in the get queue: $task->{proxy}");
+        $log->msg(3, "push in the get queue: $task->{proxy}");
         $new_task->{proxy} = $task->{proxy};
         $get_queue->put($new_task);
     }
@@ -272,14 +250,11 @@ sub start($)
 {
     my $self = shift;
     async {
-        my $watchers = {};
         $self->_pre_init();
         #-- Initialization
         if ($self->{conf}{random_reply})
         {
-            $PCW::Modes::Common::VERBOSE  = $VERBOSE;
-            $PCW::Modes::Common::LOGLEVEL = $LOGLEVEL;
-            my @posts = get_posts_by_regexp("http://no_proxy", $self->{engine}, $self->{conf}{random_reply});
+            my @posts = $self->get_posts_by_regexp("http://no_proxy", $self->{conf}{random_reply});
             if (@posts)
             {
                 $get_queue->put({ proxy => $_ }) for (@{ $self->{proxies} });
@@ -312,7 +287,8 @@ sub _pre_init($)
 
 sub _init_watchers($)
 {
-    my ($self) = shift;
+    my $self = shift;
+    my $log  = $self->{log};
     #-- Timeout watcher
     $watchers->{timeout} =
         AnyEvent->timer(after => 0.5, interval => 1, cb =>
@@ -322,9 +298,9 @@ sub _init_watchers($)
                             my @prepare_coro  = grep { $_->desc eq 'prepare' } Coro::State::list;
                             my @post_coro     = grep { $_->desc eq 'post'    } Coro::State::list;
 
-                            echo_msg($LOGLEVEL >= 3, sprintf "run: %d captcha, %d post, %d prepare coros.",
+                            $log->msg(3, sprintf "run: %d captcha, %d post, %d prepare coros.",
                                      scalar @get_coro, scalar @post_coro, scalar @prepare_coro);
-                            echo_msg($LOGLEVEL >= 3, sprintf "queue: %d captcha, %d post, %d prepare coros.",
+                            $log->msg(3, sprintf "queue: %d captcha, %d post, %d prepare coros.",
                                      $get_queue->size, $post_queue->size, $prepare_queue->size);
 
                             for my $coro (@post_coro, @prepare_coro, @get_coro)
@@ -332,7 +308,7 @@ sub _init_watchers($)
                                 my $now = Time::HiRes::time;
                                 if ($coro->{timeout_at} && $now > $coro->{timeout_at})
                                 {
-                                    echo_proxy(1, 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
+                                    $log->pretty_proxy(1, 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
                                     $coro->cancel('timeout', $coro->{task}, $self);
                                 }
                             }
@@ -348,7 +324,7 @@ sub _init_watchers($)
                         {
                             #-- Refresh the thread list
                             async {
-                                my @posts = get_posts_by_regexp("http://no_proxy", $self->{engine}, $self->{conf}{random_reply});
+                                my @posts = $self->get_posts_by_regexp("http://no_proxy", $self->{conf}{random_reply});
                                 $self->{conf}{post_cnf}{thread} = \@posts;
                             };
                             cede;
@@ -410,7 +386,7 @@ sub _init_watchers($)
                                     !@post_coro    && $post_queue->size
                                    )
                                 {
-                                    echo_msg(1, "#~~~ Start posting. ~~~#");
+                                    $log->msg(1, "#~~~ Start posting. ~~~#");
                                     $self->wipe_post($post_queue->get)
                                         while $post_queue->size && $thrs_available--;
                                 }

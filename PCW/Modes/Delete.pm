@@ -5,6 +5,7 @@ use autodie;
 use Carp;
 use feature qw(switch say);
 
+use base 'PCW::Modes::Abstract';
 #------------------------------------------------------------------------------------------------
 # Importing Coro packages
 #------------------------------------------------------------------------------------------------
@@ -18,16 +19,9 @@ use Time::HiRes;
 #------------------------------------------------------------------------------------------------
 # Importing internal PCW packages
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Log   qw(echo_msg echo_proxy);
 use PCW::Core::Net   qw(http_get);
 use PCW::Core::Utils qw(with_coro_timeout);
 
-use PCW::Modes::Common qw(get_posts_by_regexp);
-#------------------------------------------------------------------------------------------------
-# Package Variables
-#------------------------------------------------------------------------------------------------
-our $LOGLEVEL = 0;
-our $VERBOSE  = 0;
 #------------------------------------------------------------------------------------------------
 # Local variables
 #------------------------------------------------------------------------------------------------
@@ -36,29 +30,9 @@ my $watchers = {};
 
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub new($%)
-{
-    my ($class, %args) = @_;
-    my $engine   = delete $args{engine};
-    my $proxies  = delete $args{proxies};
-    my $conf     = delete $args{conf};
-    my $loglevel = delete $args{loglevel} || 1;
-    my $verbose  = delete $args{verbose}  || 0;
-    $LOGLEVEL = $loglevel;
-    $VERBOSE  = $verbose;
-    # TODO: check for errors in the chan-config file
-    my @k = keys %args;
-    Carp::croak("These options aren't defined: @k")
-        if %args;
-
-    my $self = {};
-    $self->{engine}   = $engine;
-    $self->{proxies}  = $proxies;
-    $self->{conf}     = $conf;
-    $self->{loglevel} = $loglevel;
-    $self->{verbose}  = $verbose;
-    bless $self, $class;
-}
+# sub new($%)
+# {
+# }
 #------------------------------------------------------------------------------------------------
 #----------------------------------  DELETE POST  -----------------------------------------------
 #------------------------------------------------------------------------------------------------
@@ -116,13 +90,12 @@ sub _pre_init($)
 sub start($)
 {
     my $self = shift;
+    my $log = $self->{log};
     async {
         $self->_pre_init();
         #-------------------------------------------------------------------
         my $proxy = shift @{ $self->{proxies} };
-        echo_msg($LOGLEVEL >= 2, "Used proxy: $proxy");
-        $PCW::Modes::Common::VERBOSE  = $VERBOSE;
-        $PCW::Modes::Common::LOGLEVEL = $LOGLEVEL;
+        $log->msg(2, "Used proxy: $proxy");
         my @deletion_posts;
         if ($self->{conf}{find}{by_id})
         {
@@ -130,7 +103,7 @@ sub start($)
         }
         elsif ($self->{conf}{find}{threads} || $self->{conf}{find}{pages})
         {
-            @deletion_posts = get_posts_by_regexp($proxy, $self->{engine}, $self->{conf}{find});
+            @deletion_posts = $self->get_posts_by_regexp($proxy, $self->{conf}{find});
         }
         else
         {
@@ -167,19 +140,20 @@ sub stop($)
 sub _init_watchers($)
 {
     my $self = shift;
+    my $log = $self->{log};
     #-- Timeout watcher
     $watchers->{timeout} =
         AnyEvent->timer(after => 0.5, interval => 1, cb =>
                         sub
                         {
                             my @delete_coro  = grep { $_->desc eq 'delete' } Coro::State::list;
-                            echo_msg($LOGLEVEL >= 3, sprintf "run: %d; queue: %d", scalar @delete_coro, $delete_queue->size);
+                            $log->msg(3, sprintf "run: %d; queue: %d", scalar @delete_coro, $delete_queue->size);
                             for my $coro (@delete_coro)
                             {
                                 my $now = Time::HiRes::time;
                                 if ($coro->{timeout_at} && $now > $coro->{timeout_at})
                                 {
-                                    echo_proxy(1, 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
+                                    $log->pretty_proxy(1, 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
                                     $coro->cancel('timeout', $coro->{task}, $self);
                                 }
                             }

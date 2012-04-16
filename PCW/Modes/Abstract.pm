@@ -1,32 +1,38 @@
-package PCW::Modes::Common;
-#-----------------------------------------------------------------------
-# Функции общие для всех модов
-#-----------------------------------------------------------------------
+package PCW::Modes::Abstract;
 
 #-----------------------------------------------------------------------
 use strict;
 use autodie;
 use Carp;
 
-use Exporter 'import';
-our @EXPORT_OK = qw(get_posts_by_regexp);
-
 #------------------------------------------------------------------------------------------------
-# Package Variables
-#------------------------------------------------------------------------------------------------
-our $LOGLEVEL = 0;
-our $VERBOSE  = 0;
-
-#------------------------------------------------------------------------------------------------
-# Importing internal PCW packages
-#------------------------------------------------------------------------------------------------
-use PCW::Core::Log   qw(echo_msg echo_proxy);
-
-#------------------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------------------
-sub get_posts_by_regexp($$%)
+sub new($%)
 {
-    my ($proxy, $engine, $cnf) =  @_;
+    my ($class, %args) = @_;
+    my $engine   = delete $args{engine};
+    my $proxies  = delete $args{proxies};
+    my $conf     = delete $args{conf};
+    my $log      = delete $args{log};
+    my $verbose  = delete $args{verbose}  || 0;
+    # TODO: check for errors in the chan-config file
+    my @k = keys %args;
+    Carp::croak("These options aren't defined: @k")
+        if %args;
+
+    my $self = {};
+    $self->{engine}  = $engine;
+    $self->{proxies} = $proxies;
+    $self->{conf}    = $conf;
+    $self->{log}     = $log;
+    $self->{verbose} = $verbose;
+    bless $self, $class;
+}
+#------------------------------------------------------------------------------------------------
+sub get_posts_by_regexp($$$)
+{
+    my ($self, $proxy, $cnf) =  @_;
+    my $log    = $self->{log};
+    my $engine = $self->{engine};
 
     my @posts;
     my $get_task = {
@@ -43,13 +49,13 @@ sub get_posts_by_regexp($$%)
             $local_cnf{page} = $page;
 
             #-- Get the page
-            echo_msg($LOGLEVEL >= 2, "Downloading $page page...");
+            $log->msg(2, "Downloading $page page...");
             my ($html, undef, $status) = $engine->get_page($get_task, \%local_cnf);
-            echo_msg($LOGLEVEL >= 2, "Page $page downloaded: $status");
+            $log->msg(2, "Page $page downloaded: $status");
 
             %threads = (%threads, $engine->get_all_threads($html))
         }
-        echo_msg($LOGLEVEL >= 2, sprintf "%d threads were found", scalar keys %threads);
+        $log->msg(2, sprintf "%d threads were found", scalar keys %threads);
     }
     #-- Search posts in the threads
     my %replies = ();
@@ -67,15 +73,15 @@ sub get_posts_by_regexp($$%)
             $local_cnf{thread} = $thread;
 
             #-- Get the thread
-            echo_msg($LOGLEVEL >= 2, "Downloading $thread thread...");
+            $log->msg(2, "Downloading $thread thread...");
             my ($html, undef, $status) = $engine->get_thread($get_task, \%local_cnf);
-            echo_msg($LOGLEVEL >= 2, "Thread $thread downloaded: $status");
+            $log->msg(2, "Thread $thread downloaded: $status");
 
             my %r    = $engine->get_all_replies($html);
             %replies = (%replies, %r);
-            echo_msg($LOGLEVEL >= 2, sprintf "%d replies were found in $thread thread", scalar keys %r);
+            $log->msg(2, sprintf "%d replies were found in $thread thread", scalar keys %r);
         }
-        echo_msg($LOGLEVEL >= 2, sprintf "Total %d replies were found", scalar keys %replies);
+        $log->msg(2, sprintf "Total %d replies were found", scalar keys %replies);
     }
 
     unless ($cnf->{pages} || $cnf->{threads})
@@ -84,13 +90,13 @@ sub get_posts_by_regexp($$%)
     }
 
     my %all_posts = (%threads, %replies);
-    echo_msg($LOGLEVEL >= 2, sprintf "%d threads and replies were found", scalar keys %all_posts);
+    $log->msg(2, sprintf "%d threads and replies were found", scalar keys %all_posts);
 
     my $pattern = $cnf->{regexp};
     if ($pattern)
     {
         @posts = grep { $all_posts{$_} =~ /$pattern/mg } keys(%all_posts);
-        echo_msg($LOGLEVEL >= 2, sprintf "%d post(s) matched the pattern", scalar @posts);
+        $log->msg(2, sprintf "%d post(s) matched the pattern", scalar @posts);
     }
     else
     {
