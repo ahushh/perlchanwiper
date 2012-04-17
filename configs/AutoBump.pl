@@ -3,14 +3,14 @@
 #------------------------------------------------------------------------------------------------------------
 use constant BOARD    => 'b';
 # use constant THREAD   => 10106827;
-use constant THREAD   => 10107199;
+use constant THREAD   => 10120554;
 use constant PASSWORD => 'fNfR3';
 
 use constant BUMP_TIMEOUT => 60;
 use constant INTERVAL     => 60*1; #--Проверять, нужен ли бамп, через заданный интервал
 
 use constant SILENT_BUMP   => 1;    #-- Удалять бампы. 0 для отключения
-use constant REGEXP        => 'fdsfg';  #-- Регэксп, по которому искать посты. e.g '.*' — все посты, 'bump' — содержащие слово бамп
+use constant REGEXP        => 'test';  #-- Регэксп, по которому искать посты. e.g '.*' — все посты, 'bump' — содержащие слово bump
 use constant DELETE_TIMOUT => 60;
 
 #-- Условие для бампа
