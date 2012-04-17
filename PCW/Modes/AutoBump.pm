@@ -85,7 +85,7 @@ my $cb_bump_thread = unblock_sub
         $log->pretty_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "sleep $self->{conf}{interval} seconds...");
 
         $log->msg(4, "run_cleanup(): try to start");
-        &$run_cleanup($self, $task) if ($self->{conf}{silent});
+        &$run_cleanup($self, $task, $self) if ($self->{conf}{silent});
     }
     elsif ($msg =~ /wrong_captcha|no_captcha/)
     {

@@ -45,7 +45,7 @@ sub msg($$;$$$)
     undef $color unless $self->{colored};
 
     print  $fh strftime("[%H:%M:%S]", localtime(time));
-    printf $fh "[%10s]", $type if $type;
+    printf $fh "[%15s]", $type if $type;
     say    $fh colored [$color], " $msg" if $msg;
     return 1;
 }

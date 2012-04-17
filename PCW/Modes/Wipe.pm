@@ -83,7 +83,8 @@ sub wipe_get($$)
         if ($task->{run_at})
         {
             my $now = Time::HiRes::time;
-            $log->pretty_proxy(1, 'green', $task->{proxy}, 'GET', sprintf("sleep %d...", $self->{conf}{flood_limit}));
+            $log->pretty_proxy(1, 'green', $task->{proxy}, 'GET',
+                               sprintf("sleep %d...", $self->{conf}{flood_limit}));
             $log->msg(3, "sleep: ". int($task->{run_at} - $now) );
             Coro::Timer::sleep( int($task->{run_at} - $now) );
         }
@@ -172,7 +173,8 @@ my $cb_wipe_post = unblock_sub
             if ($self->{conf}{save_captcha} && $task->{path_to_captcha})
             {
                 my ($name, $path, $suffix) = fileparse($task->{path_to_captcha}, 'png', 'jpeg', 'jpg', 'gif');
-                move $task->{path_to_captcha}, File::Spec->catfile($CAPTCHA_DIR, $task->{captcha_text} ."--". time .".$suffix");
+                move $task->{path_to_captcha},
+                    File::Spec->catfile($CAPTCHA_DIR, $task->{captcha_text} ."--". time .".$suffix");
             }
             $self->{stats}{posted}++;
 
@@ -215,7 +217,8 @@ my $cb_wipe_post = unblock_sub
         $self->{failed_proxy}{ $task->{proxy} } = 0;
     }
 
-    if ($self->{conf}{loop} && $msg ne 'banned' && $self->{failed_proxy}{ $task->{proxy} } < $self->{conf}{proxy_attempts})
+    if ($self->{conf}{loop} && $msg ne 'banned' &&
+        $self->{failed_proxy}{ $task->{proxy} } < $self->{conf}{proxy_attempts})
     {
         $log->msg(3, "push in the get queue: $task->{proxy}");
         $new_task->{proxy} = $task->{proxy};
@@ -415,7 +418,9 @@ sub _init_watchers($)
                                 !($post_queue->size)     &&
                                 !($prepare_queue->size)  or
                                 #-- post limit was reached
-                                ( $self->{conf}{post_limit} ? ($self->{stats}{posted} >= $self->{conf}{post_limit}) : undef ))
+                                ( $self->{conf}{post_limit} ?
+                                  ($self->{stats}{posted} >= $self->{conf}{post_limit}) :
+                                  undef ))
                             {
                                 $self->stop;
                             }
