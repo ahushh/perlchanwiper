@@ -3,18 +3,19 @@ package PCW::Data::Images;
 use strict;
 use Carp;
 use autodie;
-use feature 'state';
+use feature qw/state switch/;
 
 use Exporter 'import';
 our @EXPORT_OK = qw(make_pic);
 
 #------------------------------------------------------------------------------------------------
 use File::Basename;
+use File::Find::Rule;
 use File::Copy;
 use File::Temp qw(tempfile tempdir);
 
 #------------------------------------------------------------------------------------------------
-use List::Util qw(shuffle);
+use List::Util qw(shuffle reduce);
 use Data::Random qw(rand_set rand_image);
 use PCW::Core::Utils qw(random);
 
@@ -54,9 +55,11 @@ sub single_img($)
     my $data = shift;
     Carp::croak "Image file is not set!"
             unless my $path_to_img = $data->{path};
-    Carp::croak "The file size greaten then max size allowed!"
-            if int((-s $path_to_img)/1024) > $data->{max_size};
-
+    if ($data->{max_size})
+    {
+        Carp::croak "The file size greaten then max size allowed!"
+                if int((-s $path_to_img)/1024) > $data->{max_size};
+    }
     return img_altering($path_to_img, $data->{altering})
         if $data->{altering};
     return $path_to_img;
@@ -71,23 +74,31 @@ sub dir_img($)
     $lock->down;
     if (!@img_list)
     {
-        my $types = $data->{types};
+        my @types = @{ $data->{types} };
         Carp::croak "Allowed types are not specified!"
-                unless $types;
-        my $s;
-        $s .= "$_," for (@$types);
-        chop $s;
+                unless @types;
 
-        @img_list = (@img_list, glob "$_/*.{$s}")
-            for (@$dirs);
+        if ($data->{recursively})
+        {
+            my @t = map { "*.$_" } @types;
+            @img_list = File::Find::Rule->file()->name(@t)->in(@$dirs);
+        }
+        else
+        {
+            #-- make a glob string
+            my $s = reduce { "$a,$b" } @types;
+            @img_list = glob "$_/*.{$s}"
+                for (@$dirs);
+        }
 
-        Carp::croak "Image dir is empty!"
+        Carp::croak "These directories are empty: @$dirs !"
                 unless @img_list;
         @img_list = grep { int((-s $_)/1024) <= $data->{max_size} } @img_list
             if $data->{max_size};
+        @img_list = grep { basename($_) =~ /$data->{regexp}/ } @img_list
+            if $data->{regexp};
     }
     $lock->up;
-
     state $i = 0;
 
     my $path_to_img;
@@ -108,7 +119,7 @@ sub dir_img($)
 sub img_altering($)
 {
     my ($full_name, $conf) = @_;
-    my ($name, $path, $suffix) = fileparse($full_name, 'png', 'jpeg', 'jpg', 'gif');
+    my ($name, $path, $suffix) = fileparse($full_name, 'png', 'jpeg', 'jpg', 'gif', 'bmp');
 
     unless ($suffix)
     {
@@ -117,46 +128,60 @@ sub img_altering($)
     }
 
     my $mode = $conf->{mode};
-
     my ($fh, $filename) = tempfile(UNLINK => 1, SUFFIX => ".$suffix");
-
-    if ($mode eq 'addrand')
+    given ($mode)
     {
-        open my $img_fh, "<", $full_name;
-        my $img;
+        when ('randnums')
         {
-            local $/ = undef;
-            $img = <$img_fh>;
-            close($img_fh);
+            open my $img_fh, "<", $full_name;
+            my $img;
+            {
+                local $/ = undef;
+                $img = <$img_fh>;
+                close($img_fh);
+            }
+            print $fh $img;
+            my $n = $conf->{number_nums};
+            for (my $i = 0; $i < $n; $i++)
+            {
+                print $fh int(rand(10));
+            }
+            close($fh);
         }
-        print $fh $img;
-        my $n = $conf->{number_nums};
-        for (my $i = 0; $i < $n; $i++)
+        when ('randbytes')
         {
-            print $fh int(rand(10));
+            open my $img_fh, "<", $full_name;
+            my $img;
+            {
+                local $/ = undef;
+                $img = <$img_fh>;
+                close($img_fh);
+            }
+            print $fh $img;
+            print $fh reduce { $a . chr(int(rand() * 256)) } ('', 1..$conf->{number_bytes});
+            close($fh);
         }
-        close($fh);
-    }
-    elsif ($mode eq 'resize')
-    {
-    	close($fh);
-        my $convert = $conf->{convert};
-        my $args    = $conf->{args};
-        my $k       = random($conf->{min}, $conf->{max});
-        system("$convert $args -resize $k% $full_name $filename");
-    }
-    elsif ($mode eq 'convert')
-    {
-    	close($fh);
-        my $convert = $conf->{convert};
-        my $args    = $conf->{args};
-        system("$convert $args $full_name $filename");
-    }
-    else
-    {
-        warn "Image altering method '$mode' doesn't exist. Skipping altering...";
-        close($fh);
-        return $full_name;
+        when ('resize')
+        {
+            close($fh);
+            my $convert = $conf->{convert};
+            my $args    = $conf->{args};
+            my $k       = random($conf->{min}, $conf->{max});
+            system("$convert $args -resize $k% $full_name $filename");
+        }
+        when ('convert')
+        {
+            close($fh);
+            my $convert = $conf->{convert};
+            my $args    = $conf->{args};
+            system("$convert $args $full_name $filename");
+        }
+        default
+        {
+            warn "Image altering method '$mode' doesn't exist. Skipping altering...";
+            close($fh);
+            return $full_name;
+        }
     }
     return $filename;
 }

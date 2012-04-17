@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '0.2-r35';
+our $VERSION = '0.2-r36';
 
 use strict;
 use autodie;
