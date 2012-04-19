@@ -78,13 +78,11 @@ FAQ
 
 Не работают socks-прокси!
 +++++++++++++++++++++++++
+Нормально вряд ли будут. Но можно попробовать:
 
-1.  В файле 'PCW/Core/Net.pm' раскомментировать строку
-    #use LWP::Protocol::socks;
+Нужно установить модуль 'LWP::Protocol::socks' через CPAN:
+sudo cpan LWP::Protocol::socks
+Если повезет, оно соберется и заработает. Но я бы не надеялся.
 
-2.  Установить модуль 'LWP::Protocol::socks' через CPAN:
-    sudo cpan LWP::Protocol::socks
-    Если повезет, оно соберется и заработает. Но я бы не надеялся.
-
-    Или через пакеты дистрибутива. Например, для apt-based:
-    apt-get install liblwp-protocol-socks-perl
+Или через пакеты дистрибутива. Например, для apt-based:
+apt-get install liblwp-protocol-socks-perl

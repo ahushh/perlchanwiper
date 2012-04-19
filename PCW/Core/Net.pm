@@ -5,9 +5,10 @@ use strict;
 use Exporter 'import';
 our @EXPORT_OK = qw(get_recaptcha http_get http_post);
 
-#use LWP::Protocol::socks;
 use HTTP::Headers;
 use Coro::LWP;
+eval("use LWP::Protocol::socks;");
+warn "$@" if $@;
 
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
