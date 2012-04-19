@@ -1,6 +1,6 @@
 use strict;
 use Gtk2 -init;
-#use Coro;
+use Coro;
 
 sub cap($)
 {
@@ -35,12 +35,7 @@ sub cap($)
 sub decode_captcha($$)
 {
     my ($captcha_decode, $file_path) = @_;
-    #`convert $file_path 3.png`;
-    #async {
-        return cap($file_path) || undef;
-        #return cap("3.png") || undef;
-    #};
-    #cede;
+    return cap($file_path) || undef;
 }
 
 sub abuse($$) { }

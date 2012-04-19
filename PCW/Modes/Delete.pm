@@ -79,18 +79,11 @@ sub delete_post($$$)
 #------------------------------------------------------------------------------------------------
 #------------------------------------  MAIN DELETE  ---------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub _pre_init($)
-{
-    my $self = shift;
-    $self->{is_running} = 1;
-    $self->{stats}      = {error => 0, wrong_password => 0, deleted => 0, total => 0};
-    $delete_queue       = Coro::Channel->new();
-}
-
 sub start($)
 {
     my $self = shift;
-    my $log = $self->{log};
+    my $log  = $self->{log};
+    $log->msg(1, "Starting delete mode...");
     async {
         $self->_pre_init();
         #-------------------------------------------------------------------
@@ -131,10 +124,20 @@ sub start($)
 sub stop($)
 {
     my $self = shift;
+    my $log  = $self->{log};
+    $log->msg(1, "Stopping delete mode...");
     $_->cancel for (grep {$_->desc =~ /delete/ } Coro::State::list);
     $watchers     = {};
     $delete_queue = undef;
     $self->{is_running} = 0;
+}
+
+sub _pre_init($)
+{
+    my $self = shift;
+    $self->{is_running} = 1;
+    $self->{stats}      = {error => 0, wrong_password => 0, deleted => 0, total => 0};
+    $delete_queue       = Coro::Channel->new();
 }
 
 sub _init_watchers($)

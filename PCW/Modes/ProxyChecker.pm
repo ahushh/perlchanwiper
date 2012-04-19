@@ -79,6 +79,8 @@ sub check($$$)
 sub start($)
 {
     my $self = shift;
+    my $log  = $self->{log};
+    $log->msg(1, "Starting proxy checker mode...");
     async {
         $self->_pre_init();
         $queue->put({ proxy => $_ }) for (@{ $self->{proxies} });
@@ -94,6 +96,8 @@ sub start($)
 sub stop($)
 {
     my $self = shift;
+    my $log  = $self->{log};
+    $log->msg(1, "Stopping proxy checker mode...");
     $_->cancel for (grep {$_->desc =~ /check/ } Coro::State::list);
     $watchers = {};
     $queue    = undef;

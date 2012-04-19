@@ -19,7 +19,7 @@ our $msg = {
     # text => "bump\n%date%",
     # text => '@~fortune psalms bible~@',
     # text => '%unixtime%',
-    text => 'test',
+#    text => 'test',
     #-------------------------------------------------------------------------------------------------------
     #-- #delirium# config
     delirium => {

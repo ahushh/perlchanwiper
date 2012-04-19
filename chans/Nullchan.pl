@@ -28,7 +28,7 @@ our $chan_config =
             critical_error => [
                                'Неправильный ID треда',
                               ],
-            success       => [302, 'BuildThread()', 'Updating pages', 504],
+            success       => [302, 'BuildThread()', 'Updating pages'],
         },
         delete => {
             success        => ['Сообщение удалено.'],

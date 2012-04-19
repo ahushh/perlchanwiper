@@ -31,6 +31,7 @@ use PCW::Core::Captcha qw(captcha_report_bad);
 #------------------------------------------------------------------------------------------------
 # Local variables
 #------------------------------------------------------------------------------------------------
+#-- Время следующего бампа
 my $run_at       ;
 my $bump_queue   ;
 my $delete_queue ;
@@ -46,7 +47,7 @@ my $run_cleanup = unblock_sub
 {
     my ($engine, $task, $self) = @_;
     my $log = $self->{log};
-    $log->pretty_proxy(1, "green", $task->{proxy}, $task->{thread}, "Start deleting posts...");
+    $log->pretty_proxy(2, "green", $task->{proxy}, $task->{thread}, "Start deleting posts...");
     my @deletion_posts = $self->get_posts_by_regexp($task->{proxy}, $self->{conf}{silent}{find});
 
     $log->msg(4, "run_cleanup(): \@deletion_posts: @deletion_posts");
@@ -82,7 +83,7 @@ my $cb_bump_thread = unblock_sub
 
         my $now = Time::HiRes::time;
         $run_at = $now + $self->{conf}{interval};
-        $log->pretty_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "sleep $self->{conf}{interval} seconds...");
+        $log->pretty_proxy(2, "green", $task->{proxy}, "No. ". $task->{thread}, "sleep $self->{conf}{interval} seconds...");
 
         $log->msg(4, "run_cleanup(): try to start");
         &$run_cleanup($self, $task, $self) if ($self->{conf}{silent});
@@ -90,20 +91,18 @@ my $cb_bump_thread = unblock_sub
     elsif ($msg =~ /wrong_captcha|no_captcha/)
     {
         $self->{stats}{bump}{error}++;
+        captcha_report_bad($self->{conf}{captcha_decode}, $task->{path_to_captcha});
     }
     elsif ($msg eq 'wait')
     {
         $self->{stats}{bump}{wait}++;
         my $now = Time::HiRes::time;
         $run_at = $now + $self->{conf}{interval};
-        $log->pretty_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "sleep $self->{conf}{interval} seconds...");
+        $log->pretty_proxy(2, "green", $task->{proxy}, "No. ". $task->{thread}, "sleep $self->{conf}{interval} seconds...");
     }
-    else #-- Меняем прокси на следующую
+    else
     {
-        # my $proxy = shift @proxies;
-        # $log->msg($LOGLEVEL >= 3, "Something wrong with $proxy proxy. Switching to $proxy.");
-        # $task->{proxy} = $proxy;
-        # push @proxies, $proxy;
+        # может сделать смену прокси?
     }
     $bump_queue->put($task);
 };
@@ -222,21 +221,11 @@ sub delete_post($$)
 #------------------------------------------------------------------------------------------------
 #---------------------------------------  BUMP MAIN  --------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub _pre_init($)
-{
-    my $self      = shift;
-    $run_at       = 0;
-    $bump_queue   = Coro::Channel->new();
-    $delete_queue = Coro::Channel->new();
-    $self->{is_running}    = 1;
-    $self->{stats}{bump}   = {error => 0, bumped  => 0, total => 0, wait           => 0};
-    $self->{stats}{delete} = {error => 0, deleted => 0, total => 0, wrong_password => 0};
-
-}
-
 sub start($)
 {
     my $self = shift;
+    my $log  = $self->{log};
+    $log->msg(1, "Starting autobump mode...");
     async {
         $self->_pre_init();
         my $proxy = shift @{ $self->{proxies} };
@@ -253,11 +242,25 @@ sub start($)
 sub stop($)
 {
     my $self = shift;
+    my $log  = $self->{log};
+    $log->msg(1, "Stopping autobump mode...");
     $_->cancel for (grep {$_->desc =~ /bump|delete/ } Coro::State::list);
     $watchers      = {};
     $bump_queue    = undef;
     $delete_queue  = undef;
     $self->{is_running} = 0;
+}
+
+sub _pre_init($)
+{
+    my $self      = shift;
+    $run_at       = 0;
+    $bump_queue   = Coro::Channel->new();
+    $delete_queue = Coro::Channel->new();
+    $self->{is_running}    = 1;
+    $self->{stats}{bump}   = {error => 0, bumped  => 0, total => 0, wait           => 0};
+    $self->{stats}{delete} = {error => 0, deleted => 0, total => 0, wrong_password => 0};
+
 }
 
 sub _init_watchers($)
@@ -321,7 +324,6 @@ sub _init_watchers($)
                                 $thrs_available = $n > 0 ? $n : 0;
                             }
 
-                            #-- $self->{conf}{silent}
                             $self->delete_post($delete_queue->get)
                                 while $delete_queue->size && $thrs_available--;
                         }

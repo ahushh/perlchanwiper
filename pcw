@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '0.2-r37';
+our $VERSION = '0.2-r38';
 
 use strict;
 use autodie;
@@ -280,7 +280,7 @@ given ($mode)
     when ('ProxyChecker')
     {
         show_stats $m->{stats};
-        say @{ $m->{checked} };
+        say "@{ $m->{checked} }";
     }
     when ('AutoBump')
     {

@@ -14,7 +14,6 @@ use Coro::State;
 use Coro::LWP;
 use Coro::Timer;
 use Coro;
-# use EV;
 use Time::HiRes;
 #------------------------------------------------------------------------------------------------
 # Importing utility packages
@@ -83,9 +82,8 @@ sub wipe_get($$)
         if ($task->{run_at})
         {
             my $now = Time::HiRes::time;
-            $log->pretty_proxy(1, 'green', $task->{proxy}, 'GET',
+            $log->pretty_proxy(2, 'green', $task->{proxy}, 'GET',
                                sprintf("sleep %d...", $self->{conf}{flood_limit}));
-            $log->msg(3, "sleep: ". int($task->{run_at} - $now) );
             Coro::Timer::sleep( int($task->{run_at} - $now) );
         }
 
@@ -169,7 +167,7 @@ my $cb_wipe_post = unblock_sub
     {
         when ('success')
         {
-            #-- Move successfully recognized captcha in the specified dir 
+            #-- Move successfully recognized captcha into the specified dir
             if ($self->{conf}{save_captcha} && $task->{path_to_captcha})
             {
                 my ($name, $path, $suffix) = fileparse($task->{path_to_captcha}, 'png', 'jpeg', 'jpg', 'gif');
@@ -191,7 +189,7 @@ my $cb_wipe_post = unblock_sub
         }
         when ('critical_error')
         {
-            Carp::croak("Critical chan error. Going on is maybe purposelessly.");
+            $log->msg(1, "Critical chan error happened!", '', 'red');
         }
         when ('flood')
         {
@@ -220,7 +218,7 @@ my $cb_wipe_post = unblock_sub
     if ($self->{conf}{loop} && $msg ne 'banned' &&
         $self->{failed_proxy}{ $task->{proxy} } < $self->{conf}{proxy_attempts})
     {
-        $log->msg(3, "push in the get queue: $task->{proxy}");
+        $log->msg(3, "push into the get queue: $task->{proxy}");
         $new_task->{proxy} = $task->{proxy};
         $get_queue->put($new_task);
     }
@@ -237,7 +235,7 @@ sub wipe_post($$$)
         $coro->{task} = $task;
         $coro->on_destroy($cb_wipe_post);
 
-        my $status = 
+        my $status =
         with_coro_timeout {
             $engine->post($task, $self->{conf});
         } $coro, $self->{conf}{post_timeout};
@@ -252,6 +250,8 @@ sub wipe_post($$$)
 sub start($)
 {
     my $self = shift;
+    my $log  = $self->{log};
+    $log->msg(1, "Starting wipe mode...");
     async {
         $self->_pre_init();
         #-- Initialization
@@ -276,6 +276,20 @@ sub start($)
     };
     cede;
 }
+
+sub stop($)
+{
+    my $self = shift;
+    my $log  = $self->{log};
+    $log->msg(1, "Stopping wipe mode...");
+    $_->cancel for (grep {$_->desc =~ /get|prepare|post/ } Coro::State::list);
+    $watchers      = {};
+    $get_queue     = undef;
+    $prepare_queue = undef;
+    $post_queue    = undef;
+    $self->{is_running} = 0;
+}
+
 
 sub _pre_init($)
 {
@@ -427,16 +441,4 @@ sub _init_watchers($)
                         }
                        );
 }
-
-sub stop($)
-{
-    my $self = shift;
-    $_->cancel for (grep {$_->desc =~ /get|prepare|post/ } Coro::State::list);
-    $watchers      = {};
-    $get_queue     = undef;
-    $prepare_queue = undef;
-    $post_queue    = undef;
-    $self->{is_running} = 0;
-}
-
 1;
