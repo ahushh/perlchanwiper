@@ -1,5 +1,5 @@
 =pod
-Установка всех необходимых модулей: perl ./INSTALL
+Установка всех необходимых модулей: sudo perl ./INSTALL
 На все появляющиеся вопросы от cpan жмякаем Enter
 
 Для распознавания капчи с помощью tesseract нужно установить пакет tesseract-ocr и imagemagick
@@ -16,7 +16,6 @@ AnyEvent
 Carp
 Coro
 Data::Random
-EV
 Getopt::Long 
 HTML::Entities
 List::MoreUtils

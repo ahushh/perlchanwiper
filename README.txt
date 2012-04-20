@@ -18,10 +18,10 @@ ahushh@gmail.com
 * pcw          — запуск
 * proxychecker — простой прокси чекер, работающий на основе WWW:ProxyChecker
 * config.pl    — настройки изображений/видео/текста, распознавания капчи
-* configs      — настройки для модов (Wipe, AutoBump, Delete, ProxyChecker)
+* configs      — настройки для режимов работы (Wipe, AutoBump, Delete, ProxyChecker)
 * OCR          — скрипты, распознающие капчу
 * captcha      — сохраненные файлы капчи (см. опцию 'save_captcha' режима wipe)
-* chans        — настройки для чанов
+* chans        — файлы конфигурации чанов
 * lib          — сторонние модифицированные библиотеки и бинарники
 
 Примеры использования
@@ -49,10 +49,6 @@ ahushh@gmail.com
 Добавление новых чанов
 ----------------------
 См. файлы 'chans/wakaba.example.pl' и 'chans/kusaba.example.pl'
-
-Прочее
-------
-* При проблемах с цветным выводом логов нужно отредактировать файл * 'PCW/Core/Log.pm'
 
 FAQ
 ---
