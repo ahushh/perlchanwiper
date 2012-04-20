@@ -5,7 +5,7 @@ use autodie;
 use Carp;
 use feature qw(switch say);
 
-use base 'PCW::Modes::Abstract';
+use base 'PCW::Modes::Base';
 #------------------------------------------------------------------------------------------------
 # Importing Coro packages
 #------------------------------------------------------------------------------------------------

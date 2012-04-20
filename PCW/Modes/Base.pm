@@ -1,4 +1,4 @@
-package PCW::Modes::Abstract;
+package PCW::Modes::Base;
 
 #-----------------------------------------------------------------------
 use strict;

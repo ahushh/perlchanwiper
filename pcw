@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '0.2-r38';
+our $VERSION = '0.2-r39';
 
 use strict;
 use autodie;
@@ -13,13 +13,14 @@ use feature qw/say switch/;
 #-----------------------------------------------------------------------------
 use Coro;
 use AnyEvent;
-use Coro::Timer qw/sleep/;
+use Coro::Timer;
 use Getopt::Long qw/:config bundling/;
 use File::Spec;
 use File::Basename;
 #-----------------------------------------------------------------------------
 use PCW::Core::Utils qw(get_proxylist);
 use PCW::Core::Log;
+ 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 our %mode_config;
@@ -101,7 +102,7 @@ sub check_user_error()
 #-----------------------------------------------------------------------------
 # Info
 #-----------------------------------------------------------------------------
-sub info()
+sub show_info()
 {
     say "Perl Chan Wiper v$VERSION";
     say "~" x 30;
@@ -128,7 +129,7 @@ sub usage()
     my @modes;
     for my $path (glob "PCW/Modes/*.pm")
     {
-        next if $path =~ /Abstract/;
+        next if $path =~ /Base/;
         my ($mode, undef, undef) = fileparse($path, '.pm');
         push @modes, $mode;
     }
@@ -149,7 +150,7 @@ sub usage()
 
     local $" = ', ';
     print <<DESU
-PerlChanWiper - a multifunction CLI tool for different imageboards
+PerlChanWiper - a multifunction CLI tool for some imageboards
 
 Usage: $0 [chan] [mode]...
 
@@ -224,11 +225,11 @@ sub load_mode()
     my $package = "PCW::Modes::$mode";
     eval("use $package");
     Carp::croak($@) if ($@);
-    $package->new(engine   => $engine,
-                  proxies  => \@proxies,
-                  conf     => \%mode_config,
-                  log      => $logging,
-                  verbose  => $verbose);
+    return $package->new(engine   => $engine,
+                         proxies  => \@proxies,
+                         conf     => \%mode_config,
+                         log      => $logging,
+                         verbose  => $verbose);
 
 }
 #-----------------------------------------------------------------------------
@@ -264,7 +265,7 @@ load_chan();        #-- load $chan_config
 load_logging();
 load_engine();
 my $m = load_mode();
-info();
+show_info();
 #-----------------------------------------------------------------------------
 my $w = AnyEvent->signal (signal => "INT", cb => sub { $m->stop; });
 my $start_time = time;
@@ -272,7 +273,7 @@ my $start_time = time;
 $m->start;
 while ($m->{is_running})
 {
-    sleep 1;
+    Coro::Timer::sleep 1;
 }
 
 given ($mode)
