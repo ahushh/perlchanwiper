@@ -22,6 +22,7 @@ List::MoreUtils
 List::Util
 Term::ANSIColor
 Data::Random
+File::Find::Rule 
 /;
 
 my @checker = qw/
