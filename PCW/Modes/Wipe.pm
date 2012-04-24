@@ -228,8 +228,7 @@ sub wipe_post($$$)
 {
     my ($self, $task) = @_;
     my $engine = $self->{engine};
-    async
-    {
+    async {
         my $coro = $Coro::current;
         $coro->desc('post');
         $coro->{task} = $task;
@@ -403,7 +402,7 @@ sub _init_watchers($)
                                     !@post_coro    && $post_queue->size
                                    )
                                 {
-                                    $log->msg(1, "#~~~ Start posting. ~~~#");
+                                    $log->msg(1, "#~~~ ". scalar($post_queue->size) ." charges are ready. Strike! ~~~#");
                                     $self->wipe_post($post_queue->get)
                                         while $post_queue->size && $thrs_available--;
                                 }
