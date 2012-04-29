@@ -163,7 +163,7 @@ sub delirium_msg(;$)
             }
             $template .= " "; #-- Пробел после слова
         }
-        #-- Удаляем пробел в конце предложения
+        #-- Удаляет пробел в конце предложения
         chop $template;
         $template .= "3 "; #-- и ставит точку
     }
@@ -171,7 +171,7 @@ sub delirium_msg(;$)
     for (keys %m)
     {
         my @dict = @{ $m{$_} };
-        while ($template =~ s/$_/$dict[rand(scalar @dict)]/) {}; 
+        while ($template =~ s/$_/$dict[rand(scalar @dict)]/) {};
     }
     return $template;
 }

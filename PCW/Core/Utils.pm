@@ -16,8 +16,6 @@ use Data::Random qw(rand_set);
 # CORO TIMEOUT
 #------------------------------------------------------------------------------------------------
 use Coro;
-#use Coro::State;
-#use LWP::UserAgent;
 use Time::HiRes;
 
 sub with_coro_timeout(&$$)
@@ -32,6 +30,7 @@ sub with_coro_timeout(&$$)
 #------------------------------------------------------------------------------------------------
 # PROXY
 #------------------------------------------------------------------------------------------------
+use Coro::LWP;
 use LWP::Simple qw(get);
 use List::MoreUtils qw(uniq);
 

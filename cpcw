@@ -1,0 +1,375 @@
+#!/usr/bin/perl
+$|=1;
+
+our $VERSION = '0.2-r41';
+
+use strict;
+use autodie;
+use lib 'lib';
+
+#-----------------------------------------------------------------------------
+use Carp;
+use feature qw/say switch/;
+#-----------------------------------------------------------------------------
+use Coro;
+use AnyEvent;
+use Coro::Timer;
+use Getopt::Long qw/:config bundling/;
+use File::Spec;
+use File::Basename;
+#-----------------------------------------------------------------------------
+use PCW::Core::Utils qw(get_proxylist);
+use PCW::Core::Log;
+ 
+#-----------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+our %mode_config;
+our $chan_config;
+
+my @proxies;
+my @agents;
+my $engine;
+my $logging;
+#-----------------------------------------------------------------------------
+my $common_config = 'config.pl';
+my $mode_config;
+
+#-----------------------------------------------------------------------------
+# Parse command line arguments
+#-----------------------------------------------------------------------------
+#-- DEFAULT VALUES
+my $chan;
+my $mode;
+my $verbose    = 0;
+my $useragents = 'UserAgents';
+my $proxy_file = File::Spec->catfile('proxy', 'no');
+my $proxy_type = 'http';
+
+my $loglevel   = 1;
+my $logfile    = undef;
+my $lognocolor = undef;
+
+sub parse_args()
+{
+    my $help   = 0;
+    my $desu   = 0;
+    my $result = GetOptions(
+                            'chan=s'     => \$chan,
+                            'mode=s'     => \$mode,
+                            'proxy=s'    => \$proxy_file,
+                            'ua=s'       => \$useragents,
+                            'cconfig=s'  => \$common_config,
+                            'mconfig=s'  => \$mode_config,
+                            'loglevel=i' => \$loglevel,
+                            'logfile=s'  => \$logfile,
+                            'lognocolor' => \$lognocolor,
+                            'verbose'    => \$verbose,
+                            'help|?'     => \$help,
+                            'desu'       => \$desu,
+                           );
+    if ($desu)
+    {
+        desu();
+        exit 1;
+    }
+    if ($help || !($mode && $chan))
+    {
+        usage();
+        exit 1;
+    }
+    $mode_config = File::Spec->catfile('configs', "$mode.pl")
+        unless $mode_config;
+}
+
+sub check_user_error()
+{
+    Carp::croak("Chan config '$chan' does not exist")
+        unless($chan || -e "chans/$chan.pl");
+
+    Carp::croak("Common config '$common_config' does not exist")
+        unless($common_config || -e $common_config);
+
+    my $modes_list = 'proxychecker|wipe|delete|autobump';
+    Carp::croak("Mode '$mode' does not exist")
+        unless($mode =~ /$modes_list/i);
+
+    Carp::croak("Mode '$mode' config does not exist")
+        unless(-e "configs/$mode.pl");
+
+    Carp::croak("Proxylist '$proxy_file' does not exist")
+        unless($proxy_file && (-e $proxy_file || $proxy_file =~ /http/) );
+
+    Carp::croak("Proxy type '$proxy_type' is not specified")
+        unless($proxy_type);
+
+    Carp::croak("Useragents list '$useragents' does not exist")
+        unless($useragents && -e $useragents);
+}
+
+#-----------------------------------------------------------------------------
+# Info
+#-----------------------------------------------------------------------------
+sub show_info()
+{
+    say "Perl Chan Wiper v$VERSION";
+    say "~" x 30;
+    say "Chan: $chan ". ($chan_config ? "($chan_config->{description})" : "");
+    say "Engine: ". $chan_config->{engine};
+    say "Work mode: $mode";
+    say "Mode config: $mode_config";
+    say "Common config: $common_config";
+    say "Proxies loaded: ". scalar @proxies;
+    say "Browsers loaded: ". scalar @agents;
+    say "~" x 30;
+    say "Log level: $loglevel";
+    say "Log file: ", ($logfile || "STDOUT");
+    say "Colored logging: ", ($lognocolor ? 'no' : 'yes');
+    say "Verbose output: ",  ($verbose    ? 'no' : 'yes');
+    say "~" x 30;
+}
+
+#-----------------------------------------------------------------------------
+# Usage
+#-----------------------------------------------------------------------------
+sub desu()
+{
+    print $_ while (<DATA>);
+}
+
+sub usage()
+{
+    my @modes;
+    for my $path (glob "PCW/Modes/*.pm")
+    {
+        next if $path =~ /Base/;
+        my ($mode, undef, undef) = fileparse($path, '.pm');
+        push @modes, $mode;
+    }
+    my @chans;
+    for my $path (glob "chans/*.pl")
+    {
+        next if $path =~ /example/;
+        my ($chan, undef, undef) = fileparse($path, '.pl');
+        push @chans, $chan;
+    }
+    my @engines;
+    for my $path (glob "PCW/Engine/*.pm")
+    {
+        next if $path =~ /Abstract|Simple/;
+        my ($engine, undef, undef) = fileparse($path, '.pm');
+        push @engines, $engine;
+    }
+
+    local $" = ', ';
+    print <<DESU
+PerlChanWiper - a multifunction CLI tool for some imageboards
+
+Usage: $0 [chan] [mode]...
+
+Options:
+    --chan          Chan name (@chans)
+    --mode          Work mode (@modes)
+    --proxy         Path to file or url which contains proxies (default is '$proxy_file')
+    --proxytype     Default proxy protocol (default is '$proxy_type')
+    --ua            User agents list file (default is '$useragents')
+    --cconfig       Common config file (default is '$common_config')
+    --mconfig       Mode config file (default is 'configs/\$mode_name.pl')
+    --verbose       Verbose output
+    --help          Show this message and exit
+    --desu          Show desu and exit
+
+    --logfile       File for logging (STDOUT by default)
+    --lognocolor    Disable colored log output
+    --loglevel      1-4, 1 by default
+
+Supported chan engines: @engines
+Version $VERSION
+DESU
+}
+
+#-----------------------------------------------------------------------------
+# Load
+#-----------------------------------------------------------------------------
+sub load_configs()
+{
+    our ($img, $msg, $vid, $captcha_decode);
+    require $common_config;
+    require $mode_config;  #-- load %mode_config
+
+    $mode_config{img_data} = $img;
+    $mode_config{msg_data} = $msg;
+    $mode_config{vid_data} = $vid;
+    $mode_config{captcha_decode} = $captcha_decode;
+}
+
+sub load_proxies()
+{
+    @proxies = get_proxylist($proxy_file, $proxy_type);
+}
+
+sub load_agents()
+{
+    open my $fh, '<', $useragents;
+    @agents = <$fh>;
+    close $fh;
+}
+
+sub load_chan()
+{
+    my $package = File::Spec->catfile('chans', "$chan.pl");
+    require "$package"; #-- load $chan_config
+}
+
+sub load_logging()
+{
+    $logging = PCW::Core::Log->new( file => $logfile, level => $loglevel, colored => !$lognocolor );
+}
+
+sub load_engine()
+{
+    my $package = "PCW::Engine::". $chan_config->{engine};
+    eval("use $package");
+    Carp::croak($@) if ($@);
+    $engine = $package->new(%$chan_config, agents => \@agents, log => $logging, verbose => $verbose);
+}
+
+sub load_mode()
+{
+    my $package = "PCW::Modes::$mode";
+    eval("use $package");
+    Carp::croak($@) if ($@);
+    return $package->new(engine   => $engine,
+                         proxies  => \@proxies,
+                         conf     => \%mode_config,
+                         log      => $logging,
+                         verbose  => $verbose);
+
+}
+#-----------------------------------------------------------------------------
+sub show_stats($)
+{
+    my %stats = %{ shift() };
+    say "~" x 30;
+    for my $k (keys %stats)
+    {
+        say "$k: $stats{$k}";
+    }
+}
+
+sub measure_speed($$$)
+{
+    my ($posted, $start_time, $u) = @_;
+    my $d;
+    $d = 1   if $u eq 'second';
+    $d = 60  if $u eq 'minute';
+    $d = 360 if $u eq 'hour';
+    return sprintf "%.3f", ($posted / ((time - $start_time)/$d));
+}
+
+#-----------------------------------------------------------------------------
+# RUN
+#-----------------------------------------------------------------------------
+parse_args();
+check_user_error();
+load_configs();     #-- load %mode_config
+load_proxies();
+load_agents();
+load_chan();        #-- load $chan_config
+load_logging();
+load_engine();
+my $m = load_mode();
+show_info();
+#-----------------------------------------------------------------------------
+my $w = AnyEvent->signal (signal => "INT", cb => sub { $m->stop; });
+my $start_time = time;
+#-----------------------------------------------------------------------------
+$m->start;
+while ($m->{is_running})
+{
+    Coro::Timer::sleep 1;
+}
+
+given ($mode)
+{
+    when ('ProxyChecker')
+    {
+        show_stats $m->{stats};
+        say "@{ $m->{checked} }";
+    }
+    when ('AutoBump')
+    {
+        show_stats $m->{stats}{bump};
+        show_stats $m->{stats}{delete};
+    }
+    when ('Wipe')
+    {
+        show_stats $m->{stats};
+        say sprintf("speed: %s posts per minute", measure_speed($m->{stats}{posted}, $start_time, 'minute'));
+    }
+    default
+    {
+        show_stats $m->{stats};
+    }
+}
+
+__DATA__
+KMMW;  lMMMMK   XMl       ;Mc0M0 xMM,M:OMMMMK xMMxcMMMMMMMMMMMkWMMMMMMMMMMk     .WMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+0MWx.  dMMMMO.  xO'        xW,WMd dMN:M''WMMMM..WMW.,XMMMMMMMMMWONMMMMMMMMMMk     .XMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+Mx.  ;XMMMWc   '.          WoxMM' dMOdN  lMMMMd dMMO  oWMMNMMMMMM0XMMMMMMMMMMX.     OMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+.  .OMMMMO.               cX:MMN. kMcNx   kMMMW. NMM:  .0MNoXMMMMMKXMMMM0KMMMMW,     dMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+  ;XMMMN:             :   XcXMM0  KNlM,    KMMMk :MMN.,. cWN'kMMMMMKKMMMMxcWMMMW,     lMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+;cNMMMx.            .k   ckOMMNd .MdXW.    .NMMM; KMMk Ol .0K oMMMMMKXMMMMk.0MMMW,     lMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+XMMM0.  ..         lX.  .0xMMWW. :NxMNx     'WMMN.'MMMl X0. lo ,WMMMM0NMMMMk oMKWW.     lMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMX;  :x'        .KN.   xkMMWW0  OOWWWW.     ,WMMK xMMMc.NWl .  .XMMMMOWMMMMx ;X,NX.     xMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+X: 'xNo        .xWW,   :KMMWWM, .WNMNMWd      ;WMM0.NMMMl;MMK.   'KMMMWOMMMMMl ;c.Nk      0MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+'oXMk.        oWMW;   .NMMMNMk  kMMWWWMM'      ,WMX0:MMMMkdNMWd  d;0MMMXKMMMMM, . 'W,     .NMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMk.       .oNWMM:   .XMMMWWW. ,MMMNWMMMX       .NdkKxMMMMNd,XMWo.Nc0MMMOWMMMMN.   ox      ;MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+k.       .dWMMMM:    0MMMNWMo  XMMNWMMMMMO       .O,oNNMMMMW  OMMWWMoKMMWOMMMMMx    ,'      OMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+       'kWMMMMW;    OMMWNMMK  xMMWWMMMMMMMd        :.:WMMMMMc  oMMMMMxXMMOWMMMMM'    ;      .MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+    .cKMMMMMMN'    OMMNNMMW. :MMNNMMMMMMMMMo .l       .XMMMMK   :MMMMMkWMNOMMMMM0    ;       xMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+  ,kWMMMMMMMX.    OMMNWWXMc 'WMWXMMMMMMMMMMMo .0'       kMMMM.   ;WMMMMXMMOMMMMMM, , ,       'MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+oNMMMMMMMMMO     OMWXMMMNc  oxOxKNWMMMMMMMMMMd ,Wx       :NMMl    :MMMMMKMOKMMMMMk d;,.       XMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMMMMMMo    .KMNWMMMM0 .XMXkOkdoolcc:;;coxOd ,WNc      .xM0     cMMMM;WN.WMMMMW OKc.       dMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMMMMN'    'NWNMMMMMK .XMWXMMMMMMMMMMMNKOxl:'..lxk;      .O      oMMM.kM.dMMMMM:WM:        :MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMMMO.    :NNWMMMMMK..XMWXMMMMMMMMMMMMMMMMMMMMo ldl;.             OMM':M,,MMMMMXMM:        ,MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMN:     dNWMMMMMM0 'NMWNMMMMMMMMMMMMMMMMMMMMMMK,lWMMO.            XM'.M;.MMMMMMMM,        ;MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMk.    .0WMMMMMMMO cWMWNMMMMMMMMMMMMMMMMMMMMMMMMMk,OMMMk.          'M. N,.MMMMMMMM.        cMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMK'     lNMMMMMMMMx xMMNWMMMMMMWNNN0kOOO00KXWMMMMMMMWdc0MMWo          o  O..MMMMMMM0         kMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+X:    'xWMMMMMMMMWc.KMWNWMMMMMMNXXKXNMMMMMMMMWMMMMMMMMMWkokWMX;           c ,MMMMMMM,         WMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+   .oXMMMMMMMMMMX.:WMNNMMMMMMMMMX0kdlc;;,,,,,;:codOKWMMMMMXdd0MO.           lMMMMMMk         .MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+.oKMMMMMMMMMMMMk.OMWNWMMMMMMMXO,  ..                ..':okKNMKxkO,          OMMMMMX.          NMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMMMMMMMMMN::NMNNMMMMMMMMM0;lOWk .....           ,WXko;.  .';:lx.        WMMMMW'           dMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMMMMMMMMk,0MNNMMMMMMMMMMMWMMMWdNMMMMMO           oMMMMM,   :OMMW       :MMMMW,            'MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMMMMMMX;oWNNMMMMMMMMMMMMMMMMMKOMMW0o'       .    'MMMMd 'kWMMMMM.      0MMMM;              KMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMMMMWl:XNNWMMMMMMMMMMMMMMMMMMW... ..      .lMW.  lMMWl:KMMMMMMMM,     ,MMMW;               :MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMMMx;0NNMMMMMMMMMMMMMMMMMMMMMMc   ON;   .cNO.0c .NMWONMMMMMMMMMW;     0MMN'                 XMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMO;dNWMMMMMMMMMMMMMMMMMMMMMMMMW'.K0MMMWMMMNxKN. KMMWMMMMMMMMMMMW,    :MMK.       .          :MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMO'cXWMMMMMMMMMMMMMMMMMMMMMMMMMMMW: :kXMMMMMMXo..KMMMMMMMMMMMMMMMM.   .NMo        ; .x         XMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WkldNMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWdoolool;,. .l0KWMMMMMMMMMMMMMW:    OX'       .: .kc         :MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+0NMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNMMMMMMMMMMMMMMMMMX'    do        c; xdK           KMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWo     ,.       .x.;NKx:           'MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM0.             .do'0MWoO             oMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMMMMMMMMNWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMX;              o0:kMMMoN.              XMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMMMMMMMMONMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMX:             .dKkkMMMMdNl               'WMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMMMMMMMMO0MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM0;             ;OWXXMMMMMxKW                 lMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMMMMMMMMMWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNd.            ,xWMMMMMMMMMM0kO.                 OMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNx,            :0WMMMMMMMMMMMMMKxM'                 .NMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMMMMMMMMMMMMMMMMMNKOd0MMMMMMMMMMMMMMMMMMMMMKo'              ,MMMMMMM0oNMMMMMMOOM.                  'WMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMW:kkxxkkkkOOOOOOO000Xk;NMMMMMMMMMMMMMMMMMMMWOddddxxOK0       ;xMMMMMMWoO0MMMMMMdNN                    cMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMXdKkWMMMMMMMMKOxWW0loWMMMMMMMMMMMMMMMMMMMMMMMMMMMMMO.      .dNMMMMMMO0xXMMMMMMoMl                     xMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMoxKMMMMMMMMWMW0llXMMMMMMMMMMMMMMMMMMMMMMMMMMMMMX:        xoMMMMMKMdNoMMMMMMk00                       KMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMM0d0NWMMMMWX0dd0MMMMMMMMMMMMMMMMMMMMMMMMMMMMMO;          0oMMMMMdkOo0kxOMMXxK                        .NMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMMMMX0OOOOOO0KWMMMMMMMMMMMMMMMMMMMMMMMMMMMMXo.            koWO0000XMMWO0NMNdMo                         'WMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMXd'               coW0000KWMMxxkd0NdWo                          cMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMXo'                  .kKMMNOdOlxoNMMMKcN:                           dMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMWOc.                      NdMMKKMdKdX0MMMxXM.                            0MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+WMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMW0o'                          NdMMMMMo0OMMMMMoMK                             .NMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMW0o,                             'oWMMMMMxoWMMMMKxM:                              'WMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+KKNMMMMMMMMMMMMMMMMMMMMMMWXX0:clx0Kx'                         ,KMMMMMMMMMMMMMoWX                                lMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMNKKKKWMMMMMMMMMMMMMNXXXXMMkNMMMMMMM0;                       cWMMMMMMMMMMMM0xW'                                 OMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMXKKKKNMMWN000KNMMMMMMxMMMMMMMMMMXc                     x0MMMMMMMMMMMX;0:                                  .NMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMX000KWMMMMMMMMMWxMKMMMMMMMMMMWo.                  0oMMMMMMMMMMMKdk                                    lMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMMXkXoMMMMMMMMMMMMMk'                ok0MMMMMMMMMMWoO                                     XMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMM0x'NMMMMMMMMMMMMMMMK:              .NoWMMMMMMMMMXxk                                     :MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMM0 xMMMMMMMMMMMMMMMMMMWd.            ,NoMM0XMMMMMxKo                                      XMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+MMMMMMMMMMMMMMMMMMMMMMMMMMW.,MMMMMMMMMMMMMMMMMMMMMMO.           oOkKdoMMMMMoM,                                      xMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM

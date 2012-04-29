@@ -323,7 +323,7 @@ sub prepare($$$$)
         my $captcha_text = captcha_recognizer($cnf->{captcha_decode}, $task->{path_to_captcha});
         unless ($captcha_text)
         {
-            $log->pretty_proxy(1, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returns undef");
+            $log->pretty_proxy(1, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned undef");
             return('no_captcha');
         }
 
