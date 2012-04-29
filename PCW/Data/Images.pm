@@ -22,27 +22,28 @@ use PCW::Core::Utils qw(random);
 use Coro;
 my $lock = Coro::Semaphore->new;
 #------------------------------------------------------------------------------------------------
-sub make_pic($)
+sub make_pic($$$)
 {
-    my $conf = shift;
+    my ($engine, $task, $conf) = @_;
     my $img_mode = $conf->{mode} . '_img';
     Carp::croak sprintf "Image mode '%s' doesn't exist!\n", $conf->{mode}
             unless exists &{ $img_mode };
     my $create_img = \&{ $img_mode };
-    return &$create_img($conf);
+    return &$create_img($engine, $task, $conf);
 }
 
 #------------------------------------------------------------------------------------------------
 #---------------------------------------- Modes -------------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub no_img($)
+sub captcha_img($$$)
 {
-    undef;
+    my (undef, $task, undef) = @_;
+    return $task->{path_to_captcha};
 }
 
-sub rand_img($)
+sub rand_img($$$)
 {
-    my $data = shift;
+    my (undef, undef, $data) = @_;
     my ($fh, $filename) = tempfile(UNLINK => 1, SUFFIX => ".png");
     my %opt = %{ $data->{args} } if $data->{args};
     print $fh rand_image(%opt);
@@ -52,7 +53,7 @@ sub rand_img($)
 
 sub single_img($)
 {
-    my $data = shift;
+    my (undef, undef, $data) = @_;
     Carp::croak "Image file is not set!"
             unless my $path_to_img = $data->{path};
     if ($data->{max_size})
@@ -67,7 +68,7 @@ sub single_img($)
 
 sub dir_img($)
 {
-    my $data = shift;
+    my (undef, undef, $data) = @_;
     my $dirs = $data->{path};
 
     state @img_list;

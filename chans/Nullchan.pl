@@ -10,7 +10,7 @@ our $chan_config =
 
     response => {
         post => {
-            banned        => [403, 'CDN', 'possible proxy'],
+            banned        => [403, 'CDN', 'possible proxy', 'BANNED'],
             net_error     => ['Service Unavailable Connection', 502],
             post_error    => [
                               'your message is too long',
@@ -29,7 +29,7 @@ our $chan_config =
             critical_error => [
                                'Неправильный ID треда',
                               ],
-            success       => [302, 'BuildThread()', 'Updating pages'],
+            success       => ['BuildThread()', 'Updating pages'],
         },
         delete => {
             success        => ['Сообщение удалено.'],

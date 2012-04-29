@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '0.2-r41';
+our $VERSION = '0.2-r42';
 
 use strict;
 use autodie;
@@ -123,8 +123,8 @@ sub show_info()
     say "~" x 30;
     say "Log level: $loglevel";
     say "Log file: ", ($logfile || "STDOUT");
-    say "Colored logging: ", ($lognocolor ? 'no' : 'yes');
-    say "Verbose output: ",  ($verbose    ? 'no' : 'yes');
+    say "Colored logging: ", ($lognocolor ? 'no'  : 'yes');
+    say "Verbose output: ",  ($verbose    ? 'yes' : 'no');
     say "~" x 30;
 }
 
