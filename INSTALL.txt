@@ -2,10 +2,14 @@
 =head1 Linux
 * Perl лучше обновить до версии 5.12.*
 
-* Установить из репозитория пакет tesseract или tesseract-ocr (программа, которая будет распознавать капчу).
+* Установить из репозитория пакет tesseract или tesseract-ocr (программа, которая будет распознавать капчу)
   Еще нужен imagemagick, для разгадывания капчи через tesseract и некоторых других штук.
   sudo apt-get install tesseract-ocr imagemagick
 
+* Для работы socks-прокси, https и чтоб собрались все модули перла нужна либа libssl-dev:
+  sudo apt-get install libssl-dev
+  Как она точно называется в других дистрах, я не знаю. В генте и без нее все работает.
+ 
 * Ставим нужные модули перла через cpan: 
   perl ./INSTALL.txt
 
@@ -14,7 +18,7 @@
   Например для модуля Coro и AnyEvent на дебианоподобных дистрах:
   sudo apt-get install libcoro-perl libanyevent-perl
 
-Поверялось на Ubuntu 12.04 LTS (perl 5.12.0) и Gentoo (perl 5.12.4)
+Поверялось на Ubuntu 12.04 LTS (perl 5.14.2) и Gentoo (perl 5.12.4)
 
 =head1 Windows
 Coming soon...
@@ -36,6 +40,13 @@ Term::ANSIColor
 Data::Random
 File::Find::Rule 
 WWW::ProxyChecker
+LWP::Protocol::https
+LWP::Protocol::socks
 /;
 
-system ( ($^O =~ /linux/ ? 'sudo ' : '') ."cpan @packages" );
+my @dependences = qw/
+String::ShellQuote
+File::Which
+/;
+
+system для ( ($^O =~ /linux/ ? 'sudo ' : '') ."cpan @dependences @packages" );
