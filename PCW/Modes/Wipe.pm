@@ -186,6 +186,13 @@ my $cb_wipe_post = unblock_sub
         {
             $self->{stats}{wrong_captcha}++;
             captcha_report_bad($self->{conf}{captcha_decode}, $task->{path_to_captcha});
+            if ($self->{conf}{wcap_retry})
+            {
+                $log->msg(3, "push into the get queue: $task->{proxy}");
+                $new_task->{proxy} = $task->{proxy};
+                $get_queue->put($new_task);
+                return;
+            }
         }
         when ('critical_error')
         {

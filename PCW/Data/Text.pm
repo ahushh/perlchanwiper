@@ -19,39 +19,37 @@ my $lock = Coro::Semaphore->new;
 
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub interpolate($)
+sub interpolate($$)
 {
-    my $text = shift;
+    my ($text, $task) = @_;
 
+    $text =~ s/%captcha%/$task->{captcha_text};/eg;
     $text =~ s/%unixtime%/time;/eg;
-
     $text =~ s/%date%/scalar(localtime(time));/eg;
-
     $text =~ s/%(\d+)rand(\d+)%/random($1, $2);/eg;
-
     $text =~ s/@~(.+)~@/`$1`;/eg;
 
     return $text;
 }
 
-sub make_text($)
+sub make_text($$$)
 {
-    my $conf = shift;
+    my ($engine, $task, $conf) = @_;
     my $text = $conf->{text};
 
-    $text =~ s/#delirium#/delirium_msg($conf->{delirium});/eg;
-    $text =~ s/#boundary#/boundary_msg($conf->{boundary});/eg;
-    $text =~ s/#string#/string_msg($conf->{string});/eg;
+    $text =~ s/#delirium#/delirium_msg($engine, $task, $conf->{delirium});/eg;
+    $text =~ s/#boundary#/boundary_msg($engine, $task, $conf->{boundary});/eg;
+    $text =~ s/#string#/string_msg($engine, $task, $conf->{string});/eg;
 
-    return interpolate($text);
+    return interpolate($text, $task);
 }
 
 #------------------------------------------------------------------------------------------------
 #---------------------------------------- Text --------------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub boundary_msg($)
+sub boundary_msg($$$)
 {
-    my $data = shift;
+    my (undef, undef, $data) = @_;
     my $boundary = $data->{boundary} || '----';
     state @text;
     state $i = 0;
@@ -60,9 +58,9 @@ sub boundary_msg($)
     if (!@text)
     {
         open(my $fh, '<', $data->{path});
-		local $/ = undef;
+        local $/ = undef;
         my $text = <$fh>;
-		@text = split /$boundary/, $text;
+        @text = split /$boundary/, $text;
         close $fh;
     }
     $lock->up;
@@ -80,9 +78,9 @@ sub boundary_msg($)
     return $msg;
 }
 
-sub string_msg($)
+sub string_msg($$$)
 {
-    my $data = shift;
+    my (undef, undef, $data) = @_;
     state @text;
     state $i = 0;
     $i = 0 if ($i >= scalar @text);
@@ -115,9 +113,9 @@ sub string_msg($)
     return $msg;
 }
 
-sub delirium_msg(;$)
+sub delirium_msg($$$)
 {
-    my $cnf = shift;
+    my (undef, undef, $cnf) = @_;
     my $min_len_w = $cnf->{min_len_w} || 3;
     my $max_len_w = $cnf->{max_len_w} || 7;
     my $min_w     = $cnf->{min_w}     || 1;

@@ -26,20 +26,20 @@ my %types = ( youtube => ['watch\?v=(?<id>(\w|-)+)&?',
 
 my %search_urls = ( youtube => 'http://www.youtube.com/results?search_query={search}&page={page}');
 
-sub make_vid($)
+sub make_vid($$$)
 {
-    my $conf = shift;
+    my ($engine, $task, $conf) = @_;
     my $vid_mode = $conf->{mode} . '_vid';
     Carp::croak sprintf "Video mode '%s' doesn't exist!\n", $conf->{mode}
             unless exists &{ $vid_mode };
     my $get_vid = \&{ $vid_mode };
-    return &$get_vid($conf);
+    return &$get_vid($engine, $task, $conf);
 }
 
 #------------------------------------------------------------------------------------------------
-sub file_vid($)
+sub file_vid($$$)
 {
-    my $data = shift;
+    my (undef, undef, $data) = @_;
 
     state @vid_list;
 
@@ -71,15 +71,16 @@ sub file_vid($)
     return $video;
 }
 
-sub download_vid($)
+sub download_vid($$$)
 {
-    my $data = shift;
+    my ($engine, undef, $data) = @_;
     state @vid_list;
 
     $lock->down;
     if (!@vid_list)
     {
-        say "Start fetching video ID's...";
+        my $log = $engine->{log};
+        $log->msg(2, "Start fetching video ID's from $data->{type}..");
         my $raw;
         for my $query (@{ $data->{search}})
         {
@@ -89,6 +90,7 @@ sub download_vid($)
                 $url =~ s/\{search\}/$query/e;
                 $url =~ s/\{page\}/$page/e;
                 $raw .= get($url);
+                $log->msg(3, "ID's fetched from $page page and with '$query' query.");
             }
         }
         for my $pattern (@{ $types{ $data->{type} } })
@@ -99,13 +101,13 @@ sub download_vid($)
             }
         }
         @vid_list = uniq @vid_list;
-        say "Fetched ". scalar(@vid_list) ." ID's";
+        $log->msg(2, "Fetched ". scalar(@vid_list) ." video ID's");
         if (my $path = $data->{save})
         {
             open(my $fh, '>', $path);
             print $fh "@vid_list";
             close $fh;
-            say "Video ID's saved to $path";
+            $log->msg("Video ID's saved to $path");
         }
     }
     $lock->up;

@@ -414,13 +414,13 @@ sub ban_check($$$)
     #-- Message
     if ($cnf->{msg_data}{mode} ne 'no')
     {
-        my $text = make_text( $cnf->{msg_data} );
+        my $text = make_text( $self, $task, $cnf->{msg_data} );
         $content{ $self->{fields}{post}{msg} } = $text;
     }
     #-- Image
     if ($cnf->{img_data}{mode} ne 'no')
     {
-        my $file_path = make_pic( $cnf->{img_data} );
+        my $file_path = make_pic( $self, $task, $cnf->{img_data} );
         $content{ $self->{fields}{post}{img} } = ( $file_path ? [$file_path] : undef );
         $task->{file_path} = $file_path;
     }
