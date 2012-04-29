@@ -15,28 +15,37 @@ ahushh@gmail.com
 
 Файлы и каталоги
 ~~~~~~~~~~~~~~~~
-* pcw          — запуск
+* cpcw         — запуск
 * proxychecker — простой прокси чекер, работающий на основе WWW:ProxyChecker
 * config.pl    — настройки изображений/видео/текста, распознавания капчи
 * configs      — настройки для режимов работы (Wipe, AutoBump, Delete, ProxyChecker)
-* OCR          — скрипты, распознающие капчу
 * captcha      — сохраненные файлы капчи (см. опцию 'save_captcha' режима wipe)
 * chans        — файлы конфигурации чанов
+ 
+* OCR          — скрипты, распознающие капчу
 * lib          — сторонние модифицированные библиотеки и бинарники
 
 Примеры использования
 ---------------------
 Вайп:
-./pcw --mode Wipe --chan Nullchan --proxy proxy/my/0chan
+ ./cpcw --mode Wipe --chan Nullchan --proxy proxy/my/0chan
 
 Автобамп:
-./pcw --mode AutoBump --chan Nullchan --loglevel 2
+ ./cpcw --mode AutoBump --chan Nullchan --loglevel 2
 
 Можно так же сокращать имена параметров до очевидных:
-./pcw --mo AutoBump --ch Nullchan --logl 2
+ ./cpcw --mo AutoBump --ch Nullchan --logl 2
+
+Проверить прокси из файлы proxy/my/all на возможность постинга на доске:
+ ./cpcw --mo ProxyChecker --ch Nullchan
+Список хороших прокси будет напечатан при выходе
+
+Просто прочекать прокси из файла proxy/my/all и сохранить хорошие в proxy/my/checked
+ ./proxychecker proxy/my/all proxy/my/checked
 
 Примечания
 ----------
+* Под Windows не работает. Пока.
 * На нульчане в /b/ не работает постинг не ascii-символов — ошибка 'flood detect'
 * Для отключения каталога (например для автобампа 2.0 досок на нульчане)
   в файле конфигурации чана в секции 'urls' закомментировать строку
@@ -44,7 +53,7 @@ ahushh@gmail.com
 
 Установка
 ---------
-См. файл INSTALL
+См. файл INSTALL.txt
 
 Добавление новых чанов
 ----------------------
@@ -74,11 +83,11 @@ FAQ
 
 Не работают socks-прокси!
 +++++++++++++++++++++++++
-Нормально вряд ли будут. Но можно попробовать:
+Нормально вряд ли будут, потому я их и отключил по-дефолту. Но можно попробовать.
 
-Нужно установить модуль 'LWP::Protocol::socks' через CPAN:
+Нужно установить модуль 'LWP::Protocol::socks'; через CPAN:
 sudo cpan LWP::Protocol::socks
-Если повезет, оно соберется и заработает. Но я бы не надеялся.
+Если повезет, оно соберется и заработает. Но мне это под убунтой не удалось.
 
 Или через пакеты дистрибутива. Например, для apt-based:
-apt-get install liblwp-protocol-socks-perl
+sudo apt-get install liblwp-protocol-socks-perl libssl-dev 

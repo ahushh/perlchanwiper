@@ -1,5 +1,6 @@
-#-- Добавлено поддержка указания конфиг файла
+#-- Добавлена поддержка указания конфиг файла
 package Image::OCR::TesseractX;
+ 
 use strict;
 use Carp;
 use Cwd;
@@ -11,6 +12,7 @@ use vars qw(@EXPORT_OK @ISA $VERSION $DEBUG $WHICH_TESSERACT $WHICH_CONVERT %EXP
 $VERSION = sprintf "%d.%02d", q$Revision: 1.24 $ =~ /(\d+)/g;
 %EXPORT_TAGS = ( all => \@EXPORT_OK );
 
+use File::Copy;
 
 BEGIN {
    use File::Which 'which';
@@ -45,7 +47,6 @@ sub get_ocr {
       my $abs_copy = "$abs_tmp_dir/$1";
 
       # TODO, what if source and dest are same, i want it to die
-      require File::Copy;
       File::Copy::copy($abs_image, $abs_copy) 
          or die("cant make copy of $abs_image to $abs_copy, $!");
 

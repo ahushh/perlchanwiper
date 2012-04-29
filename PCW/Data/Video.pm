@@ -31,7 +31,7 @@ sub make_vid($)
     my $conf = shift;
     my $vid_mode = $conf->{mode} . '_vid';
     Carp::croak sprintf "Video mode '%s' doesn't exist!\n", $conf->{mode}
-			unless exists &{ $vid_mode };
+            unless exists &{ $vid_mode };
     my $get_vid = \&{ $vid_mode };
     return &$get_vid($conf);
 }
@@ -47,7 +47,7 @@ sub file_vid($)
     if (!@vid_list)
     {
         open(my $fh, '<', $data->{path});
-		local $/ = undef;
+        local $/ = undef;
         my $raw  = <$fh>;
         close $fh;
 

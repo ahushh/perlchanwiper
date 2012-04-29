@@ -23,6 +23,7 @@ our $chan_config =
                               'your message is too long',
                               'temporarily unavailable',
                               'Это видео уже опубликовано',
+                              'Уже опубликовано тут', 
                               'Unable to connect to',
                              ],
             wrong_captcha => [
