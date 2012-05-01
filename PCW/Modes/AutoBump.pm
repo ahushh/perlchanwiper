@@ -275,9 +275,9 @@ sub _init_watchers($)
                             my @bump_coro   = grep { $_->desc ? ($_->desc eq 'bump')   : 0 } Coro::State::list;
                             my @delete_coro = grep { $_->desc ? ($_->desc eq 'delete') : 0 } Coro::State::list;
 
-                            $log->msg(3, sprintf "run: %d bump, %d delete.",
+                            $log->msg(4, sprintf "run: %d bump, %d delete.",
                                      scalar @bump_coro, scalar @delete_coro);
-                            $log->msg(3, sprintf "queue: %d bump, %d delete.",
+                            $log->msg(4, sprintf "queue: %d bump, %d delete.",
                                      $bump_queue->size, $delete_queue->size);
 
                             for my $coro (@bump_coro, @delete_coro)

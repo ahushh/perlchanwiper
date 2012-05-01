@@ -6,7 +6,7 @@ use Carp;
 
 use Exporter 'import';
 our @EXPORT_OK =
-    qw/random get_proxylist html2text merge_hashes parse_cookies save_file with_coro_timeout unrandomize/;
+    qw/random get_proxylist html2text merge_hashes parse_cookies save_file with_coro_timeout unrandomize took/;
 
 #------------------------------------------------------------------------------------------------
 # Importing utility packages
@@ -166,4 +166,18 @@ sub unrandomize($)
     return \%new_hash;
 }
 
+#------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------
+sub took(&$;$)
+{
+    use Time::HiRes qw/time/;
+    my ($code, $rtime, $point) = @_;
+    $point  = 3 unless $point;
+    $$rtime = time;
+    my $ret = &$code;
+    $$rtime = sprintf "%.${point}f", time - $$rtime;
+    return $ret;
+}
+ 
 1;

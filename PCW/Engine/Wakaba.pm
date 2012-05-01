@@ -23,7 +23,7 @@ use HTTP::Headers;
 #------------------------------------------------------------------------------------------------
 # Import internal PCW packages
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Utils    qw(merge_hashes parse_cookies html2text save_file unrandomize);
+use PCW::Core::Utils    qw(merge_hashes parse_cookies html2text save_file unrandomize took);
 use PCW::Core::Captcha  qw(captcha_recognizer);
 use PCW::Core::Net      qw(http_get http_post get_recaptcha);
 use PCW::Data::Images   qw(make_pic);
@@ -263,14 +263,15 @@ sub prepare($$$$)
     my %content = %{ merge_hashes( $self->_get_post_content(%{ $task->{post_cnf} }), $self->{fields}{post}) };
     if ($task->{path_to_captcha})
     {
-        my $captcha_text = captcha_recognizer($cnf->{captcha_decode}, $task->{path_to_captcha});
+        my $took;
+        my $captcha_text = took { captcha_recognizer($cnf->{captcha_decode}, $task->{path_to_captcha}) } \$took;
         unless ($captcha_text)
         {
-            $log->pretty_proxy(1, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned undef");
+            $log->pretty_proxy(1, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned undef (took $took sec.)");
             return('no_captcha');
         }
 
-        $log->pretty_proxy(1, 'green', $task->{proxy}, 'PREPARE', "solved captcha: $captcha_text");
+        $log->pretty_proxy(1, 'green', $task->{proxy}, 'PREPARE', "solved captcha: $captcha_text (took $took sec.)");
         $content{ $self->{fields}{post}{captcha} } = $captcha_text;
         $task->{captcha_text}                      = $captcha_text;
     }

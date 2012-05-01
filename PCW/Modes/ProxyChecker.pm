@@ -125,7 +125,7 @@ sub _init_watchers($)
                         sub
                         {
                             my @coros = grep { $_->desc eq 'check' } Coro::State::list;
-                            $log->msg(3, sprintf "run: %d; queue: %d", scalar(@coros), $queue->size);
+                            $log->msg(4, sprintf "run: %d; queue: %d", scalar(@coros), $queue->size);
 
                             for my $coro (@coros)
                             {
