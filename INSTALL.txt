@@ -49,4 +49,4 @@ String::ShellQuote
 File::Which
 /;
 
-system для ( ($^O =~ /linux/ ? 'sudo ' : '') ."cpan @dependences @packages" );
+system ( ($^O =~ /linux/ ? 'sudo ' : '') ."cpan @dependences @packages" );

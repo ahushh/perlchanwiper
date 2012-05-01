@@ -20,7 +20,8 @@ our $msg = {
     # text => '@~fortune psalms bible~@',
     # text => '%unixtime%',
     # text => '%captcha%',
-    text => 'dobrochan.ru',
+    #text => 'десу~',
+    text => '%captcha%',
     #-------------------------------------------------------------------------------------------------------
     #-- #delirium# config
     delirium => {

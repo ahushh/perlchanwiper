@@ -24,7 +24,7 @@ use HTTP::Headers;
 #------------------------------------------------------------------------------------------------
 # Import internal PCW packages
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Utils    qw(merge_hashes parse_cookies html2text save_file);
+use PCW::Core::Utils    qw(merge_hashes parse_cookies html2text save_file unrandomize);
 use PCW::Core::Captcha  qw(captcha_recognizer);
 use PCW::Core::Net      qw(http_get http_post get_recaptcha);
 use PCW::Data::Images   qw(make_pic);
@@ -241,6 +241,7 @@ sub _get_delete_content($%)
 #  (string)               -> proxy           - proxy address
 #  (hash)                 -> content         - content, который был получен при скачивании капчи
 #  (string)               -> path_to_captcha - путь до файла с капчой
+#  (hash)                 -> post_cnf        - post_cnf с уже выбранными случайными значениями
 #  (HTTP::Headers object) -> headers
 sub get($$$$)
 {
@@ -255,6 +256,7 @@ sub get($$$$)
 #  (string)               -> proxy           - proxy address
 #  (hash)                 -> content         - content, который был получен при скачивании капчи
 #  (string)               -> path_to_captcha - путь до файла с капчой
+#  (hash)                 -> post_cnf        - post_cnf с уже выбранными случайными значениями
 #  (HTTP::Headers object) -> headers
 #  (string)               -> captcha_text    - recognized text
 #  (string)               -> file_path       - путь до файла, который отправляется на сервер
@@ -405,11 +407,12 @@ sub ban_check($$$)
 {
     my ($self, $task, $cnf) = @_;
 
-    my $post_headers = HTTP::Headers->new(%{ $self->_get_post_headers(%{ $cnf->{post_cnf} }) });
+    $task->{post_cnf} = unrandomize( $cnf->{post_cnf} );
+    my $post_headers = HTTP::Headers->new(%{ $self->_get_post_headers(%{ $task->{post_cnf} }) });
     $post_headers->user_agent(rand_set(set => $self->{agents}));
     $task->{headers} = $post_headers;
 
-    my %content = %{ merge_hashes( $self->_get_post_content(%{ $cnf->{post_cnf} }), $self->{fields}{post}) };
+    my %content = %{ merge_hashes( $self->_get_post_content(%{ $task->{post_cnf} }), $self->{fields}{post}) };
     #---- Form data
     #-- Message
     if ($cnf->{msg_data}{mode} ne 'no')
@@ -424,7 +427,7 @@ sub ban_check($$$)
         $content{ $self->{fields}{post}{img} } = ( $file_path ? [$file_path] : undef );
         $task->{file_path} = $file_path;
     }
-    elsif (!$cnf->{post_cnf}{thread}) #-- New thread
+    elsif (!$task->{post_cnf}{thread}) #-- New thread
     {
         $content{ $self->{fields}{post}{nofile} } = 'on';
     }
@@ -433,7 +436,7 @@ sub ban_check($$$)
 
     #-- POSTING
     my ($code, $response) =
-        http_post($task->{proxy},   $self->_get_post_url(%{ $cnf->{post_cnf} }),
+        http_post($task->{proxy},   $self->_get_post_url(%{ $task->{post_cnf} }),
                   $task->{headers}, $task->{content});
 
     $response = encode('utf-8', $response); #-- Для корректной работы кириллицы и рэгэкспов
