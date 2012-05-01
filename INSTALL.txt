@@ -42,6 +42,7 @@ File::Find::Rule
 WWW::ProxyChecker
 LWP::Protocol::https
 LWP::Protocol::socks
+JavaScript::Engine 
 /;
 
 my @dependences = qw/

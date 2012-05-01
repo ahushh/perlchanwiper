@@ -7,6 +7,7 @@ use autodie;
 use Carp;
 
 use base 'PCW::Engine::Kusaba';
+ 
 #------------------------------------------------------------------------------------------------
 # Features
 #------------------------------------------------------------------------------------------------
@@ -19,11 +20,48 @@ use Data::Random qw(rand_set);
 use Encode;
 use File::Basename;
 use HTTP::Headers;
+#------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------
+use JE;
+our $js = JE->new;
+$js->eval('
+function mm(a)
+{
+    var l = a.length,
+        h = 2 ^ l,
+        i = 0,
+        k, m = 1540483477,
+        ff = 255,
+        ffff = 65535;
+    while (l >= 4) {
+        k = ((a.charCodeAt(i) & ff)) | ((a.charCodeAt(++i) & ff) << 8) | ((a.charCodeAt(++i) & ff) << 16) | ((a.charCodeAt(++i) & ff) << 24);
+        k = (((k & ffff) * m) + ((((k >>> 16) * m) & ffff) << 16));
+        k ^= k >>> 24;
+        k = (((k & ffff) * m) + ((((k >>> 16) * m) & ffff) << 16));
+        h = (((h & ffff) * m) + ((((h >>> 16) * m) & ffff) << 16)) ^ k;
+        l -= 4;
+        ++i
+    }
+    switch (l) {
+        case 3:
+            h ^= (a.charCodeAt(i + 2) & ff) << 16;
+        case 2:
+            h ^= (a.charCodeAt(i + 1) & ff) << 8;
+        case 1:
+            h ^= (a.charCodeAt(i) & ff);
+            h = (((h & ffff) * m) + ((((h >>> 16) * m) & ffff) << 16))
+    }
+    h ^= h >>> 13;
+    h = (((h & ffff) * m) + ((((h >>> 16) * m) & ffff) << 16));
+    h ^= h >>> 15;
+    var c = h >>> 0;
+    return c;
+}');
 
 #------------------------------------------------------------------------------------------------
 # Import internal PCW packages
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Utils    qw(merge_hashes parse_cookies html2text save_file unrandomize);
+use PCW::Core::Utils    qw(merge_hashes parse_cookies html2text save_file unrandomize took);
 use PCW::Core::Captcha  qw(captcha_recognizer);
 use PCW::Core::Net      qw(http_get http_post get_recaptcha);
 use PCW::Data::Images   qw(make_pic);
@@ -216,7 +254,7 @@ sub get($$$$)
         my $saved_cookies = parse_cookies($self->{cookies}, $response_headers);
         if (!$saved_cookies)
         {
-            $log->pretty_proxy(1, 'red', $task->{proxy}, 'COOKIES', '[ERROR]{required cookies not found/proxy does not supported cookies at all}');
+            $log->pretty_proxy(1, 'red', $task->{proxy}, 'GET', '[ERROR]{required cookies not found/proxy does not supported cookies at all}');
             return('banned');
         }
         else
@@ -246,20 +284,24 @@ sub get($$$$)
 #  (string)               -> captcha_text    - recognized text
 #  (string)               -> file_path       - путь до файла, который отправляется на сервер
 
-# Helper function
-#-- Вычисляется кука mm через отдельную программу на крестах.
-#-- TODO: переписать вычисление mm на перле
+#-- Helper function
 sub compute_mm($)
 {
-    no autodie;
     my $s = shift;
+    #-- there is non-ascii characters
+    if ( grep { ord($_) > 127 } split //, $s )
+    {
+        return $js->method(mm => $s); #-- so sloooow
+    }
+    #-- ascii only
+    no autodie;
     open my $mm, '-|', 'lib/mm', $s
         or Carp::croak "Could not find lib/mm: $!";
     my $result = <$mm>;
     close($mm);
     return $result;
 }
-
+ 
 sub prepare($$$$)
 {
     my ($self, $task, $cnf) = @_;
@@ -269,14 +311,15 @@ sub prepare($$$$)
     my %content = %{ merge_hashes( $self->_get_post_content(%{ $task->{post_cnf} }), $self->{fields}{post}) };
     if ($task->{path_to_captcha})
     {
-        my $captcha_text = captcha_recognizer($cnf->{captcha_decode}, $task->{path_to_captcha});
+        my $took;
+        my $captcha_text = took { captcha_recognizer($cnf->{captcha_decode}, $task->{path_to_captcha}) } \$took;
         unless ($captcha_text)
         {
-            $log->pretty_proxy(1, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned undef");
+            $log->pretty_proxy(1, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned undef (took $took sec.)");
             return('no_captcha');
         }
 
-        $log->pretty_proxy(1, 'green', $task->{proxy}, 'PREPARE', "solved captcha: $captcha_text");
+        $log->pretty_proxy(1, 'green', $task->{proxy}, 'PREPARE', "solved captcha: $captcha_text (took $took sec.)");
         $content{ $self->{fields}{post}{captcha} } = $captcha_text;
         $task->{captcha_text}                      = $captcha_text;
     }
@@ -309,7 +352,9 @@ sub prepare($$$$)
     #-- Compute mm cookie
     if ($content{board} eq 'b')
     {
-        my $mm = compute_mm($content{mm} . $content{message} . $content{postpassword});
+        my $took;
+        my $mm  = took { compute_mm($content{mm} . $content{message} . $content{postpassword}) } \$took;
+        $log->pretty_proxy(3, 'green', $task->{proxy}, 'PREPARE', "mm was computed: $mm (took $took sec.)");
         #-- Add mm to post headers
         my $h = $task->{headers};
         my $c = $h->header('Cookie');

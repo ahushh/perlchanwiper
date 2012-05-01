@@ -188,7 +188,7 @@ my $cb_wipe_post = unblock_sub
             captcha_report_bad($self->{conf}{captcha_decode}, $task->{path_to_captcha});
             if ($self->{conf}{wcap_retry})
             {
-                $log->msg(3, "push into the get queue: $task->{proxy}");
+                $log->msg(4, "push into the get queue: $task->{proxy}");
                 $new_task->{proxy} = $task->{proxy};
                 $get_queue->put($new_task);
                 return;
@@ -225,7 +225,7 @@ my $cb_wipe_post = unblock_sub
     if ($self->{conf}{loop} && $msg ne 'banned' &&
         $self->{failed_proxy}{ $task->{proxy} } < $self->{conf}{proxy_attempts})
     {
-        $log->msg(3, "push into the get queue: $task->{proxy}");
+        $log->msg(4, "push into the get queue: $task->{proxy}");
         $new_task->{proxy} = $task->{proxy};
         $get_queue->put($new_task);
     }
@@ -321,9 +321,9 @@ sub _init_watchers($)
                             my @prepare_coro  = grep { $_->desc eq 'prepare' } Coro::State::list;
                             my @post_coro     = grep { $_->desc eq 'post'    } Coro::State::list;
 
-                            $log->msg(3, sprintf "run: %d captcha, %d post, %d prepare coros.",
+                            $log->msg(4, sprintf "run: %d captcha, %d post, %d prepare coros.",
                                      scalar @get_coro, scalar @post_coro, scalar @prepare_coro);
-                            $log->msg(3, sprintf "queue: %d captcha, %d post, %d prepare coros.",
+                            $log->msg(4, sprintf "queue: %d captcha, %d post, %d prepare coros.",
                                      $get_queue->size, $post_queue->size, $prepare_queue->size);
 
                             for my $coro (@post_coro, @prepare_coro, @get_coro)
