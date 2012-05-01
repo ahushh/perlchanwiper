@@ -5,7 +5,8 @@ use autodie;
 use Carp;
 
 use Exporter 'import';
-our @EXPORT_OK = qw(random get_proxylist html2text merge_hashes parse_cookies save_file with_coro_timeout);
+our @EXPORT_OK =
+    qw/random get_proxylist html2text merge_hashes parse_cookies save_file with_coro_timeout unrandomize/;
 
 #------------------------------------------------------------------------------------------------
 # Importing utility packages
@@ -30,7 +31,7 @@ sub with_coro_timeout(&$$)
 #------------------------------------------------------------------------------------------------
 # PROXY
 #------------------------------------------------------------------------------------------------
-use Coro::LWP;
+use Coro::LWP; #-- без подключения этого модуля начинается какае-то хуете с LWP::Simple::get()
 use LWP::Simple qw(get);
 use List::MoreUtils qw(uniq);
 
@@ -138,17 +139,31 @@ sub merge_hashes($$)
     my %gen_content;
     for (keys %$content)
     {
-        if (ref($content->{$_}) eq 'ARRAY')
-        {
-            $gen_content{$fields->{$_}} = ${ rand_set(set => $content->{$_}) };
-        }
-        else
-        {
-            $gen_content{$fields->{$_}} = $content->{$_};
-        }
+        $gen_content{$fields->{$_}} = $content->{$_};
     }
 
     return \%gen_content;
+}
+
+#------------------------------------------------------------------------------------------------
+# REPLACE THE ARRAY REF WITH A RANDOM SCALAR
+#------------------------------------------------------------------------------------------------
+sub unrandomize($)
+{
+    my $h        = shift;
+    my %new_hash = {};
+    for (keys %$h)
+    {
+        if (ref($h->{$_}) eq 'ARRAY')
+        {
+            $new_hash{$_} = ${ rand_set(set => $h->{$_}) };
+        }
+        else
+        {
+            $new_hash{$_} = $h->{$_};
+        }
+    }
+    return \%new_hash;
 }
 
 1;

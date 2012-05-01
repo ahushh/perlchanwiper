@@ -1,4 +1,4 @@
-#-- Добавлена поддержка указания конфиг файла
+#-- Добавлена поддержка указания конфиг файла; убран мусор, который выводит tesseract 3.02 в STDIN
 package Image::OCR::TesseractX;
  
 use strict;
@@ -15,65 +15,68 @@ $VERSION = sprintf "%d.%02d", q$Revision: 1.24 $ =~ /(\d+)/g;
 use File::Copy;
 
 BEGIN {
-   use File::Which 'which';
-   $WHICH_TESSERACT = which('tesseract');
-   $WHICH_CONVERT   = which('convert');
+    use File::Which 'which';
+    $WHICH_TESSERACT = which('tesseract');
+    $WHICH_CONVERT   = which('convert');
 
-   $WHICH_TESSERACT or die("Is tesseract installed? Cannot find bin path to tesseract.");
-   $WHICH_CONVERT or die("Is convert installed? Cannot find bin path to convert.");
+    $WHICH_TESSERACT or die("Is tesseract installed? Cannot find bin path to tesseract.");
+    $WHICH_CONVERT or die("Is convert installed? Cannot find bin path to convert.");
 }
 
 END {
-   scalar @TRASH or return;
-   if ( $DEBUG ){
-      print STDERR "Debug on, these are trash files:\n".join("\n",@TRASH) ;
-   }
-   else {
-      unlink @TRASH;
-   }
+    scalar @TRASH or return;
+    if ( $DEBUG )
+    {
+        print STDERR "Debug on, these are trash files:\n".join("\n",@TRASH) ;
+    }
+    else
+    {
+        unlink @TRASH;
+    }
 }
 
 sub DEBUG { Carp::cluck("Image::OCR::TesseractX::DEBUG() deprecated") }
 
 sub get_ocr {
-	my ($abs_image,$abs_tmp_dir,$lang, $config)= @_;
-	-f $abs_image or croak("$abs_image is not a file on disk");
+    my ($abs_image,$abs_tmp_dir,$lang, $config)= @_;
+    -f $abs_image or croak("$abs_image is not a file on disk");
 
-   if(defined $abs_tmp_dir){
+    if (defined $abs_tmp_dir)
+    {
 
-      -d $abs_tmp_dir or die("tmp dir arg $abs_tmp_dir not a dir on disk.");
+        -d $abs_tmp_dir or die("tmp dir arg $abs_tmp_dir not a dir on disk.");
 
-      $abs_image=~/([^\/]+)$/ or die("cant match filename in path arg '$abs_image'");
-      my $abs_copy = "$abs_tmp_dir/$1";
+        $abs_image=~/([^\/]+)$/ or die("cant match filename in path arg '$abs_image'");
+        my $abs_copy = "$abs_tmp_dir/$1";
 
-      # TODO, what if source and dest are same, i want it to die
-      File::Copy::copy($abs_image, $abs_copy) 
-         or die("cant make copy of $abs_image to $abs_copy, $!");
+        # TODO, what if source and dest are same, i want it to die
+        File::Copy::copy($abs_image, $abs_copy) 
+                or die("cant make copy of $abs_image to $abs_copy, $!");
 
-      # change the image to get ocr from to be the copy
-      $abs_image = $abs_copy;
-      # since it's a copy. erase that on exit
-      push @TRASH, $abs_image;      
-   }
+        # change the image to get ocr from to be the copy
+        $abs_image = $abs_copy;
+        # since it's a copy. erase that on exit
+        push @TRASH, $abs_image;      
+    }
 
-   my $tmp_tif = convert_8bpp_tif($abs_image);
+    my $tmp_tif = convert_8bpp_tif($abs_image);
    
-   push @TRASH, $tmp_tif; # for later delete
+    push @TRASH, $tmp_tif;      # for later delete
 
-   _tesseract($tmp_tif,$lang, $config) || '';
+    _tesseract($tmp_tif,$lang, $config) || '';
 }
 
 sub convert_8bpp_tif {
-   my ($abs_img,$abs_out) = (shift,shift);
-   defined $abs_img or die('missing image arg');
+    my ($abs_img,$abs_out) = (shift,shift);
+    defined $abs_img or die('missing image arg');
 
-   $abs_out ||= $abs_img.'.tmp.'.time().(int rand(9000)).'.tif';
+    $abs_out ||= $abs_img.'.tmp.'.time().(int rand(9000)).'.tif';
    
-   my @arg = ( $WHICH_CONVERT, $abs_img, '-compress','none','+matte', $abs_out );
-   system(@arg) == 0 or die("convert $abs_img error.. $?");
+    my @arg = ( $WHICH_CONVERT, $abs_img, '-compress','none','+matte', $abs_out );
+    system(@arg) == 0 or die("convert $abs_img error.. $?");
 
-   $DEBUG and warn("made $abs_out 8bpp tiff.");
-   $abs_out;
+    $DEBUG and warn("made $abs_out 8bpp tiff.");
+    $abs_out;
 }
 
 
@@ -82,51 +85,51 @@ sub convert_8bpp_tif {
 
 *tesseract = \&_tesseract;
 sub _tesseract {
-	my ($abs_image, $lang, $config) = @_;
-   defined $abs_image or croak('missing image path arg');
+    my ($abs_image, $lang, $config) = @_;
+    defined $abs_image or croak('missing image path arg');
+
+    $abs_image=~/\.tif+$/i or warn("Are you sure '$abs_image' is a tif image? This operation may fail.");
+
+    #my @arg = (
+    #   $WHICH_TESSERACT, shell_quote($abs_image), shell_quote($abs_image), 
+    #   (defined $lang and ('-l', $lang) ), '2>/dev/null'
+    #); 
+
+    my $cmd = 
+        ( sprintf '%s %s %s',
+          $WHICH_TESSERACT,
+          shell_quote($abs_image),
+          shell_quote($abs_image)
+        ) .
+        ( defined $lang   ? " -l $lang"        : '' ) .
+        ( defined $config ? " nobatch $config" : '' ) .
+          "  2>/dev/null 1>&2";
+    $DEBUG and warn "command: $cmd";
+
+    system($cmd);               # hard to check ==0 
+
+    my $txt = "$abs_image.txt";
+    unless( -f $txt ){      
+        Carp::cluck("no text output for image '$abs_image'. (No text file '$txt' found on disk)");
+        return;
+    }
+
+    $DEBUG and warn "Found text file '$txt'";
    
-   $abs_image=~/\.tif+$/i or warn("Are you sure '$abs_image' is a tif image? This operation may fail.");
-   
-   #my @arg = (
-   #   $WHICH_TESSERACT, shell_quote($abs_image), shell_quote($abs_image), 
-   #   (defined $lang and ('-l', $lang) ), '2>/dev/null'
-   #); 
+    my $content = (_slurp($txt) || '');   
+    $DEBUG and warn("content length of text in '$txt' from image '$abs_image' is ". length $content );
+    push @TRASH, $txt;
 
-   my $cmd = 
-      ( sprintf '%s %s %s', 
-         $WHICH_TESSERACT, 
-         shell_quote($abs_image), 
-         shell_quote($abs_image) 
-      ) .
-      ( defined $lang   ? " -l $lang" : '' ) .
-      ( defined $config ? " nobatch $config" : '' ) .
-      "  2>/dev/null";
-   $DEBUG and warn "command: $cmd";
-
-	system($cmd); # hard to check ==0 
-
-	my $txt = "$abs_image.txt";
-   unless( -f $txt ){      
-		Carp::cluck("no text output for image '$abs_image'. (No text file '$txt' found on disk)");
-      return;
-   }
-
-	$DEBUG and warn "Found text file '$txt'";
-   
-   my $content = (_slurp($txt) || '');   
-   $DEBUG and warn("content length of text in '$txt' from image '$abs_image' is ". length $content );
-   push @TRASH, $txt;
-
-   $content;
+    $content;
 }
 
 sub _slurp {
-   my $abs = shift;
-   open(FILE,'<', $abs) or die("can't open file for reading '$abs', $!");
-   local $/;
-   my $txt = <FILE>;
-   close FILE;
-   $txt;
+    my $abs = shift;
+    open(FILE,'<', $abs) or die("can't open file for reading '$abs', $!");
+    local $/;
+    my $txt = <FILE>;
+    close FILE;
+    $txt;
 }  
 
 1;

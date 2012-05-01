@@ -23,7 +23,7 @@ use HTTP::Headers;
 #------------------------------------------------------------------------------------------------
 # Import internal PCW packages
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Utils    qw(merge_hashes parse_cookies html2text save_file);
+use PCW::Core::Utils    qw(merge_hashes parse_cookies html2text save_file unrandomize);
 use PCW::Core::Captcha  qw(captcha_recognizer);
 use PCW::Core::Net      qw(http_get http_post get_recaptcha);
 use PCW::Data::Images   qw(make_pic);
@@ -184,18 +184,20 @@ sub _get_delete_content($$%)
 #  (string)               -> proxy           - proxy address
 #  (hash)                 -> content         - content, который был получен при скачивании капчи
 #  (string)               -> path_to_captcha - путь до файла с капчой
+#  (hash)                 -> post_cnf        - post_cnf с уже выбранными случайными значениями
 #  (HTTP::Headers object) -> headers
 sub get($$$$)
 {
     my ($self, $task, $cnf) = @_;
     my $log = $self->{log};
 
-    my $post_headers = HTTP::Headers->new(%{ $self->_get_post_headers(%{ $cnf->{post_cnf} }) });
+    $task->{post_cnf} = unrandomize( $cnf->{post_cnf} );
+    my $post_headers = HTTP::Headers->new(%{ $self->_get_post_headers(%{ $task->{post_cnf} }) });
     $post_headers->user_agent(rand_set(set => $self->{agents}));
 
     #-- Get captcha
-    my $captcha_url = $self->_get_captcha_url(%{ $cnf->{post_cnf} });
-    my $cap_headers = HTTP::Headers->new(%{ $self->_get_captcha_headers(%{ $cnf->{post_cnf} }) });
+    my $captcha_url = $self->_get_captcha_url(%{ $task->{post_cnf} });
+    my $cap_headers = HTTP::Headers->new(%{ $self->_get_captcha_headers(%{ $task->{post_cnf} }) });
     my ($captcha_img, $response_headers, $status_line) = http_get($task->{proxy}, $captcha_url, $cap_headers);
 
     #-- Check result
@@ -239,6 +241,7 @@ sub get($$$$)
 #  (string)               -> proxy           - proxy address
 #  (hash)                 -> content         - content, который был получен при скачивании капчи
 #  (string)               -> path_to_captcha - путь до файла с капчой
+#  (hash)                 -> post_cnf        - post_cnf с уже выбранными случайными значениями
 #  (HTTP::Headers object) -> headers
 #  (string)               -> captcha_text    - recognized text
 #  (string)               -> file_path       - путь до файла, который отправляется на сервер
@@ -263,7 +266,7 @@ sub prepare($$$$)
     my $log = $self->{log};
 
     #-- Recognize captcha
-    my %content = %{ merge_hashes( $self->_get_post_content(%{ $cnf->{post_cnf} }), $self->{fields}{post}) };
+    my %content = %{ merge_hashes( $self->_get_post_content(%{ $task->{post_cnf} }), $self->{fields}{post}) };
     if ($task->{path_to_captcha})
     {
         my $captcha_text = captcha_recognizer($cnf->{captcha_decode}, $task->{path_to_captcha});
@@ -298,7 +301,7 @@ sub prepare($$$$)
         $content{ $self->{fields}{post}{img} } = ( $file_path ? [$file_path] : undef );
         $task->{file_path} = $file_path;
     }
-    elsif (!$cnf->{post_cnf}{thread}) #-- New thread
+    elsif (!$task->{post_cnf}{thread}) #-- New thread
     {
         $content{ $self->{fields}{post}{nofile} } = 'on';
     }
