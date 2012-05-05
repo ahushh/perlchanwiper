@@ -25,6 +25,11 @@ sub decode_captcha($$)
     $captcha_decode->{$file_path} = $id;
 
     my $cap_text = $recognizer->recognize($id);
+    unless ($cap_text)
+    {
+        warn "Error while recognizing a captcha: ", $recognizer->errno;
+        return undef;
+    }
     return $cap_text;
 }
 
