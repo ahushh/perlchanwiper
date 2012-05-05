@@ -190,15 +190,14 @@ sub _get_post_content($$%)
     my $nofile   = $config{nofile};
 
     my $content = {
-        'MAX_FILE_SIZE' => 10240000, 
-        'email'      => $email,
-        'subject'    => $subject,
-        'password'   => $password,
-        'thread'     => $thread,
-        'board'      => $board,
+        MAX_FILE_SIZE => 10240000, 
+        email         => $email,
+        subject       => $subject,
+        password      => $password,
+        thread        => $thread,
+        board         => $board,
     };
-    $content->{nofile} = $nofile
-        if ($nofile);
+    $content->{nofile} = $nofile if $nofile;
     return $content;
 }
 
@@ -241,7 +240,7 @@ sub get($$$$)
     my ($self, $task, $cnf) = @_;
     my $log = $self->{log};
 
-    $task->{post_cnf} = unrondomize( $cnf->{post_cnf} );
+    $task->{post_cnf} = unrandomize( $cnf->{post_cnf} );
 
     my $post_headers = HTTP::Headers->new(%{ $self->_get_post_headers(%{ $task->{post_cnf} }) });
     $post_headers->user_agent(rand_set(set => $self->{agents}));
@@ -356,6 +355,9 @@ sub prepare($$$$)
         my $file_path = make_pic( $self, $task, $cnf->{img_data} );
         $content{ $self->{fields}{post}{img} } = ( $file_path ? [$file_path] : undef );
         $task->{file_path} = $file_path;
+        #-- Даже если постить картинки, а не видео, нужно указывать embedtype
+        $content{ $self->{fields}{post}{video_type} } = $cnf->{vid_data}{type} || 'youtube';
+        $content{ $self->{fields}{post}{video} }      = '';
     }
     elsif (!$cnf->{task}{thread}) #-- New thread
     {

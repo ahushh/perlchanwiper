@@ -57,6 +57,7 @@ sub http_get($$$)
 
 sub http_post($$$$)
 {
+    #use Data::Dumper; print Dumper(@_);
     my ($proxy, $url, $headers, $content) = @_;
     my $ua = LWP::UserAgent->new();
     $ua->default_headers($headers) if $headers;
