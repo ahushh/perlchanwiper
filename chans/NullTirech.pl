@@ -4,21 +4,21 @@ use constant HOST => 'www.0-chan.ru';
 our $chan_config =
 {
     #-- Описание. Необязатльено для заполнения
-    description        => 'Лженульч',
+    description        => 'Лженульчан',
     engine             => 'Kusaba',
     captcha_extension  => 'png',
     #-- Закомментировать, если отключена капча
-    #cookies            => ['PHPSESSID'],
+    cookies            => ['PHPSESSID'],
     #-- Колличество тредов на страницу.
     #-- Нужно только автобампа и только если включен каталог
     threads_per_page   => 20,
     #-- Ключ рекапчи
-    recaptcha_key      => '6LdVg8YSAAAAAOhqx0eFT1Pi49fOavnYgy7e-lTO',
+    #recaptcha_key      => '6LdVg8YSAAAAAOhqx0eFT1Pi49fOavnYgy7e-lTO',
 
     response => {
         post => {
             banned        => [403, 'CDN', 'banned', 'забанены', 'BANNED!'],
-            net_error     => ['Service Unavailable Connection', 502],
+            net_error     => ['Service Unavailable Connection', 502, 500, 504, 503],
             post_error    => [
                               'your message is too long',
                               'temporarily unavailable',
@@ -32,6 +32,7 @@ our $chan_config =
             flood         => [
                               'Вы постите очень часто.',
                               'Flood detected',
+                              'Please wait a moment before posting again',
                              ],
             critical_error => [
                                'Неправильный ID треда',
@@ -48,8 +49,8 @@ our $chan_config =
 
     fields => {
         post => {
-            #captcha    => 'captcha',
-            captcha    => 'recaptcha_response_field',
+            captcha    => 'captcha',
+            #captcha    => 'recaptcha_response_field',
             board      => 'board',
             msg        => 'message',
             img        => 'imagefile',
@@ -76,7 +77,7 @@ our $chan_config =
         post      => 'http://'. HOST .'/board.php',
         delete    => 'http://'. HOST .'/board.php',
         #-- Закомментировать, если капча отключена вообще или стоит recaptcha
-        #captcha  => 'http://'. HOST .'/captcha.php',
+        captcha  => 'http://'. HOST .'/captcha/image.php',
         page      => 'http://'. HOST .'/%s/%d.html',
         zero_page => 'http://'. HOST .'/%s',
         thread    => 'http://'. HOST .'/%s/res/%d.html',
@@ -86,7 +87,8 @@ our $chan_config =
 
     html => {
         replies_regexp => '(?<post><td class="reply" id="reply(?<id>\d+)">.+?</td>)',
-        threads_regexp => '(?<thread><span class="filesize">.+?<a name="(?<id>\d+)"></a>.+?<br clear="left" /><hr />)',
+        #threads_regexp => '(?<thread><span class="filesize">.+?<a name="(?<id>\d+)"></a>.+?<br clear="left" /><hr />)',
+        threads_regexp => '(?<thread><div id="thread(?<id>\d+)\w+">.+?</div>\s*</blockquote>\s*</div>)',
         catalog_regexp => '/res/(?<id>\d+).html',
     },
 

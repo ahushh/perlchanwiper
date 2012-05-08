@@ -14,9 +14,10 @@ sub decode_captcha($$)
     };
     warn $@ if $@;
 
-    $text =~ s/^\s*//;
-    $text =~ s/\s*$//;
-    $text =~ s/\n//;
+    #$text =~ s/^\s*//;
+    #$text =~ s/\s*$//;
+    #$text =~ s/\n//;
+    $text =~ s/\s//g;
 
     return $text || undef;
 }
