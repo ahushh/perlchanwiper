@@ -77,6 +77,8 @@ FAQ
 
     Или так (распознаваться будут только цифры):
     tessedit_char_whitelist 0123456789
+    Строчная кириллица:
+    tessedit_char_whitelist АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ 
 
 3.  Отредактировать общий конфиг (./config.pl):
     config => 'englishletters',

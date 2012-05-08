@@ -19,12 +19,7 @@ our $msg = {
     # text => "bump\n%date%",
     # text => '@~fortune psalms bible~@',
     # text => '%unixtime%',
-    #text => "%captcha%десу",
-    # text => "desu\ndesu",
-    # text => '%captcha%десу~',
-    #text => '#delirium#',
-    #text => 'ня%1rand10%',
-    #text => '→→→',
+    text => 'эта борда называется **НУЛЬТИРЕЧ**',
     #-------------------------------------------------------------------------------------------------------
     #-- #delirium# config
     delirium => {
@@ -81,8 +76,8 @@ my $img_altering = {
     #-- работает весьма медленно
     #mode        => 'resize',
     #convert     => 'convert',  #-- путь до программы
-    #args        => '-negate',                 #-- дополнительные аргуметны
-    #min         => 10,                  #-- минмальный размер от исходного в %
+    ##args        => '-negate',                 #-- дополнительные аргуметны
+    #min         => 100,                  #-- минмальный размер от исходного в %
     #max         => 340,                  #-- максимальный размер
     #-------------------------------------------------------------------------------------------------------
     #-- convert mode
@@ -91,7 +86,7 @@ my $img_altering = {
     #-- работает весьма медленно
     #mode        => 'convert',
     #convert     => 'convert',  #-- путь до программы
-    #args        => '-fill red -pointsize 20 -draw "text 100,100 \'ALL HAIL DOLLCHAN\'"',
+    #args        => '-fill green -pointsize 30 -draw "text 50,50 \'Эта борда называетя НУЛЬТИРЕЧ\'"',
 };
 
 our $img = {
@@ -109,6 +104,7 @@ our $img = {
     #-- Постить один указанный файл
     mode     => 'single',
     path     => "$ENV{HOME}/rm/suigintou/13338486377102.jpg",    #-- путь к файлу
+    path     => "$ENV{HOME}/1.gif",    #-- путь к файлу
     #-- captcha mode
     #-- Постить изображение капчи
     #mode => 'captcha',
@@ -162,9 +158,9 @@ our $vid = {
 our $captcha_decode = {
     #-------------------------------------------------------------------------------------------------------
     #-- antigate mode
-    mode   => 'antigate',
-    key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
-    opt    => {},  #-- см. документацию к модулю WebService::Antigate
+    #mode   => 'antigate',
+    #key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
+    #opt    => {},  #-- см. документацию к модулю WebService::Antigate
     #-------------------------------------------------------------------------------------------------------
     #-- captchabot mode
     #mode   => 'captchabot',
@@ -172,7 +168,7 @@ our $captcha_decode = {
     #opt    => {},  #-- см. документацию к модулю WebService::Antigate
     #-------------------------------------------------------------------------------------------------------
     #-- hand mode
-    #-- Ручной ввод капчи.
+    ##-- Ручной ввод капчи.
     #mode   => 'hand',
     #imgv   => '/usr/bin/feh',     #-- путь до программы просмотра изображений
     #arg    => '-d --geometry 400x300 -Z', #-- аргументы
@@ -182,7 +178,8 @@ our $captcha_decode = {
     #mode   => 'guihand',
     #-- tesseract OCR
     #-- Необходим convert (пакет ImageMagick) и сам tesseract
-    #mode   => 'tesseract',
-    #lang   => 'eng',           #-- eng, rus; если используется конфиг, можно и не указывать, наверно.
-    config => 'englishletters', #-- название конфига для tesseract. см README
+    mode   => 'tesseract',
+    lang   => 'rus',           #-- eng, rus, etc.
+    #config => 'englishletters', #-- название конфига для tesseract. см README
+    config => 'ruletters', #-- название конфига для tesseract. см README
 };
