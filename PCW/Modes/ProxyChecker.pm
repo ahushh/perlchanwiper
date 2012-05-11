@@ -101,9 +101,17 @@ sub stop($)
     $_->cancel for (grep {$_->desc =~ /check/ } Coro::State::list);
     $watchers = {};
     $queue    = undef;
-    $self->{is_running} = 0;
     my @g = @good_proxies;
     $self->{checked}    = \@g;
+    if ($self->{conf}{save})
+    {
+        local $" = "\n";
+        open my $fh, '>', $self->{conf}{save};
+        print $fh "@g";
+        close $fh;
+        $log->msg(1, "Saving good proxies to $self->{conf}{save}");
+    }
+    $self->{is_running} = 0;
 }
 
 sub _pre_init($)

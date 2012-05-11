@@ -38,7 +38,7 @@ ahushh@gmail.com
 
 Проверить прокси из файлы proxy/my/all на возможность постинга на доске:
  ./cpcw --mo ProxyChecker --ch Nullchan
-Список хороших прокси будет напечатан при выходе
+Список хороших прокси будет напечатан при выходе или сохранен в файл (см. конфиг)
 
 Просто прочекать прокси из файла proxy/my/all и сохранить хорошие в proxy/my/checked
  ./proxychecker proxy/my/all proxy/my/checked
