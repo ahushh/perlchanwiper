@@ -34,7 +34,7 @@ our $chan_config =
         delete => {
             success        => ['Сообщение удалено.'],
             wrong_password => ['Неправильный пароль.'],
-            error          => [''],
+            error          => ['Invalid post ID'],
         },
     },
 
