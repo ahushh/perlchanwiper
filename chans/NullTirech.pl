@@ -43,7 +43,7 @@ our $chan_config =
         delete => {
             success        => [303],
             wrong_password => ['Неправильный пароль.'],
-            error          => [''],
+            error          => ['Invalid post ID'],
         },
     },
 

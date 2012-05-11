@@ -22,10 +22,13 @@ use constant BUMP_IF => {
 # CONFIG ENDS HERE
 #------------------------------------------------------------------------------------------------------------
 my $find = {
-    board   => BOARD,
-    regexp  => REGEXP,
-    threads => [THREAD],
+    board   => BOARD,        #-- доска, на которой искать посты
+    replies => {
+        threads => [THREAD],     #-- в каких тредах искать (по id)
+        regexp  => REGEXP,       #-- филтровать по регэкспу
+    },
 };
+
 my %del_set = (
     board          => BOARD,
     password       => PASSWORD,

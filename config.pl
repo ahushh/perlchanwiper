@@ -102,9 +102,9 @@ our $img = {
     #-------------------------------------------------------------------------------------------------------
     #-- single mode
     #-- Постить один указанный файл
-    mode     => 'single',
-    path     => "$ENV{HOME}/rm/suigintou/13338486377102.jpg",    #-- путь к файлу
-    path     => "$ENV{HOME}/1.gif",    #-- путь к файлу
+    #mode     => 'single',
+    #path     => "$ENV{HOME}/rm/suigintou/13338486377102.jpg",    #-- путь к файлу
+    #path     => "$ENV{HOME}/1.gif",    #-- путь к файлу
     #-- captcha mode
     #-- Постить изображение капчи
     #mode => 'captcha',
@@ -179,7 +179,7 @@ our $captcha_decode = {
     #-- tesseract OCR
     #-- Необходим convert (пакет ImageMagick) и сам tesseract
     mode   => 'tesseract',
-    lang   => 'rus',           #-- eng, rus, etc.
-    #config => 'englishletters', #-- название конфига для tesseract. см README
-    config => 'ruletters', #-- название конфига для tesseract. см README
+    #lang   => 'rus',           #-- eng, rus, etc.
+    config => 'englishletters', #-- название конфига для tesseract. см README
+    #config => 'ruletters', #-- название конфига для tesseract. см README
 };

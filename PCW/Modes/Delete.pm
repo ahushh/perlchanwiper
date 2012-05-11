@@ -88,19 +88,12 @@ sub start($)
         $self->_pre_init();
         #-------------------------------------------------------------------
         my $proxy = shift @{ $self->{proxies} };
-        $log->msg(2, "Used proxy: $proxy");
-        my @deletion_posts;
-        if ($self->{conf}{find}{by_id})
+        $log->msg(4, "Used proxy: $proxy");
+        my @deletion_posts = @{ $self->{conf}{ids} };
+        if ($self->{conf}{find})
         {
-            @deletion_posts = @{ $self->{conf}{find}{by_id} };
-        }
-        elsif ($self->{conf}{find}{threads} || $self->{conf}{find}{pages})
-        {
-            @deletion_posts = $self->get_posts_by_regexp($proxy, $self->{conf}{find});
-        }
-        else
-        {
-            Carp::croak("Should be specified how to find posts (by_id/threads/pages).");
+            @deletion_posts =  ( @deletion_posts,
+                                 $self->get_posts_by_regexp($proxy, $self->{conf}{find}) );
         }
         for my $postid (@deletion_posts)
         {
