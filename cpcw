@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '0.2-r49';
+our $VERSION = '0.2-r50';
 
 use strict;
 use autodie;
@@ -295,7 +295,7 @@ given ($mode)
     {
         show_stats $m->{stats};
         my @p = @{ $m->{checked} };
-        say $mode_config{save} ? sprintf("There's %d good proxies.", scalar @p) : "@p";
+        say $mode_config{save} ? sprintf("There are %d good proxies.", scalar @p) : "@p";
     }
     when ('AutoBump')
     {

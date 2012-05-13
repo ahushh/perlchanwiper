@@ -269,7 +269,7 @@ sub get($$$$)
             my $saved_cookies = parse_cookies($self->{cookies}, $response_headers);
             if (!$saved_cookies)
             {
-                $log->pretty_proxy(1, 'red', $task->{proxy}, 'GET', '[ERROR]{required cookies not found/proxy does not supported cookies at all}');
+                $log->pretty_proxy(1, 'red', $task->{proxy}, 'GET', '[ERROR]{no cookies}');
                 return('banned');
             }
             else
@@ -319,7 +319,7 @@ sub prepare($$$$)
     my ($self, $task, $cnf) = @_;
     my $log = $self->{log};
 
-    #-- Recognize captcha
+    #-- Recognize a captcha
     my %content = %{ merge_hashes( $self->_get_post_content(%{ $task->{post_cnf} }), $self->{fields}{post}) };
     if ($task->{path_to_captcha})
     {
@@ -364,14 +364,7 @@ sub prepare($$$$)
         $content{ $self->{fields}{post}{nofile} } = 'on';
     }
 
-    if ($task->{content})
-    {
-        $task->{content} = { %{ $task->{content} },  %content };
-    }
-    else
-    {
-        $task->{content} = \%content;
-    }
+    $task->{content} = { ($task->{content} ? %{$task->{content}} : ()), %content };
 
     return('success');
 }

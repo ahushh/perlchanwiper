@@ -224,52 +224,9 @@ sub _get_delete_content($$%)
 #  (string)               -> path_to_captcha - путь до файла с капчой
 #  (hash)                 -> post_cnf        - post_cnf с уже выбранными случайными значениями
 #  (HTTP::Headers object) -> headers
-sub get($$$$)
-{
-    my ($self, $task, $cnf) = @_;
-    my $log = $self->{log};
-
-    $task->{post_cnf} = unrandomize( $cnf->{post_cnf} );
-    my $post_headers = HTTP::Headers->new(%{ $self->_get_post_headers(%{ $task->{post_cnf} }) });
-    $post_headers->user_agent(rand_set(set => $self->{agents}));
-
-    #-- Get captcha
-    my $captcha_url = $self->_get_captcha_url(%{ $task->{post_cnf} });
-    my $cap_headers = HTTP::Headers->new(%{ $self->_get_captcha_headers(%{ $task->{post_cnf} }) });
-    my ($captcha_img, $response_headers, $status_line) = http_get($task->{proxy}, $captcha_url, $cap_headers);
-
-    #-- Check result
-    if ($status_line !~ /200/ or !$captcha_img or $captcha_img !~ /GIF|PNG|JFIF|JPEG|JPEH|JPG/i)
-    {
-        $log->pretty_proxy(1, 'red', $task->{proxy}, 'GET', sprintf "[ERROR]{%s}", html2text($status_line));
-        return('banned');
-    }
-    else
-    {
-        $log->pretty_proxy(1, 'green', $task->{proxy}, 'GET', "[SUCCESS]{$status_line}");
-    }
-    #-- Obtaining cookies
-    if ($self->{cookies})
-    {
-        my $saved_cookies = parse_cookies($self->{cookies}, $response_headers);
-        if (!$saved_cookies)
-        {
-            $log->pretty_proxy(1, 'red', $task->{proxy}, 'GET', '[ERROR]{required cookies not found/proxy does not supported cookies at all}');
-            return('banned');
-        }
-        else
-        {
-            $post_headers->header('Cookie' => $saved_cookies);
-        }
-    }
-
-    #-- Save captcha
-    my $path_to_captcha = save_file($captcha_img, $self->{captcha_extension});
-    $task->{path_to_captcha} = $path_to_captcha;
-
-    $task->{headers} = $post_headers;
-    return('success');
-}
+# sub get($$$$)
+# {
+# }
 
 #------------------------------------------------------------------------------------------------
 # PREPARE
@@ -288,7 +245,7 @@ sub get($$$$)
 sub compute_mm($)
 {
     my $s = shift;
-    #-- there is non-ascii characters
+    #-- there are non-ascii characters
     if ( grep { ord($_) > 127 } split //, $s )
     {
         return $js->method(mm => $s); #-- so sloooow
@@ -307,7 +264,7 @@ sub prepare($$$$)
     my ($self, $task, $cnf) = @_;
     my $log = $self->{log};
 
-    #-- Recognize captcha
+    #-- Recognize a captcha
     my %content = %{ merge_hashes( $self->_get_post_content(%{ $task->{post_cnf} }), $self->{fields}{post}) };
     if ($task->{path_to_captcha})
     {
