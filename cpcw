@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '0.2.1-52';
+our $VERSION = '0.2.1-53';
 
 use v5.12;
 use utf8;
@@ -79,6 +79,24 @@ sub parse_args()
     }
     $mode_config = File::Spec->catfile('configs', "$mode.pl")
         unless $mode_config;
+}
+
+sub check_chan_config()
+{
+    for ( qw/post delete captcha page zero_page thread/ )
+    {
+        Carp::croak("Chan config error: Option urls => '$_' must be specified at chans/$chan.pl")
+                unless ($chan_config->{urls}{$_});
+    }
+    #--------------------------------------------------------------------------
+    for ( qw/engine captcha_extension fields/ )
+    {
+        Carp::croak("Chan congig error: Option '$_' must be specified at chans/$chan.pl")
+                unless ($chan_config->{$_});
+    }
+    #--------------------------------------------------------------------------
+    Carp::croak("Chan config error: HOST must be specified at chans/$chan.pl")
+            unless ($chan_config->{headers}{default}{Host});
 }
 
 sub check_user_error()
@@ -275,6 +293,7 @@ load_configs();     #-- load %mode_config
 load_proxies();
 load_agents();
 load_chan();        #-- load $chan_config
+check_chan_config();
 load_logging();
 load_engine();
 my $m = load_mode();
