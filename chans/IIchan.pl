@@ -1,93 +1,80 @@
 use utf8;
-#-- Сюда вписать доменное имя
-use constant HOST => 'chan-example.com';
+use constant HOST => 'iichan.ru';
 
 our $chan_config =
 {
     #-- Описание. Необязатльено для заполнения
-    description        => '',
-    engine             => 'Kusaba',
+    description        => 'сырнач',
+    engine             => 'Wakaba',
     captcha_extension  => 'gif',
-    #-- Закомментировать, если отключена капча
-    cookies            => ['PHPSESSID'],
-    #-- Колличество тредов на страницу.
-    #-- Нужно только автобампа и только если включен каталог
-    threads_per_page   => 20,
     #-- Ключ рекапчи
     recaptcha_key      => '',
 
     response => {
         post => {
-            banned        => [403, 'CDN', 'banned', 'забанены', 'BANNED!'],
+            banned        => [403, 'CDN', 'Доступ к отправке сообщений с этого ip закрыт'],
             net_error     => ['Service Unavailable Connection', 502],
             post_error    => [
-                              'your message is too long',
-                              'temporarily unavailable',
-                              'Это видео уже опубликовано',
-                              'Уже опубликовано тут', 
-                              'Unable to connect to',
+                              'Этот файл уже был загружен',
+                              'Либо изображение слишком большое, либо его вообще не было. Ага.',
                              ],
             wrong_captcha => [
-                              'Неправильно введена капча',
+                              'Введён неверный код подтверждения',
                              ],
             flood         => [
-                              'Вы постите очень часто.',
-                              'Flood detected',
+                              'Ошибка: Флудить нельзя. Ваше первое сообщение уже принято',
+                              'Обнаружен флуд, файл отклонен',
                              ],
             critical_error => [
-                               'Неправильный ID треда',
+                              'Тред не существует',
+                              'В этом разделе для начала треда нужно загрузить файл',
+                              'Вы ничего не написали в сообщении',
                               ],
-            success       => ['BuildThread()', 'Updating pages'],
-
+            success       => ['Go West', 'wakaba.html', 303],
         },
         delete => {
             success        => [303],
-            wrong_password => ['Неправильный пароль.'],
-            error          => ['Invalid post ID'],
+            wrong_password => ['Неправильный пароль.', 'Неверный пароль для удаления'],
+            error          => [''],
         },
     },
 
     fields => {
         post => {
             captcha    => 'captcha',
-            board      => 'board',
-            msg        => 'message',
-            img        => 'imagefile',
-            thread     => 'replythread',
-            email      => 'em',
-            subject    => 'subject',
-            password   => 'postpassword',
+            msg        => 'nya4',
+            img        => 'file',
+            thread     => 'parent',
+            email      => 'nya2',
+            subject    => 'nya3',
+            password   => 'password',
             name       => 'name',
+            link       => 'link',
+            gb2        => 'postredir',
+            task       => 'task',
             nofile     => 'nofile',
-            video      => 'embed',
-            video_type => 'embedtype',
-            MAX_FILE_SIZE => 'MAX_FILE_SIZE',
         },
 
         delete => {
-            board      => 'board',
-            delete     => 'post[]',
-            deletepost => 'deletepost',
-            password   => 'postpassword',
+            delete   => 'delete',
+            password => 'password',
+            task     => 'task',
         },
     },
 
     urls => {
-        post      => 'http://'. HOST .'/board.php',
-        delete    => 'http://'. HOST .'/board.php',
+        post      => 'http://'. HOST .'/cgi-bin/wakaba.pl/%s/',
+        delete    => 'http://'. HOST .'/cgi-bin/wakaba.pl/%s/',
         #-- Закомментировать, если капча отключена вообще или стоит recaptcha
-        #captcha  => 'http://'. HOST .'/captcha.php',
+        captcha   => 'http://'. HOST .'/cgi-bin/captcha1.pl/%s/?key=%s&dummy=%s?',
         page      => 'http://'. HOST .'/%s/%d.html',
         zero_page => 'http://'. HOST .'/%s',
         thread    => 'http://'. HOST .'/%s/res/%d.html',
-        #-- Закомментировать, если каталог отключен
-        catalog   => 'http://'. HOST .'/%s/catalog.html',
     },
 
     html => {
         replies_regexp => '(?<post><td class="reply" id="reply(?<id>\d+)">.+?</td>)',
         threads_regexp => '(?<thread><span class="filesize">.+?<a name="(?<id>\d+)"></a>.+?<br clear="left" /><hr />)',
-        catalog_regexp => '/res/(?<id>\d+).html',
     },
 
     headers => {

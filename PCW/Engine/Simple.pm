@@ -3,32 +3,24 @@ package PCW::Engine::Simple;
 #------------------------------------------------------------------------------------------------
 # Частично реализованны методы для cамых простых и распространенных движков имиджборд
 #------------------------------------------------------------------------------------------------
-use strict;
+use v5.12;
 use utf8;
-use autodie;
 use Carp;
-
-#------------------------------------------------------------------------------------------------
-# Features
-#------------------------------------------------------------------------------------------------
-use feature qw(switch);
 
 #------------------------------------------------------------------------------------------------
 # Import utility packages
 #------------------------------------------------------------------------------------------------
-use Data::Random qw(rand_set);
-use Encode;
-use File::Basename;
+use Data::Random qw/rand_set/;
 use HTTP::Headers;
 
 #------------------------------------------------------------------------------------------------
 # Import internal PCW packages
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Utils    qw(merge_hashes parse_cookies html2text save_file unrandomize);
-use PCW::Core::Captcha  qw(captcha_recognizer);
-use PCW::Core::Net      qw(http_get http_post get_recaptcha);
-use PCW::Data::Images   qw(make_pic);
-use PCW::Data::Text     qw(make_text);
+use PCW::Core::Utils   qw/merge_hashes parse_cookies html2text save_file unrandomize/;
+use PCW::Core::Captcha qw/captcha_recognizer/;
+use PCW::Core::Net     qw/http_get http_post get_recaptcha/;
+use PCW::Data::Images  qw/make_pic/;
+use PCW::Data::Text    qw/make_text/;
 
 #------------------------------------------------------------------------------------------------
 # Constructor
@@ -41,9 +33,9 @@ use PCW::Data::Text     qw(make_text);
 sub new($%)
 {
     my ($class, %args) = @_;
-    my $agents   = delete $args{agents};
-    my $log      = delete $args{log};
-    my $verbose  = delete $args{verbose}  || 0;
+    my $agents  = delete $args{agents};
+    my $log     = delete $args{log};
+    my $verbose = delete $args{verbose} || 0;
 
     # TODO: check for errors in the chan-config file
     Carp::croak("Option 'agents' should be are set.")
@@ -307,10 +299,8 @@ sub post($$$$)
 
     #-- POSTING
     my ($code, $response) =
-        http_post($task->{proxy},   $self->_get_post_url(%{ $cnf->{post_cnf} }),
+        http_post($task->{proxy}  , $self->_get_post_url(%{ $cnf->{post_cnf} }),
                   $task->{headers}, $task->{content});
-
-    $response = encode('utf-8', $response); #-- Для корректной работы кириллицы и рэгэкспов
 
     return $self->_check_post_result($response, $code, $task, $cnf);
 }
@@ -362,8 +352,6 @@ sub delete($$$$)
 
     #-- Send request
     my ($code, $response) = http_post($task->{proxy}, $self->_get_delete_url(%{ $task }), $headers, \%content);
-
-    $response = encode('utf-8', $response); #-- Для корректной работы кириллицы и рэгэкспов
 
     return $self->_check_delete_result($response, $code, $task, $cnf); 
 }
@@ -439,8 +427,6 @@ sub ban_check($$$)
         http_post($task->{proxy},   $self->_get_post_url(%{ $task->{post_cnf} }),
                   $task->{headers}, $task->{content});
 
-    $response = encode('utf-8', $response); #-- Для корректной работы кириллицы и рэгэкспов
-
     return $self->_check_ban_result($response, $code, $task, $cnf);
 
 }
@@ -459,8 +445,6 @@ sub get_page($$$)
     my ($response, $response_headers, $status_line) =
         http_get($task->{proxy}, $self->_get_page_url(%$cnf), $headers);
 
-    #$response = encode('utf-8', $response); #-- Для корректной работы кириллицы и рэгэкспов
-
     return $response, $response_headers, $status_line;
 }
 
@@ -474,8 +458,6 @@ sub get_thread($$$)
     #-- Send request
     my ($response, $response_headers, $status_line) =
         http_get($task->{proxy}, $self->_get_thread_url(%$cnf), $headers);
-
-    # $response = encode('utf-8', $response); #-- Для корректной работы кириллицы и рэгэкспов
 
     return $response, $response_headers, $status_line;
 }

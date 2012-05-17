@@ -1,22 +1,21 @@
 package PCW::Data::Text;
 
-use strict;
+use v5.12;
+use utf8;
 use Carp;
 use autodie;
-use feature ':5.10';
 
 use Exporter 'import';
-our @EXPORT_OK = qw(make_text);
+our @EXPORT_OK = qw/make_text/;
 
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
-use List::Util qw(shuffle);
-use Data::Random qw(rand_set);
-use PCW::Core::Utils qw(random);
+use List::Util       qw/shuffle/;
+use Data::Random     qw/rand_set/;
+use PCW::Core::Utils qw/random/;
 
 use Coro;
 my $lock = Coro::Semaphore->new;
-
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
 sub interpolate($$)
@@ -45,7 +44,7 @@ sub make_text($$$)
 }
 
 #------------------------------------------------------------------------------------------------
-#---------------------------------------- Text --------------------------------------------------
+# Internal functions
 #------------------------------------------------------------------------------------------------
 sub boundary_msg($$$)
 {
@@ -108,7 +107,6 @@ sub string_msg($$$)
         {
             $msg .= ${ rand_set(set => \@text) };
         }
-        # $msg .= "\n";
     }
     return $msg;
 }
@@ -122,18 +120,18 @@ sub delirium_msg($$$)
     my $max_w     = $cnf->{max_w}     || 10;
     my $min_q     = $cnf->{min_q}     || 3;
     my $max_q     = $cnf->{max_q}     || 20;
-    my $sep_ch    = $cnf->{sep_ch}    || 20; #-- частота, с которой добавляются разделители в %
+    my $sep_ch    = $cnf->{sep_ch}    || 20; #-- частота в %, с которой добавляются разделители
 
-    my @small_v = qw(а а а у у е е е о о ы э я и и ю);
+    my @small_v = qw/а а а у у е е е о о ы э я и и ю/;
     @small_v = @{ $cnf->{small_v} } if $cnf->{small_v};
 
-    my @small_c = qw(й ц к к н н г г з х ъ ф в п п р р л л д д ч м м т т б б ь);
+    my @small_c = qw/й ц к к н н г г з х ъ ф в п п р р л л д д ч м м т т б б ь/;
     @small_c = @{ $cnf->{small_c} } if $cnf->{small_c};
 
-    my @big = qw(У К Е Н Г Ш З Х Ф В А П Р О Л Д Ж Ч С Я М И Т Б Ю);
+    my @big = qw/У К Е Н Г Ш З Х Ф В А П Р О Л Д Ж Ч С Я М И Т Б Ю/;
     @big = @{ $cnf->{big} } if $cnf->{big};
 
-    my @end = qw(. . . . . . ! ?);
+    my @end = qw/. . . . . . ! ?/;
     @end = @{ $cnf->{end} } if $cnf->{end};
     my @sep = (',', ',', ',');
     @sep = @{ $cnf->{sep} } if $cnf->{sep};
@@ -173,4 +171,5 @@ sub delirium_msg($$$)
     }
     return $template;
 }
+
 1;

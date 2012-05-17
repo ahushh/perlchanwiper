@@ -1,6 +1,7 @@
 package PCW::Core::Utils;
 
-use strict;
+use v5.12;
+use utf8;
 use autodie;
 use Carp;
 
@@ -8,10 +9,7 @@ use Exporter 'import';
 our @EXPORT_OK =
     qw/random get_proxylist html2text merge_hashes parse_cookies save_file with_coro_timeout unrandomize took/;
 
-#------------------------------------------------------------------------------------------------
-# Importing utility packages
-#------------------------------------------------------------------------------------------------
-use Data::Random qw(rand_set);
+use Data::Random qw/rand_set/;
 
 #------------------------------------------------------------------------------------------------
 # CORO TIMEOUT
@@ -31,9 +29,9 @@ sub with_coro_timeout(&$$)
 #------------------------------------------------------------------------------------------------
 # PROXY
 #------------------------------------------------------------------------------------------------
-use Coro::LWP; #-- без подключения этого модуля начинается какае-то хуете с LWP::Simple::get()
-use LWP::Simple qw(get);
-use List::MoreUtils qw(uniq);
+use Coro::LWP; #-- без подключения этого модуля начинается какая-то хуете с LWP::Simple::get()
+use LWP::Simple     qw/get/;
+use List::MoreUtils qw/uniq/;
 
 sub get_proxylist($$)
 {
@@ -102,16 +100,16 @@ sub html2text($)
 }
 
 #------------------------------------------------------------------------------------------------
-# SAVE FILE
+# CREATE A TEMP FILE AND RETURN ITS PATH
 #------------------------------------------------------------------------------------------------
-use File::Temp qw(tempfile);
+use File::Temp qw/tempfile/;
 
 sub save_file($$)
 {
     my ($content, $type) = @_;
     my ($fh, $filename) = tempfile(UNLINK => 1, SUFFIX => ".$type");
     print $fh $content;
-    close($fh);
+    close $fh;
     return $filename;
 }
 

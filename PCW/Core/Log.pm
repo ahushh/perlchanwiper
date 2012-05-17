@@ -1,7 +1,7 @@
 package PCW::Core::Log;
-use feature qw(switch say);
 
-use strict;
+use v5.12;
+use utf8;
 use autodie;
 use Carp;
 
@@ -26,7 +26,7 @@ sub new($%)
     my $fh;
     if ($file)
     {
-        open $fh, '>', $file;
+        open $fh, '>:utf8', $file;
         $fh->autoflush(1);
     }
     my $self = {};
@@ -45,7 +45,7 @@ sub msg($$;$$$)
     undef $color unless $self->{colored};
 
     print  $fh strftime("[%H:%M:%S]", localtime(time));
-    printf $fh "[%15s]", $type if $type;
+    printf $fh "[%15s]", $type           if $type;
     say    $fh colored [$color], " $msg" if $msg;
     return 1;
 }
@@ -57,7 +57,7 @@ sub pretty_proxy($$$$$$)
     my $fh    = $self->{file};
     undef $color unless $self->{colored};
 
-    $self->msg($l, undef, $type); #-- print time and type
+    $self->msg($l, undef, $type); #-- print then time and type
     print $fh colored [$color], sprintf(" %-40s ", $proxy);
     say $fh $msg;
 

@@ -1,34 +1,26 @@
 package PCW::Engine::Kusaba;
 
-use strict;
+use v5.12;
 use utf8;
-use autodie;
 use Carp;
 
 use base 'PCW::Engine::Simple';
 
 #------------------------------------------------------------------------------------------------
-# Features
-#------------------------------------------------------------------------------------------------
-use feature qw(switch say);
-
-#------------------------------------------------------------------------------------------------
 # Importing utility packages
 #------------------------------------------------------------------------------------------------
-use Data::Random qw(rand_set);
-use Encode;
-use File::Basename;
+use Data::Random qw/rand_set/;
 use HTTP::Headers;
 
 #------------------------------------------------------------------------------------------------
 # Import internal PCW packages
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Utils    qw(merge_hashes parse_cookies html2text save_file unrandomize took);
-use PCW::Core::Captcha  qw(captcha_recognizer);
-use PCW::Core::Net      qw(http_get http_post get_recaptcha);
-use PCW::Data::Images   qw(make_pic);
-use PCW::Data::Video    qw(make_vid);
-use PCW::Data::Text     qw(make_text);
+use PCW::Core::Utils    qw/merge_hashes parse_cookies html2text save_file unrandomize took/;
+use PCW::Core::Captcha  qw/captcha_recognizer/;
+use PCW::Core::Net      qw/http_get http_post get_recaptcha/;
+use PCW::Data::Images   qw/make_pic/;
+use PCW::Data::Video    qw/make_vid/;
+use PCW::Data::Text     qw/make_text/;
 
 #------------------------------------------------------------------------------------------------
 # Constructor
@@ -432,8 +424,6 @@ sub get_catalog($$$)
     #-- Send request
     my ($response, $response_headers, $status_line) =
         http_get($task->{proxy}, $self->_get_catalog_url(%$cnf), $headers);
-
-    # $response = encode('utf-8', $response); #-- Для корректной работы кириллицы и рэгэкспов
 
     return $response, $response_headers, $status_line;
 }

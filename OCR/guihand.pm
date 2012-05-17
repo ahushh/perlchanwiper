@@ -1,4 +1,5 @@
-use strict;
+use v5.12;
+use utf8;
 use Gtk2 -init;
 use Coro;
 

@@ -1,9 +1,10 @@
 package PCW::Core::Net;
 
-use strict;
+use v5.12;
+use utf8;
 
 use Exporter 'import';
-our @EXPORT_OK = qw(get_recaptcha http_get http_post);
+our @EXPORT_OK = qw/get_recaptcha http_get http_post/;
 
 use HTTP::Headers;
 use Coro::LWP;
@@ -41,7 +42,7 @@ sub get_recaptcha($$)
     $ua->default_header('Accept' => 'img/png,img/*;q=0.8,*/*;q=0.5');
     $response = $ua->get($img_url . $1);
     return undef if $response->code != 200;
-    return $response->content, 'recaptcha_challenge_field', $1;
+    return $response->decoded_content, 'recaptcha_challenge_field', $1;
 }
 
 sub http_get($$$)
@@ -52,13 +53,21 @@ sub http_get($$$)
     $ua->proxy([qw/http https/] => $proxy) if $proxy !~ 'no_proxy';
     $ua->cookie_jar( {} );
     my $response = $ua->get($url);
-    return $response->content, $response->as_string, $response->status_line;
+
+    my $status = $response->status_line;
+    utf8::decode($status);
+    return $response->decoded_content, $response->headers_as_string, $status;
 }
 
 sub http_post($$$$)
 {
-    #use Data::Dumper; print Dumper(@_);
     my ($proxy, $url, $headers, $content) = @_;
+    $content = \%{ $content };
+    #-- convert the content to bytes
+    for (keys %$content)
+    {
+        utf8::encode($content->{$_}) unless (ref $_);
+    }
     my $ua = LWP::UserAgent->new();
     $ua->default_headers($headers) if $headers;
     $ua->cookie_jar( {} );
@@ -68,7 +77,10 @@ sub http_post($$$$)
                              'Content_Type' => 'multipart/form-data',
                              'Content'      => $content,
                             );
-    return $response->code, $response->decoded_content, $response->status_line;
+
+    my $status = $response->status_line;
+    utf8::decode($status);
+    return $response->code, $response->decoded_content, $status;
 }
 
 1;

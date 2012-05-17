@@ -1,9 +1,7 @@
 package PCW::Modes::AutoBump;
 
-use strict;
-use autodie;
-use Carp;
-use feature qw(switch say);
+use v5.12;
+use utf8;
 
 use base 'PCW::Modes::Base';
 #------------------------------------------------------------------------------------------------
@@ -17,16 +15,10 @@ use Coro;
 use Time::HiRes;
 
 #------------------------------------------------------------------------------------------------
-# Importing utility packages
-#------------------------------------------------------------------------------------------------
-use File::Basename;
-use File::Copy qw(move);
-
-#------------------------------------------------------------------------------------------------
 # Importing internal PCW packages
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Utils   qw(with_coro_timeout);
-use PCW::Core::Captcha qw(captcha_report_bad);
+use PCW::Core::Utils   qw/with_coro_timeout/;
+use PCW::Core::Captcha qw/captcha_report_bad/;
 
 #------------------------------------------------------------------------------------------------
 # Local variables

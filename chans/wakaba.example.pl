@@ -1,3 +1,4 @@
+use utf8;
 #-- Сюда вписать доменное имя
 use constant HOST => 'chan-example.com';
 
@@ -35,7 +36,7 @@ our $chan_config =
         },
         delete => {
             success        => [303],
-            wrong_password => ['Неправильный пароль.'],
+            wrong_password => ['Неправильный пароль.', 'Неверный пароль для удаления'],
             error          => [''],
         },
     },

@@ -1,3 +1,4 @@
+use utf8;
 #-- Сюда вписать доменное имя
 use constant HOST => 'www.0-chan.ru';
 

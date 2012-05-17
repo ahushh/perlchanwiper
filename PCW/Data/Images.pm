@@ -1,26 +1,27 @@
 package PCW::Data::Images;
 
-use strict;
+use v5.12;
+use utf8;
 use Carp;
 use autodie;
-use feature qw/state switch/;
 
 use Exporter 'import';
-our @EXPORT_OK = qw(make_pic);
+our @EXPORT_OK = qw/make_pic/;
 
 #------------------------------------------------------------------------------------------------
 use File::Basename;
 use File::Find::Rule;
 use File::Copy;
-use File::Temp qw(tempfile tempdir);
+use File::Temp qw/tempfile tempdir/;
 
 #------------------------------------------------------------------------------------------------
-use List::Util qw(shuffle reduce);
-use Data::Random qw(rand_set rand_image);
-use PCW::Core::Utils qw(random);
+use List::Util       qw/shuffle reduce/;
+use Data::Random     qw/rand_set rand_image/;
+use PCW::Core::Utils qw/random/;
 
 use Coro;
 my $lock = Coro::Semaphore->new;
+#------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
 sub make_pic($$$)
 {
@@ -33,7 +34,7 @@ sub make_pic($$$)
 }
 
 #------------------------------------------------------------------------------------------------
-#---------------------------------------- Modes -------------------------------------------------
+# Internal functions
 #------------------------------------------------------------------------------------------------
 sub captcha_img($$$)
 {
@@ -139,7 +140,7 @@ sub img_altering($)
             {
                 local $/ = undef;
                 $img = <$img_fh>;
-                close($img_fh);
+                close $img_fh;
             }
             print $fh $img;
             my $n = $conf->{number_nums};
@@ -147,7 +148,7 @@ sub img_altering($)
             {
                 print $fh int(rand(10));
             }
-            close($fh);
+            close $fh;
         }
         when ('randbytes')
         {
@@ -156,15 +157,15 @@ sub img_altering($)
             {
                 local $/ = undef;
                 $img = <$img_fh>;
-                close($img_fh);
+                close $img_fh;
             }
             print $fh $img;
             print $fh reduce { $a . chr(int(rand() * 256)) } ('', 1..$conf->{number_bytes});
-            close($fh);
+            close $fh;
         }
         when ('resize')
         {
-            close($fh);
+            close $fh;
             my $convert = $conf->{convert};
             my $args    = $conf->{args};
             my $k       = random($conf->{min}, $conf->{max});
@@ -172,7 +173,7 @@ sub img_altering($)
         }
         when ('convert')
         {
-            close($fh);
+            close $fh;
             my $convert = $conf->{convert};
             my $args    = $conf->{args};
             system("$convert $args $full_name $filename");
@@ -180,7 +181,7 @@ sub img_altering($)
         default
         {
             warn "Image altering method '$mode' doesn't exist. Skipping altering...";
-            close($fh);
+            close $fh;
             return $full_name;
         }
     }

@@ -1,11 +1,12 @@
 #!/usr/bin/perl -w
 $|=1;
 
-use strict;
-use warnings;
+use v5.12;
+use utf8;
+
 use autodie;
 use WWW::ProxyChecker;
-use List::MoreUtils qw(uniq);
+use List::MoreUtils qw/uniq/;
 
 die "Usage: $0 [proxylist] [checked proxylist]"
     if @ARGV != 2;
@@ -13,6 +14,7 @@ die "Usage: $0 [proxylist] [checked proxylist]"
 my @raw_proxies;
 my ($proxy_list, $checked_proxy_list) = @ARGV;
 my $raw_proxies;
+
 open my $fh, "<", $proxy_list;
 {
     local $/ = undef;
@@ -47,8 +49,7 @@ for my $type ('http')
 
 my $checker = WWW::ProxyChecker->new( debug         => 1,
                                       agent         => 'Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:1.8.1.12)',
-                                      check_sites   => [ "http://www.0-chan.ru" ],
-                                      #check_sites   => [ "http://google.com" ],
+                                      check_sites   => [ "http://google.com" ],
                                     );
 my $working_ref= $checker->check(\@proxies);
 

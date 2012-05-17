@@ -1,17 +1,17 @@
 package PCW::Data::Video;
 
-use strict;
+use v5.12;
+use utf8;
 use Carp;
 use autodie;
-use feature qw/state switch say/;
 
 use Exporter 'import';
-our @EXPORT_OK = qw(make_vid);
+our @EXPORT_OK = qw/make_vid/;
 
 #------------------------------------------------------------------------------------------------
-use Data::Random qw(rand_set);
-use List::MoreUtils qw(uniq);
-use LWP::Simple qw(get);
+use Data::Random    qw/rand_set/;
+use List::MoreUtils qw/uniq/;
+use LWP::Simple     qw/get/;
 
 use Coro;
 my $lock = Coro::Semaphore->new;
@@ -19,12 +19,12 @@ my $lock = Coro::Semaphore->new;
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
 #-- Regexp to parse ID's
-my %types = ( youtube => ['watch\?v=(?<id>(\w|-)+)&?',
-                          'data-video-ids="(?<id>(\w|-)+)"',
+my %types = ( youtube => [  'watch\?v=(?<id>(\w|-)+)&?'
+                          , 'data-video-ids="(?<id>(\w|-)+)"'
                          ],
             );
 
-my %search_urls = ( youtube => 'http://www.youtube.com/results?search_query={search}&page={page}');
+my %search_urls = ( youtube => 'http://www.youtube.com/results?search_query={search}&page={page}' );
 
 sub make_vid($$$)
 {
@@ -36,6 +36,8 @@ sub make_vid($$$)
     return &$get_vid($engine, $task, $conf);
 }
 
+#------------------------------------------------------------------------------------------------
+# Internal functions
 #------------------------------------------------------------------------------------------------
 sub file_vid($$$)
 {
@@ -90,7 +92,7 @@ sub download_vid($$$)
                 $url =~ s/\{search\}/$query/e;
                 $url =~ s/\{page\}/$page/e;
                 $raw .= get($url);
-                $log->msg(3, "ID's fetched from $page page and with '$query' query.");
+                $log->msg(3, "ID's were fetched from $page page and with '$query' query.");
             }
         }
         for my $pattern (@{ $types{ $data->{type} } })
