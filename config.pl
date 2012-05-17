@@ -1,4 +1,6 @@
-use strict;
+use v5.12;
+use utf8;
+#HTTP::Message content must be bytes at /usr/lib/perl5/vendor_perl/5.14.2/HTTP/Request/Common.pm line 94
 #------------------------------------------------------------------------------------------------------------
 # MESSSAGE SETTINGS
 #------------------------------------------------------------------------------------------------------------
@@ -19,7 +21,7 @@ our $msg = {
     # text => "bump\n%date%",
     # text => '@~fortune psalms bible~@',
     # text => '%unixtime%',
-    text => 'эта борда называется **НУЛЬТИРЕЧ**',
+    text => '✡#delirium#✡',
     #-------------------------------------------------------------------------------------------------------
     #-- #delirium# config
     delirium => {
@@ -175,7 +177,7 @@ our $captcha_decode = {
     #-- gui hand mode
     #-- Ручной ввод капчи через GUI.
     #-- Необходим Gtk2
-    #mode   => 'guihand',
+    mode   => 'none',
     #-- tesseract OCR
     #-- Необходим convert (пакет ImageMagick) и сам tesseract
     mode   => 'tesseract',

@@ -1,4 +1,5 @@
-use strict;
+use v5.12;
+use utf8;
 use Carp;
 use WebService::Antigate;
 

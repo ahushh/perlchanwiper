@@ -1,11 +1,12 @@
 package PCW::Modes::Wipe;
 
-use strict;
+use v5.12;
+use utf8;
 use autodie;
 use Carp;
-use feature qw(switch say);
 
 use base 'PCW::Modes::Base';
+
 #------------------------------------------------------------------------------------------------
 # Importing Coro packages
 #------------------------------------------------------------------------------------------------
@@ -15,21 +16,25 @@ use Coro::LWP;
 use Coro::Timer;
 use Coro;
 use Time::HiRes;
+
 #------------------------------------------------------------------------------------------------
 # Importing utility packages
 #------------------------------------------------------------------------------------------------
 use File::Basename;
-use File::Copy qw(move);
+use File::Copy qw/move/;
 use File::Spec;
+
 #------------------------------------------------------------------------------------------------
 # Importing internal PCW packages
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Utils   qw(with_coro_timeout);
-use PCW::Core::Captcha qw(captcha_report_bad);
+use PCW::Core::Utils   qw/with_coro_timeout/;
+use PCW::Core::Captcha qw/captcha_report_bad/;
+
 #------------------------------------------------------------------------------------------------
 # Package variables
 #------------------------------------------------------------------------------------------------
 our $CAPTCHA_DIR = 'captcha';
+
 #------------------------------------------------------------------------------------------------
 # Local variables
 #------------------------------------------------------------------------------------------------
@@ -37,6 +42,7 @@ my $watchers  = {};
 my $get_queue     ;
 my $prepare_queue ;
 my $post_queue    ;
+
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
 # sub new($%)
@@ -196,7 +202,7 @@ my $cb_wipe_post = unblock_sub
         }
         when ('critical_error')
         {
-            $log->msg(1, "Critical chan error happened!", '', 'red');
+            $log->msg(1, "Critical chan error occured!", '', 'red');
         }
         when ('flood')
         {
@@ -423,7 +429,7 @@ sub _init_watchers($)
                        );
 
     #-- Exit watchers
-    #-- Если ставить слишком малый interval, при одной прокси будет выходить когда не надо
+    #-- BUG: Если ставить слишком малый interval, при одной прокси будет выходить когда не надо
     $watchers->{exit} =
         AnyEvent->timer(after => 5, interval => 5, cb =>
                         sub

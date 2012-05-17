@@ -1,5 +1,6 @@
-use strict;
-use File::Temp qw(tempdir);
+use v5.12;
+use utf8;
+use File::Temp qw/tempdir/;
 use File::Spec;
 use Image::OCR::TesseractX 'get_ocr';
 
@@ -12,7 +13,8 @@ sub decode_captcha($$)
     eval {
         $text = get_ocr($file_path, $tmp, $captcha_decode->{lang}, $captcha_decode->{config});
     };
-    warn $@ if $@;
+    #warn $@ if $@;
+    warn "Error while recognizing a captcha" if $@;
 
     #$text =~ s/^\s*//;
     #$text =~ s/\s*$//;

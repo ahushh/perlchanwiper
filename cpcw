@@ -1,15 +1,15 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '0.2-r50';
+our $VERSION = '0.2.1-51';
 
-use strict;
+use v5.12;
+use utf8;
 use autodie;
-use lib 'lib';
-
-#-----------------------------------------------------------------------------
 use Carp;
-use feature qw/say switch/;
+use lib 'lib';
+binmode(STDOUT, ":utf8");
+
 #-----------------------------------------------------------------------------
 use Coro;
 use AnyEvent;
@@ -18,9 +18,9 @@ use Getopt::Long qw/:config bundling/;
 use File::Spec;
 use File::Basename;
 #-----------------------------------------------------------------------------
-use PCW::Core::Utils qw(get_proxylist);
+use PCW::Core::Utils qw/get_proxylist/;
 use PCW::Core::Log;
- 
+
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
 our %mode_config;
@@ -118,13 +118,13 @@ sub show_info()
     say "Work mode: $mode";
     say "Mode config: $mode_config";
     say "Common config: $common_config";
-    say "Proxies loaded: ". scalar @proxies;
+    say "Proxies loaded: " . scalar @proxies;
     say "Browsers loaded: ". scalar @agents;
     say "~" x 30;
     say "Log level: $loglevel";
     say "Log file: ", ($logfile || "STDOUT");
     say "Colored logging: ", ($lognocolor ? 'no'  : 'yes');
-    say "Verbose output: ",  ($verbose    ? 'yes' : 'no');
+    say "Verbose output: " , ($verbose    ? 'yes' : 'no');
     say "~" x 30;
 }
 

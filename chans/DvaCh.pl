@@ -1,3 +1,4 @@
+use utf8;
 use constant HOST => 'dva-ch.ru';
 
 our $chan_config =
@@ -31,7 +32,7 @@ our $chan_config =
         },
         delete => {
             success => [303],
-            wrong_password => ['Неправильный пароль.'],
+            wrong_password => ['Неправильный пароль.', 'Неверный пароль для удаления'],
             error          => [''],
         },
     },

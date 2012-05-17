@@ -1,25 +1,17 @@
-
 package PCW::Engine::EFGKusaba;
 
-use strict;
+use v5.12;
 use utf8;
-use autodie;
 use Carp;
 
 use base 'PCW::Engine::Kusaba';
- 
-#------------------------------------------------------------------------------------------------
-# Features
-#------------------------------------------------------------------------------------------------
-use feature qw(switch);
 
 #------------------------------------------------------------------------------------------------
 # Importing utility packages
 #------------------------------------------------------------------------------------------------
-use Data::Random qw(rand_set);
-use Encode;
-use File::Basename;
+use Data::Random qw/rand_set/;
 use HTTP::Headers;
+
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
 use JE;
@@ -61,12 +53,12 @@ function mm(a)
 #------------------------------------------------------------------------------------------------
 # Import internal PCW packages
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Utils    qw(merge_hashes parse_cookies html2text save_file unrandomize took);
-use PCW::Core::Captcha  qw(captcha_recognizer);
-use PCW::Core::Net      qw(http_get http_post get_recaptcha);
-use PCW::Data::Images   qw(make_pic);
-use PCW::Data::Video    qw(make_vid);
-use PCW::Data::Text     qw(make_text);
+use PCW::Core::Utils    qw/merge_hashes parse_cookies html2text save_file unrandomize took/;
+use PCW::Core::Captcha  qw/captcha_recognizer/;
+use PCW::Core::Net      qw/http_get http_post get_recaptcha/;
+use PCW::Data::Images   qw/make_pic/;
+use PCW::Data::Video    qw/make_vid/;
+use PCW::Data::Text     qw/make_text/;
 
 #------------------------------------------------------------------------------------------------
 # Constructor
@@ -189,18 +181,20 @@ sub _get_post_content($$%)
 
 sub _get_delete_content($$%)
 {
+    no utf8;
     my ($self, %config) = @_;
     Carp::croak("Delete, board and password parameters are not set!")
         unless($config{board} && $config{password});
 
-    my $deletestr = 'Удалить';
-    utf8::encode($deletestr);
+    # my $deletestr = 'Удалить';
+    # utf8::encode($deletestr);
 
     my $content = {
         board      => $config{board},
         password   => $config{password},
         delete     => $config{delete},
-        deletepost => $deletestr,
+        deletepost => 'Удалить',
+        # deletepost => $deletestr,
     };
     return $content;
 }
@@ -248,10 +242,10 @@ sub compute_mm($)
     #-- there are non-ascii characters
     if ( grep { ord($_) > 127 } split //, $s )
     {
+        utf8::encode($s);
         return $js->method(mm => $s); #-- so sloooow
     }
     #-- ascii only
-    no autodie;
     open my $mm, '-|', 'lib/mm', $s
         or Carp::croak "Could not find lib/mm: $!";
     my $result = <$mm>;

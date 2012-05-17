@@ -1,8 +1,9 @@
 package PCW::Modes::Base;
-#-----------------------------------------------------------------------
-use strict;
-use autodie;
+
+use v5.12;
+use utf8;
 use Carp;
+
 #------------------------------------------------------------------------------------------------
 sub new($%)
 {
@@ -11,7 +12,7 @@ sub new($%)
     my $proxies  = delete $args{proxies};
     my $conf     = delete $args{conf};
     my $log      = delete $args{log};
-    my $verbose  = delete $args{verbose}  || 0;
+    my $verbose  = delete $args{verbose} || 0;
     # TODO: check for errors in the chan-config file
     my @k = keys %args;
     Carp::croak("These options aren't defined: @k")

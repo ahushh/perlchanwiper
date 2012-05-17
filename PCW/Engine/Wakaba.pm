@@ -1,33 +1,25 @@
 package PCW::Engine::Wakaba;
 
-use strict;
+use v5.12;
 use utf8;
-use autodie;
 use Carp;
 
 use base 'PCW::Engine::Simple';
 
 #------------------------------------------------------------------------------------------------
-# Features
-#------------------------------------------------------------------------------------------------
-use feature qw(switch);
-
-#------------------------------------------------------------------------------------------------
 # Importing utility packages
 #------------------------------------------------------------------------------------------------
-use Data::Random qw(rand_set);
-use Encode;
-use File::Basename;
+use Data::Random qw/rand_set/;
 use HTTP::Headers;
 
 #------------------------------------------------------------------------------------------------
 # Import internal PCW packages
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Utils    qw(merge_hashes parse_cookies html2text save_file unrandomize took);
-use PCW::Core::Captcha  qw(captcha_recognizer);
-use PCW::Core::Net      qw(http_get http_post get_recaptcha);
-use PCW::Data::Images   qw(make_pic);
-use PCW::Data::Text     qw(make_text);
+use PCW::Core::Utils    qw/merge_hashes parse_cookies html2text save_file unrandomize took/;
+use PCW::Core::Captcha  qw/captcha_recognizer/;
+use PCW::Core::Net      qw/http_get http_post get_recaptcha/;
+use PCW::Data::Images   qw/make_pic/;
+use PCW::Data::Text     qw/make_text/;
 
 #------------------------------------------------------------------------------------------------
 # Constructor

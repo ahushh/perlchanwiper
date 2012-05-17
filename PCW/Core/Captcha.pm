@@ -1,12 +1,14 @@
 package PCW::Core::Captcha;
 
-use strict;
+use v5.12;
+use utf8;
 use Carp;
+
+use Exporter 'import';
+our @EXPORT_OK = qw/captcha_recognizer captcha_report_bad/;
 
 use File::Spec;
 
-use Exporter 'import';
-our @EXPORT_OK = qw(captcha_recognizer captcha_report_bad);
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
 
@@ -30,4 +32,5 @@ sub captcha_report_bad($$)
     require File::Spec->catfile('OCR', "$mode.pm");
     return abuse($captcha_decode, $file_path);
 }
+
 1;

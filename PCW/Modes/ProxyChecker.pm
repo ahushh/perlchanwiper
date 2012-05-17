@@ -1,9 +1,8 @@
 package PCW::Modes::ProxyChecker;
 
-use strict;
+use v5.12;
+use utf8;
 use autodie;
-use Carp;
-use feature qw(say);
 
 use base 'PCW::Modes::Base';
 #------------------------------------------------------------------------------------------------
@@ -19,8 +18,8 @@ use Time::HiRes;
 #------------------------------------------------------------------------------------------------
 # Importing internal PCW packages
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Utils   qw(with_coro_timeout);
-use PCW::Core::Captcha qw(captcha_report_bad);
+use PCW::Core::Utils   qw/with_coro_timeout/;
+use PCW::Core::Captcha qw/captcha_report_bad/;
 
 #------------------------------------------------------------------------------------------------
 # Local variables
@@ -101,8 +100,9 @@ sub stop($)
     $_->cancel for (grep {$_->desc =~ /check/ } Coro::State::list);
     $watchers = {};
     $queue    = undef;
+
     my @g = @good_proxies;
-    $self->{checked}    = \@g;
+    $self->{checked} = \@g;
     if ($self->{conf}{save})
     {
         local $" = "\n";

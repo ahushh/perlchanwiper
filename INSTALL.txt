@@ -1,6 +1,6 @@
 =pod
 =head1 Linux
-* Perl лучше обновить до версии 5.12.*
+* Perl необходимо обновить до версии 5.12.* или выше.
 
 * Установить из репозитория пакет tesseract или tesseract-ocr (программа, которая будет распознавать капчу)
   Еще нужен imagemagick, для разгадывания капчи через tesseract и некоторых других штук.
@@ -18,13 +18,13 @@
   Например для модуля Coro и AnyEvent на дебианоподобных дистрах:
   sudo apt-get install libcoro-perl libanyevent-perl
 
-Поверялось на Ubuntu 12.04 LTS (perl 5.14.2) и Gentoo (perl 5.12.4)
+Поверялось на Ubuntu 12.04 LTS (perl 5.14.2), Gentoo (perl 5.12.4 и 5.14.2) 
 
 =head1 Windows
 Coming soon...
 =cut
 
-use strict;
+use v5.12;
 
 my @packages = qw/
 YAML
