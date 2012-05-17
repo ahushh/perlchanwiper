@@ -239,8 +239,8 @@ sub _get_delete_content($$%)
 sub compute_mm($)
 {
     my $s = shift;
-    #-- there are non-ascii characters
-    if ( grep { ord($_) > 127 } split //, $s )
+    #-- there are non-ascii characters or OS is not linux
+    if ( grep { ord($_) > 127 } split //, $s or $^O !~ /linux/)
     {
         utf8::encode($s);
         return $js->method(mm => $s); #-- so sloooow
