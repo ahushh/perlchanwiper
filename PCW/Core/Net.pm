@@ -66,7 +66,7 @@ sub http_post($$$$)
     #-- convert the content to bytes
     for (keys %$content)
     {
-        utf8::encode($content->{$_}) unless (ref $_);
+        utf8::encode($content->{$_}) unless (ref $content->{$_});
     }
     my $ua = LWP::UserAgent->new();
     $ua->default_headers($headers) if $headers;

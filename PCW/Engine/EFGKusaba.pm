@@ -303,9 +303,23 @@ sub prepare($$$$)
     #-- Compute mm cookie
     if ($content{board} eq 'b')
     {
-        my $took;
-        my $mm  = took { compute_mm($content{mm} . $content{message} . $content{postpassword}) } \$took;
-        $log->pretty_proxy(3, 'green', $task->{proxy}, 'PREPARE', "mm was computed: $mm (took $took sec.)");
+        my ($took, $mm);
+        #-- if text field is empty, compute mm only once
+        #-- TODO: compute mm only once if the text is static
+        if ($content{ $self->{fields}{post}{msg} } eq '' and !$self->{static_mm})
+        {
+            $self->{static_mm} = took { compute_mm($content{mm} . $content{message} . $content{postpassword}) } \$took;
+            $log->pretty_proxy(3, 'green', $task->{proxy}, 'PREPARE', "mm was computed: $self->{static_mm} (took $took sec.)");
+        }
+        if ($self->{static_mm})
+        {
+            $mm = $self->{static_mm};
+        }
+        else
+        {
+            $mm = took { compute_mm($content{mm} . $content{message} . $content{postpassword}) } \$took;
+            $log->pretty_proxy(3, 'green', $task->{proxy}, 'PREPARE', "mm was computed: $mm (took $took sec.)");
+        }
         #-- Add mm to post headers
         my $h = $task->{headers};
         my $c = $h->header('Cookie');
