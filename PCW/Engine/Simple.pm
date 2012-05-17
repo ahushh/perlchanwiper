@@ -33,13 +33,9 @@ use PCW::Data::Text    qw/make_text/;
 sub new($%)
 {
     my ($class, %args) = @_;
-    my $agents  = delete $args{agents};
+    my $agents  = delete $args{agents}  || 'Mozilla/5.0 (Windows; I; Windows NT 5.1; ru; rv:1.9.2.13) Gecko/20100101 Firefox/4.0';
     my $log     = delete $args{log};
     my $verbose = delete $args{verbose} || 0;
-
-    # TODO: check for errors in the chan-config file
-    Carp::croak("Option 'agents' should be are set.")
-        unless(@$agents);
 
     my $self  = { log => $log, verbose => $verbose, agents => $agents, %args };
     bless $self, $class;

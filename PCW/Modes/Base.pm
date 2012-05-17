@@ -13,7 +13,7 @@ sub new($%)
     my $conf     = delete $args{conf};
     my $log      = delete $args{log};
     my $verbose  = delete $args{verbose} || 0;
-    # TODO: check for errors in the chan-config file
+
     my @k = keys %args;
     Carp::croak("These options aren't defined: @k")
         if %args;
