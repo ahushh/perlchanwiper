@@ -50,4 +50,4 @@ String::ShellQuote
 File::Which
 /;
 
-system ( ($^O =~ /linux/ ? 'sudo ' : '') ."cpan @dependences @packages" );
+system ( ($^O =~ /linux/ ? 'sudo cpan' : 'cpan -f') ." @dependences @packages" );
