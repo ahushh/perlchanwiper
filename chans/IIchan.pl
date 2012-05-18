@@ -12,11 +12,12 @@ our $chan_config =
 
     response => {
         post => {
-            banned        => [403, 'CDN', 'Доступ к отправке сообщений с этого ip закрыт'],
+            banned        => [403, 'CDN', 'Доступ к отправке сообщений с этого ip закрыт', 'Доступ с этого хоста запрещён.'],
             net_error     => ['Service Unavailable Connection', 502],
             post_error    => [
                               'Этот файл уже был загружен',
                               'Либо изображение слишком большое, либо его вообще не было. Ага.',
+                              'Сообщения без изображений запрещены',
                              ],
             wrong_captcha => [
                               'Введён неверный код подтверждения',
@@ -66,7 +67,7 @@ our $chan_config =
         post      => 'http://'. HOST .'/cgi-bin/wakaba.pl/%s/',
         delete    => 'http://'. HOST .'/cgi-bin/wakaba.pl/%s/',
         #-- Закомментировать, если капча отключена вообще или стоит recaptcha
-        captcha   => 'http://'. HOST .'/cgi-bin/captcha1.pl/%s/?key=%s&dummy=%s?',
+        captcha   => 'http://'. HOST .'/cgi-bin/captcha.pl/%s/?key=%s&dummy=%s?',
         page      => 'http://'. HOST .'/%s/%d.html',
         zero_page => 'http://'. HOST .'/%s',
         thread    => 'http://'. HOST .'/%s/res/%d.html',

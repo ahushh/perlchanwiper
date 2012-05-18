@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '0.2.1-54';
+our $VERSION = '0.2.1-55';
 
 use v5.12;
 use utf8;
@@ -102,17 +102,17 @@ sub check_chan_config()
 sub check_user_error()
 {
     Carp::croak("Chan config '$chan' does not exist")
-        unless($chan || -e "chans/$chan.pl");
+        unless($chan || -e File::Spec->catfile('chans', "$chan.pl"));
 
     Carp::croak("Common config '$common_config' does not exist")
         unless($common_config || -e $common_config);
 
-    my $modes_list = 'proxychecker|wipe|delete|autobump';
+    my $modes_list = join('|', map { m|/(\w+)\.pm|; $1 } glob("PCW/Modes/*.pm") );
     Carp::croak("Mode '$mode' does not exist")
         unless($mode =~ /$modes_list/i);
 
     Carp::croak("Mode '$mode' config does not exist")
-        unless(-e "configs/$mode.pl");
+        unless(-e File::Spec->catfile('configs', "$mode.pl"));
 
     Carp::croak("Proxylist '$proxy_file' does not exist")
         unless($proxy_file && (-e $proxy_file || $proxy_file =~ /http/) );
