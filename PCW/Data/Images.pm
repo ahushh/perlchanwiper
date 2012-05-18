@@ -12,11 +12,12 @@ our @EXPORT_OK = qw/make_pic/;
 use File::Basename;
 use File::Find::Rule;
 use File::Copy;
-use File::Temp qw/tempfile tempdir/;
-
+use File::Temp         qw/tempfile/;
+use File::Which        qw/which/;
+use String::ShellQuote qw/shell_quote/;
+use List::Util         qw/shuffle reduce/;
+use Data::Random       qw/rand_set rand_image/;
 #------------------------------------------------------------------------------------------------
-use List::Util       qw/shuffle reduce/;
-use Data::Random     qw/rand_set rand_image/;
 use PCW::Core::Utils qw/random/;
 
 use Coro;
@@ -38,7 +39,9 @@ sub make_pic($$$)
 #------------------------------------------------------------------------------------------------
 sub captcha_img($$$)
 {
-    my (undef, $task, undef) = @_;
+    my (undef, $task, $data) = @_;
+    return img_altering($task->{path_to_captcha}, $data->{altering})
+        if $data->{altering};
     return $task->{path_to_captcha};
 }
 
@@ -166,17 +169,17 @@ sub img_altering($)
         when ('resize')
         {
             close $fh;
-            my $convert = $conf->{convert};
+            my $convert = $conf->{convert} || which('convert');
             my $args    = $conf->{args};
             my $k       = random($conf->{min}, $conf->{max});
-            system("$convert $args -resize $k% $full_name $filename");
+            system($convert, $args, '-resize', "$k%", shell_quote($full_name), shell_quote($filename));
         }
         when ('convert')
         {
             close $fh;
-            my $convert = $conf->{convert};
+            my $convert = $conf->{convert} || which('convert');
             my $args    = $conf->{args};
-            system("$convert $args $full_name $filename");
+            system($convert, $args, shell_quote($full_name), shell_quote($filename));
         }
         default
         {
