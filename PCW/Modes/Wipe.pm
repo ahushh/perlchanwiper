@@ -110,6 +110,7 @@ my $cb_wipe_prepare = unblock_sub
 {
     my ($msg, $task, $self) = @_;
     return unless @_;
+    my $log = $self->{log};
 
     given ($msg)
     {
@@ -120,8 +121,12 @@ my $cb_wipe_prepare = unblock_sub
         when ('no_captcha')
         {
             my $new_task = {proxy => $task->{proxy} };
-            $get_queue->put($new_task);
             $self->{failed_proxy}{ $task->{proxy} }++;
+            if ($self->{conf}{wcap_retry} && $self->{failed_proxy}{ $task->{proxy} } < $self->{conf}{proxy_attempts})
+            {
+                $log->msg(4, "push into the get queue: $task->{proxy}");
+                $get_queue->put($new_task);
+            }
         }
         when (/net_error|timeout/)
         {
