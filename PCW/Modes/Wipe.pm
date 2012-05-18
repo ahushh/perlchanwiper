@@ -121,6 +121,7 @@ my $cb_wipe_prepare = unblock_sub
         {
             my $new_task = {proxy => $task->{proxy} };
             $get_queue->put($new_task);
+            $self->{failed_proxy}{ $task->{proxy} }++;
         }
         when (/net_error|timeout/)
         {
