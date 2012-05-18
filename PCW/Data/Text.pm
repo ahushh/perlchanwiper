@@ -39,6 +39,7 @@ sub make_text($$$)
     $text =~ s/#delirium#/delirium_msg($engine, $task, $conf->{delirium});/eg;
     $text =~ s/#boundary#/boundary_msg($engine, $task, $conf->{boundary});/eg;
     $text =~ s/#string#/string_msg($engine, $task, $conf->{string});/eg;
+    $text =~ s/#postid#/postid_msg($engine, $task, $conf->{postid});/eg;
 
     return interpolate($text, $task);
 }
@@ -46,6 +47,31 @@ sub make_text($$$)
 #------------------------------------------------------------------------------------------------
 # Internal functions
 #------------------------------------------------------------------------------------------------
+sub postid_msg($$$)
+{
+    my ($engine, $task, $data) = @_;
+    my $log = $engine->{log};
+    state @ids;
+    state $time = time;
+
+    $lock->down;
+    if (!@ids or ($data->{update} && (time() - $time) >= $data->{update}))
+    {
+        my $task = { proxy  => 'no_proxy' };
+        my $cnf  = { thread => $data->{thread}, board => $data->{board} };
+
+        my $c = async {
+            my ($html, undef, $status) = $engine->get_thread($task, $cnf);
+            my %r = $engine->get_all_replies($html);
+            @ids = keys %r;
+            $log->msg(2, scalar(@ids) ." posts were found in $data->{thread} thread: $status");
+        };
+        $c->join();
+    }
+    $lock->up;
+    return ${ rand_set(set => \@ids) };
+}
+
 sub boundary_msg($$$)
 {
     my (undef, undef, $data) = @_;
@@ -59,7 +85,7 @@ sub boundary_msg($$$)
         open(my $fh, '<', $data->{path});
         local $/ = undef;
         my $text = <$fh>;
-        @text = split /$boundary/, $text;
+        @text    = split /$boundary/, $text;
         close $fh;
     }
     $lock->up;
