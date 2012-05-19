@@ -5,8 +5,8 @@ use Carp;
 use File::Temp qw/tempdir tempfile/;
 use File::Spec;
 
-use File::Which qw/which/;
-use String::ShellQuote qw/shell_quote/;
+use File::Which      qw/which/;
+use PCW::Core::Utils qw/shellquote/;
 #--------------------------------------------------------------------------------------------
 my $tesseract = which('tesseract') || Carp::croak("Coudn't find bin path to tesseract.");
 my $convert   = which('convert')   || Carp::croak("Coudn't find bin path to convert.");
@@ -28,12 +28,12 @@ sub _get_ocr($;$$)
     my $cmd = 
         ( sprintf '%s %s %s',
           $tesseract,
-          shell_quote($tif),
-          shell_quote($tif)
+          shellquote($tif),
+          shellquote($tif)
         ) .
-        ( defined $lang   ? " -l $lang"        : '' ) .
-        ( defined $config ? " nobatch $config" : '' ) .
-          " 2>/dev/null 1>&2";
+        ( defined $lang   ? " -l $lang"         : '' ) .
+        ( defined $config ? " nobatch $config"  : '' ) .
+        ( $^O =~ /linux/  ? " 2>/dev/null 1>&2" : '' );
 
     system $cmd;
     my $text;

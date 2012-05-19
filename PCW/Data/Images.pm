@@ -14,11 +14,10 @@ use File::Find::Rule;
 use File::Copy;
 use File::Temp         qw/tempfile/;
 use File::Which        qw/which/;
-use String::ShellQuote qw/shell_quote/;
 use List::Util         qw/shuffle reduce/;
 use Data::Random       qw/rand_set rand_image/;
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Utils qw/random/;
+use PCW::Core::Utils qw/random shellquote/;
 
 use Coro;
 my $lock = Coro::Semaphore->new;
@@ -172,14 +171,14 @@ sub img_altering($)
             my $convert = $conf->{convert} || which('convert');
             my $args    = $conf->{args};
             my $k       = random($conf->{min}, $conf->{max});
-            system($convert, $args, '-resize', "$k%", shell_quote($full_name), shell_quote($filename));
+            system($convert, $args, '-resize', "$k%", shellquote($full_name), shellquote($filename));
         }
         when ('convert')
         {
             close $fh;
             my $convert = $conf->{convert} || which('convert');
             my $args    = $conf->{args};
-            system($convert, $args, shell_quote($full_name), shell_quote($filename));
+            system($convert, $args, shellquote($full_name), shellquote($filename));
         }
         default
         {
