@@ -7,7 +7,7 @@ use Carp;
 
 use Exporter 'import';
 our @EXPORT_OK =
-    qw/random get_proxylist html2text merge_hashes parse_cookies save_file with_coro_timeout unrandomize took/;
+    qw/random get_proxylist html2text merge_hashes parse_cookies save_file with_coro_timeout unrandomize took shellquote/;
 
 use Data::Random qw/rand_set/;
 
@@ -177,5 +177,24 @@ sub took(&$;$)
     $$rtime = sprintf "%.${point}f", time - $$rtime;
     return $ret;
 }
- 
+
+#------------------------------------------------------------------------------------------------
+# Cross platform shell quote
+#------------------------------------------------------------------------------------------------
+use String::ShellQuote qw/shell_quote/;
+use Win32::ShellQuote  qw/quote_native/;
+
+sub shellquote($)
+{
+    my $str = shift;
+    if ($^O =~ /linux/)
+    {
+        return shell_quote $str;
+    }
+    else
+    {
+        return quote_native $str;
+    }
+}
+
 1;

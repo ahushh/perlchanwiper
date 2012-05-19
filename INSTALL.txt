@@ -43,11 +43,9 @@ WWW::ProxyChecker
 LWP::Protocol::https
 LWP::Protocol::socks
 JavaScript::Engine 
-/;
-
-my @dependences = qw/
-String::ShellQuote
 File::Which
+Win32::ShellQuote
+String::ShellQuote
 /;
 
-system ( ($^O =~ /linux/ ? 'sudo cpan' : 'cpan -f') ." @dependences @packages" );
+system ( ($^O =~ /linux/ ? 'sudo cpan' : 'cpan -f') ." @packages" );
