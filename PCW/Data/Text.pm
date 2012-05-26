@@ -69,7 +69,7 @@ sub postid_msg($$$)
         $c->join();
     }
     $lock->up;
-    return ${ rand_set(set => \@ids) };
+    return ( @ids ? ${ rand_set(set => \@ids) } : '');
 }
 
 sub boundary_msg($$$)

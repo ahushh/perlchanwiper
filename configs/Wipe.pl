@@ -28,7 +28,7 @@ my $random_reply = {
                    };
 our %mode_config = (
     post_cnf          => $post_cnf,
-    # random_reply      => $random_reply, #-- закомментировать для отключения
+    random_reply      => $random_reply, #-- закомментировать для отключения
     get_timeout       => 60,     #-- таймаут на получение капчи в секундах
     prepare_timeout   => 60,      #-- ... на получение капчи, создание контента и т.д.
     post_timeout      => 60,     #-- ... на создание поста
