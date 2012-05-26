@@ -36,6 +36,7 @@ sub new($%)
     bless $self, $class;
 
 }
+
 sub with_color($$$)
 {
     my ($t, $color, $msg) = @_;

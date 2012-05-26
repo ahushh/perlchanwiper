@@ -20,8 +20,8 @@ our $msg = {
     # text => "[code]#boundary#[/code]]",
     # text => "bump\n%date%",
     # text => '@~fortune psalms bible~@',
-    # text => '%unixtime%',
-    text => ">>#postid#\n>>#postid#\n",
+    text => '%unixtime%',
+    # text => ">>#postid#\n>>#postid#\n",
     #-------------------------------------------------------------------------------------------------------
     #-- #postid# config
     postid  => {
