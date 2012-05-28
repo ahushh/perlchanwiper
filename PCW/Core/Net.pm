@@ -61,6 +61,7 @@ sub http_get($$$)
 
 sub http_post($$$$)
 {
+    #use Data::Dumper; say Dumper(@_); exit;
     my ($proxy, $url, $headers, $content) = @_;
     $content = \%{ $content };
     #-- convert the content to bytes

@@ -6,8 +6,18 @@ use autodie;
 use Carp;
 
 use Exporter 'import';
-our @EXPORT_OK =
-    qw/random get_proxylist html2text merge_hashes parse_cookies save_file with_coro_timeout unrandomize took shellquote/;
+our @EXPORT_OK = qw/
+    random
+    get_proxylist
+    html2text
+    merge_hashes
+    parse_cookies 
+    save_file
+    with_coro_timeout
+    unrandomize
+    took
+    shellquote
+/;
 
 #------------------------------------------------------------------------------------------------
 # CORO TIMEOUT
@@ -174,9 +184,9 @@ sub took(&$;$)
     my ($code, $rtime, $point) = @_;
     $point  = 3 unless $point;
     $$rtime = time;
-    my $ret = &$code;
+    my @ret = &$code;
     $$rtime = sprintf "%.${point}f", time - $$rtime;
-    return $ret;
+    return wantarray() ? @ret : shift(@ret);
 }
 
 #------------------------------------------------------------------------------------------------

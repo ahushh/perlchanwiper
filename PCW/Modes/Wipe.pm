@@ -20,9 +20,10 @@ use Time::HiRes;
 #------------------------------------------------------------------------------------------------
 # Importing utility packages
 #------------------------------------------------------------------------------------------------
-use File::Basename;
+use FindBin    qw/$Bin/;
 use File::Copy qw/move/;
 use File::Spec;
+use File::Basename;
 
 #------------------------------------------------------------------------------------------------
 # Importing internal PCW packages
@@ -33,7 +34,7 @@ use PCW::Core::Captcha qw/captcha_report_bad/;
 #------------------------------------------------------------------------------------------------
 # Package variables
 #------------------------------------------------------------------------------------------------
-our $CAPTCHA_DIR = 'captcha';
+our $CAPTCHA_DIR = File::Spec->catfile($Bin, 'captcha');
 
 #------------------------------------------------------------------------------------------------
 # Local variables
@@ -273,9 +274,9 @@ sub start($)
     async {
         $self->_pre_init();
         #-- Initialization
-        if ($self->{conf}{random_reply})
+        if ($self->{conf}{watch_target})
         {
-            my @posts = $self->get_posts_by_regexp("http://no_proxy", $self->{conf}{random_reply});
+            my @posts = $self->get_posts_by_regexp("http://no_proxy", $self->{conf}{watch_target});
             if (@posts)
             {
                 $get_queue->put({ proxy => $_ }) for (@{ $self->{proxies} });
@@ -352,19 +353,19 @@ sub _init_watchers($)
 
     #-- Find threads watcher
     $watchers->{threads} =
-        AnyEvent->timer(after    => $self->{conf}{random_reply}{interval},
-                        interval => $self->{conf}{random_reply}{interval},
+        AnyEvent->timer(after    => $self->{conf}{watch_target}{interval},
+                        interval => $self->{conf}{watch_target}{interval},
                         cb       =>
                         sub
                         {
                             #-- Refresh the thread list
                             async {
-                                my @posts = $self->get_posts_by_regexp("http://no_proxy", $self->{conf}{random_reply});
+                                my @posts = $self->get_posts_by_regexp("http://no_proxy", $self->{conf}{watch_target});
                                 $self->{conf}{post_cnf}{thread} = \@posts;
                             };
                             cede;
                         }
-                       ) if $self->{conf}{random_reply};
+                       ) if $self->{conf}{watch_target};
 
     #-- Get watcher
     $watchers->{get} =

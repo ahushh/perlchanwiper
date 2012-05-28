@@ -16,8 +16,15 @@ sub _convert2tiff($)
 {
     my $source = shift;
     my $dest   = File::Spec->catfile($tmpdir, rand().'.tif');
-    system( $convert, $source, '-compress', 'none', '+matte',  $dest);
-    Carp::croak $? if $?;
+    my $cmd    = sprintf "%s %s %s %s %s %s",
+                $convert,
+                shellquote($source),
+                '-compress',
+                'none',
+                '+matte',
+                shellquote($dest);
+    my $err    = `$cmd`; 
+    Carp::croak $err if $?;
     return $dest;
 }
 
@@ -53,7 +60,7 @@ sub decode_captcha($$)
     eval {
         $text = _get_ocr($file_path, $captcha_decode->{lang}, $captcha_decode->{config});
     };
-    warn $@ if $@;
+    #warn $@ if $@;
     #warn "Error while recognizing a captcha" if $@;
 
     #$text =~ s/^\s*//;
