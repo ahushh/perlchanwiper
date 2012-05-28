@@ -1,13 +1,16 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '0.2.1-59';
+our $VERSION = '0.2.1-61';
 
 use v5.12;
 use utf8;
 use autodie;
 use Carp;
-use lib 'lib';
+
+use File::Spec;
+use FindBin qw/$Bin/;
+use lib File::Spec->catfile($Bin, 'lib'), $Bin;
 binmode(STDOUT, ":utf8");
 
 #-----------------------------------------------------------------------------
@@ -15,7 +18,6 @@ use Coro;
 use AnyEvent;
 use Coro::Timer;
 use Getopt::Long qw/:config bundling/;
-use File::Spec;
 use File::Basename;
 #-----------------------------------------------------------------------------
 use PCW::Core::Utils qw/get_proxylist/;
@@ -39,12 +41,15 @@ my %cnf = (
     chan       => '',
     mode       => '',
     verbose    => 0,
-    useragents => 'UserAgents',
-    proxy_file => File::Spec->catfile('proxy', 'no'),
+    #useragents => File::Spec->catfile($Bin, 'UserAgents'),
+    useragents => File::Spec->catfile('.', 'UserAgents'),
+    #proxy_file => File::Spec->catfile($Bin, 'proxy', 'no'),
+    proxy_file => File::Spec->catfile('.', 'proxy', 'no'),
     proxy_type => 'http',
 
-    common_config => 'config.pl', #-- common config path
-    mode_config   => '',          #-- mode config path
+    #common_config => File::Spec->catfile($Bin, 'config.pl'), #-- common config path
+    common_config => File::Spec->catfile('.', 'config.pl'), #-- common config path
+    mode_config   => '',                                     #-- mode config path
 
     loglevel   => 1,
     logfile    => '',
@@ -84,7 +89,8 @@ sub parse_args()
         usage();
         exit 1;
     }
-    $cnf{mode_config} = File::Spec->catfile('configs', "$cnf{mode}.pl")
+    #$cnf{mode_config} = File::Spec->catfile($Bin, 'configs', "$cnf{mode}.pl")
+    $cnf{mode_config} = File::Spec->catfile('.', 'configs', "$cnf{mode}.pl")
         unless $cnf{mode_config};
 }
 
@@ -110,7 +116,8 @@ sub check_chan_config()
 sub check_user_error()
 {
     Carp::croak("Chan config '$cnf{chan}' does not exist")
-        unless($cnf{chan} || -e File::Spec->catfile('chans', "$cnf{chan}.pl"));
+        #unless($cnf{chan} || -e File::Spec->catfile($Bin, 'chans', "$cnf{chan}.pl"));
+        unless($cnf{chan} || -e File::Spec->catfile('.', 'chans', "$cnf{chan}.pl"));
 
     Carp::croak("Common config '$cnf{common_config}' does not exist")
         unless($cnf{common_config} || -e $cnf{common_config});
@@ -120,7 +127,7 @@ sub check_user_error()
         unless($cnf{mode} =~ /$modes_list/i);
 
     Carp::croak("Mode '$cnf{mode}' config does not exist")
-        unless(-e File::Spec->catfile('configs', "$cnf{mode}.pl"));
+        unless(-e $cnf{mode_config});
 
     Carp::croak("Proxylist '$cnf{proxy_file}' does not exist")
         unless($cnf{proxy_file} && (-e $cnf{proxy_file} || $cnf{proxy_file} =~ /http/) );
@@ -161,7 +168,7 @@ sub load_configs()
 {
     our ($img, $msg, $vid, $captcha_decode);
     require $cnf{common_config}; #-- load $img, $msg, $vid, $captcha_decode
-    require $cnf{mode_config};   #-- load %mode_config
+    require $cnf{mode_config}  ; #-- load %mode_config
 
     $mode_config{img_data} = $img;
     $mode_config{msg_data} = $msg;
@@ -183,7 +190,8 @@ sub load_agents()
 
 sub load_chan()
 {
-    my $package = File::Spec->catfile('chans', "$cnf{chan}.pl");
+    #my $package = File::Spec->catfile($Bin, 'chans', "$cnf{chan}.pl");
+    my $package = File::Spec->catfile('.', 'chans', "$cnf{chan}.pl");
     require "$package"; #-- load $chan_config
 }
 

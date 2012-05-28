@@ -4,6 +4,7 @@ use v5.12;
 use utf8;
 use Carp;
 
+use PCW::Core::Utils qw/took/;
 #------------------------------------------------------------------------------------------------
 sub new($%)
 {
@@ -38,8 +39,9 @@ sub get_posts_by_regexp($$$)
     };
 
     #-- Search thread on the pages
-    my %threads = ();
-    my @threads = ();
+    my %threads     = ();
+    my @threads     = ();
+    my @thr_in_text = ();
     if ($cnf->{threads})
     {
         for my $page (@{ $cnf->{threads}{pages} })
@@ -48,9 +50,10 @@ sub get_posts_by_regexp($$$)
             $local_cnf{page} = $page;
 
             #-- Get the page
+            my $took;
             $log->msg(3, "Downloading $page page...");
-            my ($html, undef, $status) = $engine->get_page($get_task, \%local_cnf);
-            $log->msg(2, "Page $page downloaded: $status");
+            my ($html, undef, $status) = took { $engine->get_page($get_task, \%local_cnf) } \$took;
+            $log->msg(2, "Page $page downloaded: $status (took $took sec.)");
 
             my %t    = $engine->get_all_threads($html);
             %threads = (%threads, %t);
@@ -60,11 +63,25 @@ sub get_posts_by_regexp($$$)
         #-- Filter by regexp
         my $pattern = $cnf->{threads}{regexp};
         @threads = grep { $threads{$_} =~ /$pattern/sg } keys(%threads);
-        $log->msg(2, sprintf "%d thread(s) matched the pattern", scalar @threads);
+        $log->msg(2, sprintf "%d thread(s) matched the pattern", scalar @threads) if $pattern;
+        #-- Find a thread's ID in the text of thread 
+        if ($cnf->{threads}{in_text})
+        {
+            my $pattern = $cnf->{threads}{in_text};
+            for (@threads)
+            {
+                while ($threads{$_} =~ /$pattern/sg)
+                {
+                    push @thr_in_text, $+{post};
+                }
+            }
+            $log->msg(2, sprintf "%d posts(s) found in text of threads", scalar @thr_in_text);
+        }
     }
     #-- Search posts in the threads
-    my %replies = ();
-    my @replies = ();
+    my %replies     = ();
+    my @replies     = ();
+    my @rep_in_text = ();
     if ($cnf->{replies})
     {
         for my $thread ( $cnf->{replies}{threads} eq 'found' ? @threads : @{ $cnf->{replies}{threads} } )
@@ -73,9 +90,10 @@ sub get_posts_by_regexp($$$)
             $local_cnf{thread} = $thread;
 
             #-- Get the thread
+            my $took;
             $log->msg(3, "Downloading $thread thread...");
-            my ($html, undef, $status) = $engine->get_thread($get_task, \%local_cnf);
-            $log->msg(2, "Thread $thread downloaded: $status");
+            my ($html, undef, $status) = took { $engine->get_thread($get_task, \%local_cnf) } \$took;
+            $log->msg(2, "Thread $thread downloaded: $status (took $took sec.)");
 
             my %r    = $engine->get_all_replies($html);
             %replies = (%replies, %r);
@@ -85,12 +103,35 @@ sub get_posts_by_regexp($$$)
         #-- Filter by regexp
         my $pattern = $cnf->{replies}{regexp};
         @replies = grep { $replies{$_} =~ /$pattern/sg } keys(%replies);
-        $log->msg(2, sprintf "%d replies matched the pattern", scalar @replies);
+        $log->msg(2, sprintf "%d replies matched the pattern", scalar @replies) if $pattern;
+        #-- Find a thread's ID in the text of reply 
+        if ($cnf->{replies}{in_text})
+        {
+            my $pattern = $cnf->{replies}{in_text};
+            for (@replies)
+            {
+                while ($replies{$_} =~ /$pattern/sg)
+                {
+                    push @rep_in_text, $+{post};
+                }
+            }
+            $log->msg(2, sprintf "%d posts(s) found in text of replies", scalar @rep_in_text);
+        }
     }
-    my @posts = ( @replies,
+    my @posts = ( @rep_in_text, @thr_in_text,
+                  ( $cnf->{replies}{include} ? @replies : () ),
                   ( $cnf->{threads}{include} ? @threads : () ) );
 
-    $log->msg(2, sprintf "Total %d post(s) to delete were found", scalar @posts);
+    $log->msg(2, sprintf "Total %d post(s) were found", scalar @posts);
+    
+    if ($cnf->{take_last})
+    {
+        my @last;
+        my @p = sort {$a <=> $b} @posts;
+        push @last, pop(@p);
+        $log->msg(2, "Take the last ID: @last");
+        return @last;
+    }
     return @posts;
 }
 

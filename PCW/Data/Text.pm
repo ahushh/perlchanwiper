@@ -12,7 +12,7 @@ our @EXPORT_OK = qw/make_text/;
 #------------------------------------------------------------------------------------------------
 use List::Util       qw/shuffle/;
 use Data::Random     qw/rand_set/;
-use PCW::Core::Utils qw/random/;
+use PCW::Core::Utils qw/random took/;
 
 use Coro;
 my $lock = Coro::Semaphore->new;
@@ -61,10 +61,12 @@ sub postid_msg($$$)
         my $cnf  = { thread => $data->{thread}, board => $data->{board} };
 
         my $c = async {
-            my ($html, undef, $status) = $engine->get_thread($task, $cnf);
+            my $took;
+            $log->msg(3, "Downloading $cnf->{thread} thread...");
+            my ($html, undef, $status) = took { $engine->get_thread($task, $cnf) } \$took;
             my %r = $engine->get_all_replies($html);
             @ids = keys %r;
-            $log->msg(2, scalar(@ids) ." posts were found in $data->{thread} thread: $status");
+            $log->msg(2, scalar(@ids) ." posts were found in $data->{thread} thread: $status (took $took sec.)");
         };
         $c->join();
     }
@@ -82,7 +84,7 @@ sub boundary_msg($$$)
     $lock->down;
     if (!@text)
     {
-        open(my $fh, '<', $data->{path});
+        open(my $fh, '<:utf8', $data->{path});
         local $/ = undef;
         my $text = <$fh>;
         @text    = split /$boundary/, $text;
@@ -113,26 +115,24 @@ sub string_msg($$$)
     $lock->down;
     if (!@text)
     {
-        open(my $fh, "<", $data->{path});
+        open(my $fh, "<:utf8", $data->{path});
         @text = <$fh>;
         close $fh;
     }
     $lock->up;
 
     my $num_str = $data->{num_str};
+
     my $msg;
-    for (@text)
+    if ($data->{order} eq 'normal')
     {
-        last unless $num_str--;
-        if ($data->{order} eq 'normal')
-        {
-            $i = 0 if ($i >= scalar @text);
-            $msg .= $text[$i++];
-        }
-        elsif ($data->{order} eq 'random')
-        {
-            $msg .= ${ rand_set(set => \@text) };
-        }
+        $i = 0 if ($i >= scalar @text);
+        $msg .= $text[$i++] while $num_str--;
+    }
+    elsif ($data->{order} eq 'random')
+    {
+        my $j = random(0, scalar(@text) - $num_str);
+        $msg .= $text[$j++] while $num_str--;
     }
     return $msg;
 }

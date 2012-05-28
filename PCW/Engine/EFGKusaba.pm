@@ -10,6 +10,7 @@ use base 'PCW::Engine::Kusaba';
 # Importing utility packages
 #------------------------------------------------------------------------------------------------
 use Data::Random qw/rand_set/;
+use FindBin      qw/$Bin/;
 use HTTP::Headers;
 
 #------------------------------------------------------------------------------------------------
@@ -246,8 +247,8 @@ sub compute_mm($)
         return $js->method(mm => $s); #-- so sloooow
     }
     #-- ascii only
-    open my $mm, '-|', 'lib/mm', $s
-        or Carp::croak "Could not find lib/mm: $!";
+    open my $mm, '-|', "$Bin/lib/mm", $s
+        or Carp::croak "Could not find $Bin/lib/mm: $!";
     my $result = <$mm>;
     close($mm);
     return $result;
