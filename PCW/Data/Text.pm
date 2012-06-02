@@ -57,16 +57,17 @@ sub postid_msg($$$)
     $lock->down;
     if (!@ids or ($data->{update} && (time() - $time) >= $data->{update}))
     {
-        my $task = { proxy  => 'no_proxy' };
-        my $cnf  = { thread => $data->{thread}, board => $data->{board} };
+        my $get_task = { proxy  => 'no_proxy' };
+        my $cnf      = { thread => ($data->{thread} || $task->{post_cnf}{thread}),
+                         board  => ($data->{board}  || $task->{post_cnf}{board} ) };
 
         my $c = async {
             my $took;
             $log->msg(3, "Downloading $cnf->{thread} thread...");
-            my ($html, undef, $status) = took { $engine->get_thread($task, $cnf) } \$took;
+            my ($html, undef, $status) = took { $engine->get_thread($get_task, $cnf) } \$took;
             my %r = $engine->get_all_replies($html);
             @ids = keys %r;
-            $log->msg(2, scalar(@ids) ." posts were found in $data->{thread} thread: $status (took $took sec.)");
+            $log->msg(2, scalar(@ids) ." posts were found in $cnf->{thread} thread: $status (took $took sec.)");
         };
         $c->join();
     }
