@@ -29,6 +29,7 @@ our $chan_config =
                              ],
             critical_error => [
                                'Неправильный ID треда',
+                               'Требуется приложить файл для создания треда',
                               ],
             success       => ['BuildThread()', 'Updating pages'],
         },

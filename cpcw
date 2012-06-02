@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '0.2.1-61';
+our $VERSION = '0.2.1-62';
 
 use v5.12;
 use utf8;
@@ -18,6 +18,7 @@ use Coro;
 use AnyEvent;
 use Coro::Timer;
 use Getopt::Long qw/:config bundling/;
+use POSIX        qw/strftime/;
 use File::Basename;
 #-----------------------------------------------------------------------------
 use PCW::Core::Utils qw/get_proxylist/;
@@ -331,9 +332,9 @@ sub measure_speed($$$)
 {
     my ($posted, $start_time, $u) = @_;
     my $d;
-    $d = 1   if $u eq 'second';
-    $d = 60  if $u eq 'minute';
-    $d = 360 if $u eq 'hour';
+    $d = 1    if $u eq 'second';
+    $d = 60   if $u eq 'minute';
+    $d = 3600 if $u eq 'hour';
     return sprintf "%.3f", ($posted / ((time - $start_time)/$d));
 }
 

@@ -5,6 +5,7 @@ use utf8;
 use Carp;
 
 use PCW::Core::Utils qw/took/;
+use Data::Random     qw/rand_set/;
 #------------------------------------------------------------------------------------------------
 sub new($%)
 {
@@ -119,20 +120,33 @@ sub get_posts_by_regexp($$$)
         }
     }
     my @posts = ( @rep_in_text, @thr_in_text,
-                  ( $cnf->{replies}{include} ? @replies : () ),
-                  ( $cnf->{threads}{include} ? @threads : () ) );
+                ( $cnf->{replies}{include}  ? @replies : () ),
+                ( $cnf->{threads}{include}  ? @threads : () ) );
 
     $log->msg(2, sprintf "Total %d post(s) were found", scalar @posts);
+    return unless @posts;
     
-    if ($cnf->{take_last})
+    given ($cnf->{take})
     {
-        my @last;
-        my @p = sort {$a <=> $b} @posts;
-        push @last, pop(@p);
-        $log->msg(2, "Take the last ID: @last");
-        return @last;
+        when ('random')
+        {
+            my $r = ${ rand_set(set => \@posts) };
+            $log->msg(2, "Take a random ID: $r");
+            return $r;
+        }
+        when ('last')
+        {
+            my @last;
+            my @p = sort {$a <=> $b} @posts;
+            push @last, pop(@p);
+            $log->msg(2, "Take the last ID: @last");
+            return @last;
+        }
+        when ('all')
+        {
+            return @posts;
+        }
     }
-    return @posts;
 }
 
 1;

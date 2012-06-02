@@ -103,7 +103,7 @@ sub stop($)
 
     my @g = @good_proxies;
     $self->{checked} = \@g;
-    if ($self->{conf}{save})
+    if ($self->{conf}{save} && @g)
     {
         local $" = "\n";
         open my $fh, '>', $self->{conf}{save};
