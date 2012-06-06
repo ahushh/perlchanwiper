@@ -25,13 +25,12 @@ my $watch_target = {
                     take      => 'all', #-- all - все посты, random - случайный, last - последний
 
                     threads => {
-                                bumplimit => 300,
+                                #post_limit => 300,  #-- TODO
                                 #regexp  => '311',   #-- фильтровать по регэкспу
                                 #pages   => [0], #-- на каких страницах искать треды, в которые нужно отвечать
                                 #include => 0,
                                 #in_text => '',     #-- искать номера постов в тексте треда по регэкспу
-                                #regexp  => '<blockquote><div class="postmessage">(\s+)?</div></blockquote>',   #-- фильтровать по регэкспу
-                                regexp  => 'Неоффициальный',
+                                #regexp  => '<blockquote><div class="postmessage">(\s+)?</div></blockquote>',
                                 pages   => [0], #-- на каких страницах искать треды, в которые нужно отвечать
                                 include => 1,
                                 in_text => '',     #-- искать номера постов в тексте треда по регэкспу
