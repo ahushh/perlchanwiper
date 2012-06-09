@@ -427,6 +427,15 @@ sub _init_watchers($)
                                         while $post_queue->size && $thrs_available--;
                                 }
                             }
+                            elsif ($self->{conf}{salvoX})
+                            {
+                                if (!@post_coro && $post_queue->size >= $self->{conf}{max_pst_thrs})
+                                {
+                                    $log->msg(1, "#~~~ ". scalar($post_queue->size) ." charges are ready. Strike! ~~~#");
+                                    $self->wipe_post($post_queue->get)
+                                        while $post_queue->size && $thrs_available--;
+                                }
+                            }
                             else
                             {
                                 $self->wipe_post($post_queue->get)
