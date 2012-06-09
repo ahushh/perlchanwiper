@@ -39,7 +39,7 @@ sub make_text($$$)
     $text =~ s/#delirium#/delirium_msg($engine, $task, $conf->{delirium});/eg;
     $text =~ s/#boundary#/boundary_msg($engine, $task, $conf->{boundary});/eg;
     $text =~ s/#string#/string_msg($engine, $task, $conf->{string});/eg;
-    $text =~ s/#postid#/postid_msg($engine, $task, $conf->{postid});/eg;
+    $text =~ s/#post#/post_msg($engine, $task, $conf->{post});/eg;
 
     return interpolate($text, $task);
 }
@@ -47,32 +47,44 @@ sub make_text($$$)
 #------------------------------------------------------------------------------------------------
 # Internal functions
 #------------------------------------------------------------------------------------------------
-sub postid_msg($$$)
+sub post_msg($$$)
 {
     my ($engine, $task, $data) = @_;
     my $log = $engine->{log};
-    state @ids;
+    state %replies;
     state $time = time;
 
     $lock->down;
-    if (!@ids or ($data->{update} && (time() - $time) >= $data->{update}))
+    if (!%replies or ($data->{update} && (time() - $time) >= $data->{update}))
     {
         my $get_task = { proxy  => 'no_proxy' };
         my $cnf      = { thread => ($data->{thread} || $task->{post_cnf}{thread}),
                          board  => ($data->{board}  || $task->{post_cnf}{board} ) };
-
         my $c = async {
-            my $took;
-            $log->msg(3, "Downloading $cnf->{thread} thread...");
-            my ($html, undef, $status) = took { $engine->get_thread($get_task, $cnf) } \$took;
-            my %r = $engine->get_all_replies($html);
-            @ids = keys %r;
-            $log->msg(2, scalar(@ids) ." posts were found in $cnf->{thread} thread: $status (took $took sec.)");
+            my ($html, $status, $took);
+            if (-e $data->{thread}) #-- read html form a file on disk
+            {
+                $status = $data->{thread};
+                $took   = 0;
+                open my $fh, '<', $data->{thread};
+                local $/ = undef;
+                $html = <$fh>;
+                close $fh;
+            }
+            else #-- download the thread
+            {
+                $log->msg(3, "Downloading $cnf->{thread} thread...");
+                ($html, undef, $status) = took { $engine->get_thread($get_task, $cnf) } \$took;
+            }
+            %replies = $engine->get_all_replies($html);
+            $log->msg(2, scalar(keys %replies) ." posts were found in $cnf->{thread} thread: $status (took $took sec.)");
         };
         $c->join();
     }
     $lock->up;
-    return ( @ids ? ${ rand_set(set => \@ids) } : '');
+    my $take = $data->{take};
+    my $c = async { &$take($engine, $task, $data, \%replies) };
+    return $c->join();
 }
 
 sub boundary_msg($$$)
