@@ -91,7 +91,7 @@ sub dir_img($)
         {
             #-- make a glob string
             my $s = reduce { "$a,$b" } @types;
-            @img_list = glob "$_/*.{$s}"
+            @img_list = (@img_list, glob "$_/*.{$s}")
                 for (@$dirs);
         }
 
