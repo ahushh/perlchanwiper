@@ -15,7 +15,7 @@ our $msg = {
     #-- #delirium#   — сгенерированный бред
     #-- #string#     — чтение файла построчно
     #-- #boundary#   — чтение файла блоками
-    #-- #postid#     — случайный номер поста из заданного треда
+    #-- #post#       — брать данные из текста поста
     #-------------------------------------------------------------------------------------------------------
     # text => "[code]#boundary#[/code]]",
     # text => "bump\n%date%",
@@ -23,13 +23,39 @@ our $msg = {
     # text => '%unixtime%',
     # text => ">>#postid#\n>>#postid#\n",
     # text => '#delirium#',
-    # text => ">>#postid#",
+    text => "#post#",
     #-------------------------------------------------------------------------------------------------------
-    #-- #postid# config
-    postid  => {
+    #-- #post# config
+    post  => {
         board  => '',   #-- если не указано — текущая борда
-        thread => 0,    #-- из какого треда брать номера постов; если 0 - текущий вайпаемый тред
-        update => 520,  #-- интервал обновления списка постов; 0 - отключить
+        thread => 10419167,    #-- из какого треда брать номера постов; если 0 - текущий вайпаемый тред
+        trehad => "$ENV{HOME}/1.html", #-- также можно указать путь до html-файла
+        update => 0,  #-- интервал обновления списка постов; 0 - отключить
+        take   => sub { #-- функция, которая извлекает нужные данные из поста. в данном случае - ID поста
+            use Data::Random     qw/rand_set/;
+            my ($engine, $task, $data, $replies) = @_;
+            my @ids = keys %$replies;
+            return ( @ids ? ${ rand_set(set => $replies) } : '' );
+        },
+        take   => sub { #-- текст постов
+            use HTML::Entities;
+            my $html2text = sub
+            {
+                my $html = shift;
+                decode_entities($html);
+                $html =~ s!<style.+?>.*?</style>!!sg;
+                $html =~ s!<script.+?>.*?</script>!!sg;
+                $html =~ s/{.*?}//sg; #-- style
+                $html =~ s/<!--.*?-->//sg; #-- comments
+                $html =~ s/<.*?>//sg;      #-- tags
+                return $html;
+            };
+            my ($engine, $task, $data, $replies) = @_;
+            my $pattern = $engine->{html}{text_regexp};
+            my @texts   = grep { s/\s//gr } map { $replies->{$_} =~ /$pattern/s; &$html2text( $+{text} =~ s|<br ?/?>|\n|gr ) } keys %$replies;
+            return ( @texts ? ${ rand_set(set => \@texts) } : '' );
+        },
+
     },
     #-- #delirium# config
     delirium => {
@@ -40,8 +66,8 @@ our $msg = {
         # max_len_w => 0,
         # min_w     => 0,
         # max_w     => 0,
-        # min_q     => 20,
-        # max_q     => 70,
+        min_q     => 1,
+        max_q     => 5,
         # sep_ch    => 0,  #-- частота, с которой добавляются разделители в %
         # small_v    => [qw(a a a y y e e e o o i u u i i o)],
         # small_c    => [qw(q w r t p s d f g h j k l z x c v b n m m h g l l k r q j)],
@@ -123,14 +149,13 @@ our $img = {
     mode        => 'dir',
     order       => 'random',               #-- random - перемешать файлы; normal - брать по порядку
     # path        => ["$ENV{HOME}/tr"],    #-- пути к файлу
-    path        => ["$ENV{HOME}/rm/boku"],    #-- пути к файлу
-    path        => ["$ENV{HOME}/wipe"],    #-- пути к файлу
+    path        => ["$ENV{HOME}/rm/boku", "$ENV{HOME}/rm/desu"],    #-- пути к файлу
     # regexp      => '', #-- фильтровать имена файлов (вместе с расширением) по регэкспам
     # recursively => 1, #-- искать файлы и в подпапках
     types       => ['jpg', 'jpeg', 'gif', 'png'],    #-- резрешенные к загрузки типы файлов
     #-------------------------------------------------------------------------------------------------------
     #-- common options
-    max_size => 500,                   #-- ограничение на размер файла в кб. 0 для отключения
+    max_size => 300,                   #-- ограничение на размер файла в кб. 0 для отключения
     altering => $img_altering           #-- обход запрета на повтор картинок
 };
 
@@ -155,11 +180,11 @@ our $vid = {
     #-------------------------------------------------------------------------------------------------------
     #-- download mode
     #-- Искать видео на соответствующем видеохостинге
-    # mode     => 'download',
+    #mode     => 'download',
     # save     => "$ENV{HOME}/youtube", #-- сохранить найденные id видео в файл; id разделяются пробелом
     order    => 'random',               #-- см. где-то выше
     pages    => 20,                     #-- Колличество страниц, с которых будут взяты видео
-    search   => ['Adolf+Hitler', 'Holocaust+Jews'], #-- Поисковые запросы. Пробелы заменять на символ +
+    search   => ['Sony+Playstation+3'], #-- Поисковые запросы. Пробелы заменять на символ +
 };
 
 #------------------------------------------------------------------------------------------------------------
@@ -169,7 +194,7 @@ our $vid = {
 our $captcha_decode = {
     #-------------------------------------------------------------------------------------------------------
     #-- antigate mode
-    mode   => 'antigate',
+    #mode   => 'antigate',
     key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
     # opt    => {},  #-- см. документацию к модулю WebService::Antigate
     #-------------------------------------------------------------------------------------------------------
@@ -189,7 +214,7 @@ our $captcha_decode = {
     # mode   => 'none',
     #-- tesseract OCR
     #-- Необходим convert (пакет ImageMagick) и сам tesseract
-    #mode   => 'tesseract',
+    mode   => 'tesseract',
     # lang   => 'rus',          #-- eng, rus, etc.
     config => 'englishletters', #-- название конфига для tesseract. см README
     # config => 'ruletters',    #-- название конфига для tesseract. см README

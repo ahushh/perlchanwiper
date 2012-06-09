@@ -88,6 +88,7 @@ our $chan_config =
         replies_regexp => '(?<post><td class="reply" id="reply(?<id>\d+)">.+?</td>)',
         threads_regexp => '(?<thread><span class="filesize">.+?<a name="(?<id>\d+)"></a>.+?<br clear="left" /><hr />)',
         catalog_regexp => '/res/(?<id>\d+).html',
+        text_regexp    => '',
     },
 
     headers => {
