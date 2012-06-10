@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '0.2.1-65';
+our $VERSION = '0.2.1-66';
 
 use v5.12;
 use utf8;
@@ -21,7 +21,7 @@ use Getopt::Long qw/:config bundling/;
 use POSIX        qw/strftime/;
 use File::Basename;
 #-----------------------------------------------------------------------------
-use PCW::Core::Utils qw/get_proxylist/;
+use PCW::Core::Utils qw/get_proxylist readfile/;
 use PCW::Core::Log;
 
 #-----------------------------------------------------------------------------
@@ -184,9 +184,7 @@ sub load_proxies()
 
 sub load_agents()
 {
-    open my $fh, '<', $cnf{useragents};
-    @agents = <$fh>;
-    close $fh;
+    @agents = readfile($cnf{useragents});
 }
 
 sub load_chan()

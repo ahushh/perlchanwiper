@@ -17,6 +17,7 @@ our @EXPORT_OK = qw/
     unrandomize
     took
     shellquote
+    readfile
 /;
 
 #------------------------------------------------------------------------------------------------
@@ -206,6 +207,19 @@ sub shellquote($)
     {
         return quote_native $str;
     }
+}
+
+#------------------------------------------------------------------------------------------------
+# JUST READ FILE
+#------------------------------------------------------------------------------------------------
+sub readfile($;$)
+{
+    my ($path, $enc) = shift;
+    open my $fh, '<'. ($enc ? ":$enc" : ''), $path;
+    local $/ = undef unless wantarray();
+    my @data = <$fh>;
+    close $fh;
+    return (wantarray() ? @data : shift(@data));
 }
 
 1;

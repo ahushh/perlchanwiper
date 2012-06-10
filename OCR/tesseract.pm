@@ -6,7 +6,7 @@ use File::Temp qw/tempdir tempfile/;
 use File::Spec;
 
 use File::Which      qw/which/;
-use PCW::Core::Utils qw/shellquote/;
+use PCW::Core::Utils qw/shellquote readfile/;
 #--------------------------------------------------------------------------------------------
 my $tesseract = which('tesseract') || Carp::croak("Coudn't find bin path to tesseract.");
 my $convert   = which('convert')   || Carp::croak("Coudn't find bin path to convert.");
@@ -43,14 +43,7 @@ sub _get_ocr($;$$)
         ( $^O =~ /linux/  ? " 2>/dev/null 1>&2" : '' );
 
     system $cmd;
-    my $text;
-    open my $fh, '<', "$tif.txt";
-    {
-        local $/ = undef;;
-        $text = <$fh>;
-        close $fh;
-    }
-    return $text;
+    return readfile("$tif.txt");
 }
 #--------------------------------------------------------------------------------------------
 sub decode_captcha($$)

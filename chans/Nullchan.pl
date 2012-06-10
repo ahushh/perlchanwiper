@@ -11,7 +11,7 @@ our $chan_config =
 
     response => {
         post => {
-            banned        => [403, 'CDN', 'possible proxy', 'BANNED'],
+            banned        => [403, 'CDN', 'possible proxy', 'BANNED', 'Blacklisted text detected.'],
             net_error     => ['Service Unavailable Connection', 502],
             post_error    => [
                               'your message is too long',
