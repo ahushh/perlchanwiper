@@ -24,7 +24,7 @@ use PCW::Core::Utils qw/with_coro_timeout/;
 #------------------------------------------------------------------------------------------------
 # Local variables
 #------------------------------------------------------------------------------------------------
-my $delete_queue ;
+my $queue    = {};
 my $watchers = {};
 
 #------------------------------------------------------------------------------------------------
@@ -78,13 +78,23 @@ sub delete_post($$$)
 #------------------------------------------------------------------------------------------------
 #------------------------------------  MAIN DELETE  ---------------------------------------------
 #------------------------------------------------------------------------------------------------
+sub init($)
+{
+    my $self = shift;
+    my $log  = $self->{log};
+    $log->msg(1, "Initialization... ");
+    $self->_base_init();
+    $self->_init_watchers();
+    $self->_run_custom_watchers($watchers, $queue);
+    $self->_init_custom_watchers($watchers, $queue);
+}
+
 sub start($)
 {
     my $self = shift;
     my $log  = $self->{log};
     $log->msg(1, "Starting delete mode...");
     async {
-        $self->_pre_init();
         #-------------------------------------------------------------------
         my $proxy = shift @{ $self->{proxies} };
         $log->msg(4, "Used proxy: $proxy");
@@ -102,9 +112,8 @@ sub start($)
                         password => $self->{conf}{password},
                         delete   => $postid,
                        };
-            $delete_queue->put($task);
+            $queue->{delete}->put($task);
         }
-        $self->_init_watchers();
         while ($self->{is_running})
         {
             Coro::Timer::sleep 1;
@@ -119,17 +128,20 @@ sub stop($)
     my $log  = $self->{log};
     $log->msg(1, "Stopping delete mode...");
     $_->cancel for (grep {$_->desc =~ /delete/ } Coro::State::list);
-    $watchers     = {};
-    $delete_queue = undef;
+    for ( (keys(%$watchers), keys(%$queue)) )
+    {
+        $watchers->{$_} = undef;
+        $queue->{$_}    = undef;
+    }
     $self->{is_running} = 0;
 }
 
-sub _pre_init($)
+sub _base_init($)
 {
     my $self = shift;
     $self->{is_running} = 1;
     $self->{stats}      = {error => 0, wrong_password => 0, deleted => 0, total => 0};
-    $delete_queue       = Coro::Channel->new();
+    $queue->{delete}    = Coro::Channel->new();
 }
 
 sub _init_watchers($)
@@ -142,7 +154,7 @@ sub _init_watchers($)
                         sub
                         {
                             my @delete_coro  = grep { $_->desc eq 'delete' } Coro::State::list;
-                            $log->msg(4, sprintf "run: %d; queue: %d", scalar @delete_coro, $delete_queue->size);
+                            $log->msg(4, sprintf "run: %d; queue: %d", scalar @delete_coro, $queue->{delete}->size);
                             for my $coro (@delete_coro)
                             {
                                 my $now = Time::HiRes::time;
@@ -169,8 +181,8 @@ sub _init_watchers($)
                 $thrs_available = $n > 0 ? $n : 0;
             }
 
-            $self->delete_post($delete_queue->get)
-                while $delete_queue->size && $thrs_available--;
+            $self->delete_post($queue->{delete}->get)
+                while $queue->{delete}->size && $thrs_available--;
         }
     );
 
@@ -180,7 +192,7 @@ sub _init_watchers($)
         sub
         {
             my @delete_coro  = grep { $_->desc eq 'delete' } Coro::State::list;
-            if (!@delete_coro && !$delete_queue->size)
+            if (!@delete_coro && !$queue->{delete}->size)
             {
                 $self->stop;
             }

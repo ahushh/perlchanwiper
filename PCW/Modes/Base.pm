@@ -4,8 +4,15 @@ use v5.12;
 use utf8;
 use Carp;
 
-use PCW::Core::Utils qw/took/;
+use PCW::Core::Utils qw/took curry/;
 use Data::Random     qw/rand_set/;
+
+use AnyEvent;
+use Coro::State;
+use Coro::LWP;
+use Coro::Timer;
+use Coro;
+use Time::HiRes;
 #------------------------------------------------------------------------------------------------
 sub new($%)
 {
@@ -27,6 +34,43 @@ sub new($%)
     $self->{log}     = $log;
     $self->{verbose} = $verbose;
     bless $self, $class;
+}
+#------------------------------------------------------------------------------------------------
+sub _run_custom_watchers($$$)
+{
+    my ($self, $watchers, $queue) = @_;
+    for my $name (keys %{ $self->{conf}{watchers} })
+    {
+        my $wt = $self->{conf}{watchers}{$name};
+        if ($wt->{on_start})
+        {
+            &{ curry( $wt->{cb}, $self, $wt->{conf}, $queue ) };
+        }
+    }
+    while (grep {$_->desc eq 'custom-watcher' } Coro::State::list)
+    {
+        Coro::Timer::sleep 1;
+    }
+}
+
+sub _init_custom_watchers($$$)
+{
+    my ($self, $watchers, $queue) = @_;
+    for my $name (keys %{ $self->{conf}{watchers} })
+    {
+        my $wt = $self->{conf}{watchers}{$name};
+        given ($wt->{type})
+        {
+            when ('timer')
+            {
+                $watchers->{$name} =
+                    AnyEvent->timer(after    => $wt->{after},
+                                    interval => $wt->{interval},
+                                    cb       => curry( $wt->{cb}, $self, $wt->{conf}, $queue ),
+                                   ) if $wt->{on_start} != 2;
+            }
+         }
+    }
 }
 #------------------------------------------------------------------------------------------------
 sub get_posts_by_regexp($$$)

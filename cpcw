@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '0.2.1-66';
+our $VERSION = '0.2.2-67';
 
 use v5.12;
 use utf8;
@@ -305,14 +305,14 @@ show_info();
 #-----------------------------------------------------------------------------
 # RUN
 #-----------------------------------------------------------------------------
-my $w = AnyEvent->signal (signal => "INT", cb => sub { $pcw->stop; });
 my $start_time = time;
+my $ws = AnyEvent->signal(signal => "INT", cb => sub { $pcw->stop; });
+$pcw->init;
 $pcw->start;
 while ($pcw->{is_running})
 {
-    Coro::Timer::sleep 1;
+    Coro::Timer::sleep 1
 }
-
 #-----------------------------------------------------------------------------
 # ON EXIT
 #-----------------------------------------------------------------------------
