@@ -25,8 +25,7 @@ use PCW::Core::Captcha qw/captcha_report_bad/;
 #------------------------------------------------------------------------------------------------
 #-- Время следующего бампа
 my $run_at       ;
-my $bump_queue   ;
-my $delete_queue ;
+my $queue    = {};
 my $watchers = {};
 #------------------------------------------------------------------------------------------------
 # sub new($%)
@@ -52,7 +51,7 @@ my $run_cleanup = unblock_sub
             password => $self->{silent}{conf}{password},
             delete   => $postid,
         };
-        $delete_queue->put($task);
+        $queue->{delete}->put($task);
     }
 };
 
@@ -96,7 +95,7 @@ my $cb_bump_thread = unblock_sub
     {
         # может сделать смену прокси?
     }
-    $bump_queue->put($task);
+    $queue->{bump}->put($task);
 };
 
 sub is_need_to_bump($$)
@@ -213,16 +212,25 @@ sub delete_post($$)
 #------------------------------------------------------------------------------------------------
 #---------------------------------------  BUMP MAIN  --------------------------------------------
 #------------------------------------------------------------------------------------------------
+sub init($)
+{
+    my $self = shift;
+    my $log  = $self->{log};
+    $log->msg(1, "Initialization... ");
+    $self->_base_init();
+    $self->_init_watchers();
+    $self->_run_custom_watchers($watchers, $queue);
+    $self->_init_custom_watchers($watchers, $queue);
+}
+
 sub start($)
 {
     my $self = shift;
     my $log  = $self->{log};
     $log->msg(1, "Starting autobump mode...");
     async {
-        $self->_pre_init();
         my $proxy = shift @{ $self->{proxies} };
-        $bump_queue->put({ proxy => $proxy, thread => $self->{conf}{post_cnf}{thread} });
-        $self->_init_watchers();
+        $queue->{bump}->put({ proxy => $proxy, thread => $self->{conf}{post_cnf}{thread} });
         while ($self->{is_running})
         {
             Coro::Timer::sleep 1;
@@ -237,18 +245,20 @@ sub stop($)
     my $log  = $self->{log};
     $log->msg(1, "Stopping autobump mode...");
     $_->cancel for (grep {$_->desc =~ /bump|delete/ } Coro::State::list);
-    $watchers      = {};
-    $bump_queue    = undef;
-    $delete_queue  = undef;
+    for ( (keys(%$watchers), keys(%$queue)) )
+    {
+        $watchers->{$_} = undef;
+        $queue->{$_}    = undef;
+    }
     $self->{is_running} = 0;
 }
 
-sub _pre_init($)
+sub _base_init($)
 {
     my $self      = shift;
     $run_at       = 0;
-    $bump_queue   = Coro::Channel->new();
-    $delete_queue = Coro::Channel->new();
+    $queue->{bump}   = Coro::Channel->new();
+    $queue->{delete} = Coro::Channel->new();
     $self->{is_running}    = 1;
     $self->{stats}{bump}   = {error => 0, bumped  => 0, total => 0, wait           => 0};
     $self->{stats}{delete} = {error => 0, deleted => 0, total => 0, wrong_password => 0};
@@ -270,7 +280,7 @@ sub _init_watchers($)
                             $log->msg(4, sprintf "run: %d bump, %d delete.",
                                      scalar @bump_coro, scalar @delete_coro);
                             $log->msg(4, sprintf "queue: %d bump, %d delete.",
-                                     $bump_queue->size, $delete_queue->size);
+                                     $queue->{bump}->size, $queue->{delete}->size);
 
                             for my $coro (@bump_coro, @delete_coro)
                             {
@@ -297,7 +307,7 @@ sub _init_watchers($)
                             my $now = Time::HiRes::time;
                             #-- Или если время еще не пришло
                             return if ($now < $run_at);
-                            $self->bump_thread( $bump_queue->get );
+                            $self->bump_thread( $queue->{bump}->get );
                         }
                        );
 
@@ -316,8 +326,8 @@ sub _init_watchers($)
                                 $thrs_available = $n > 0 ? $n : 0;
                             }
 
-                            $self->delete_post($delete_queue->get)
-                                while $delete_queue->size && $thrs_available--;
+                            $self->delete_post($queue->{delete}->get)
+                                while $queue->{delete}->size && $thrs_available--;
                         }
                        ) if $self->{conf}{silent};
 }

@@ -40,9 +40,7 @@ our $CAPTCHA_DIR = File::Spec->catfile($Bin, 'captcha');
 # Local variables
 #------------------------------------------------------------------------------------------------
 my $watchers  = {};
-my $get_queue     ;
-my $prepare_queue ;
-my $post_queue    ;
+my $queue     = {};
 
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
@@ -62,7 +60,7 @@ my $cb_wipe_get = unblock_sub
     {
         when ('success')
         {
-            $prepare_queue->put($task);
+            $queue->{prepare}->put($task);
         }
         when (/net_error|timeout/)
         {
@@ -117,7 +115,7 @@ my $cb_wipe_prepare = unblock_sub
     {
         when ('success')
         {
-            $post_queue->put($task);
+            $queue->{post}->put($task);
         }
         when ('no_captcha')
         {
@@ -126,7 +124,7 @@ my $cb_wipe_prepare = unblock_sub
             if ($self->{conf}{wcap_retry} && $self->{failed_proxy}{ $task->{proxy} } < $self->{conf}{proxy_attempts})
             {
                 $log->msg(4, "push into the get queue: $task->{proxy}");
-                $get_queue->put($new_task);
+                $queue->{get}->put($new_task);
             }
         }
         when (/net_error|timeout/)
@@ -203,7 +201,7 @@ my $cb_wipe_post = unblock_sub
             {
                 $log->msg(4, "push into the get queue: $task->{proxy}");
                 $new_task->{proxy} = $task->{proxy};
-                $get_queue->put($new_task);
+                $queue->{get}->put($new_task);
                 return;
             }
         }
@@ -240,7 +238,7 @@ my $cb_wipe_post = unblock_sub
     {
         $log->msg(4, "push into the get queue: $task->{proxy}");
         $new_task->{proxy} = $task->{proxy};
-        $get_queue->put($new_task);
+        $queue->{get}->put($new_task);
     }
 };
 
@@ -266,28 +264,24 @@ sub wipe_post($$$)
 #------------------------------------------------------------------------------------------------
 #---------------------------------------  MAIN WIPE  --------------------------------------------
 #------------------------------------------------------------------------------------------------
+sub init($)
+{
+    my $self = shift;
+    my $log  = $self->{log};
+    $log->msg(1, "Initialization... ");
+    $self->_base_init();
+    $self->_init_watchers();
+    $self->_run_custom_watchers($watchers, $queue);
+    $self->_init_custom_watchers($watchers, $queue);
+}
+
 sub start($)
 {
     my $self = shift;
     my $log  = $self->{log};
     $log->msg(1, "Starting wipe mode...");
     async {
-        $self->_pre_init();
-        #-- Initialization
-        if ($self->{conf}{watch_target})
-        {
-            my @posts = $self->get_posts_by_regexp("http://no_proxy", $self->{conf}{watch_target});
-            if (@posts)
-            {
-                $get_queue->put({ proxy => $_ }) for (@{ $self->{proxies} });
-                $self->{conf}{post_cnf}{thread} = \@posts;
-            }
-        }
-        else
-        {
-            $get_queue->put({ proxy => $_ }) for (@{ $self->{proxies} });
-        }
-        $self->_init_watchers();
+        $queue->{get}->put({ proxy => $_ }) for (@{ $self->{proxies} });
         while ($self->{is_running})
         {
             Coro::Timer::sleep 1;
@@ -302,23 +296,24 @@ sub stop($)
     my $log  = $self->{log};
     $log->msg(1, "Stopping wipe mode...");
     $_->cancel for (grep {$_->desc =~ /get|prepare|post/ } Coro::State::list);
-    $watchers      = {};
-    $get_queue     = undef;
-    $prepare_queue = undef;
-    $post_queue    = undef;
+    for ( (keys(%$watchers), keys(%$queue)) )
+    {
+        $watchers->{$_} = undef;
+        $queue->{$_}    = undef;
+    }
     $self->{is_running} = 0;
 }
 
 
-sub _pre_init($)
+sub _base_init($)
 {
     my $self = shift;
     $self->{is_running}   = 1;
     $self->{failed_proxy} = {};
-    $self->{stats} = {error => 0, posted => 0, wrong_captcha => 0, total => 0};
-    $get_queue     = Coro::Channel->new();
-    $prepare_queue = Coro::Channel->new();
-    $post_queue    = Coro::Channel->new();
+    $self->{stats}    = {error => 0, posted => 0, wrong_captcha => 0, total => 0};
+    $queue->{get}     = Coro::Channel->new();
+    $queue->{prepare} = Coro::Channel->new();
+    $queue->{post}    = Coro::Channel->new();
 }
 
 sub _init_watchers($)
@@ -337,7 +332,7 @@ sub _init_watchers($)
                             $log->msg(4, sprintf "run: %d captcha, %d post, %d prepare coros.",
                                      scalar @get_coro, scalar @post_coro, scalar @prepare_coro);
                             $log->msg(4, sprintf "queue: %d captcha, %d post, %d prepare coros.",
-                                     $get_queue->size, $post_queue->size, $prepare_queue->size);
+                                     $queue->{get}->size, $queue->{post}->size, $queue->{prepare}->size);
 
                             for my $coro (@post_coro, @prepare_coro, @get_coro)
                             {
@@ -351,22 +346,6 @@ sub _init_watchers($)
                         }
                        );
 
-    #-- Find threads watcher
-    $watchers->{threads} =
-        AnyEvent->timer(after    => $self->{conf}{watch_target}{interval},
-                        interval => $self->{conf}{watch_target}{interval},
-                        cb       =>
-                        sub
-                        {
-                            #-- Refresh the thread list
-                            async {
-                                my @posts = $self->get_posts_by_regexp("http://no_proxy", $self->{conf}{watch_target});
-                                $self->{conf}{post_cnf}{thread} = \@posts;
-                            };
-                            cede;
-                        }
-                       ) if $self->{conf}{watch_target};
-
     #-- Get watcher
     $watchers->{get} =
         AnyEvent->timer(after => 0.5, interval => 2, cb =>
@@ -374,8 +353,8 @@ sub _init_watchers($)
                         {
                             my @get_coro      = grep { $_->desc eq 'get'     } Coro::State::list;
                             my $thrs_available = $self->{conf}{max_cap_thrs} - scalar @get_coro;
-                            $self->wipe_get($get_queue->get)
-                                while $get_queue->size && $thrs_available--;
+                            $self->wipe_get($queue->{get}->get)
+                                while $queue->{get}->size && $thrs_available--;
                         }
                        );
 
@@ -393,8 +372,8 @@ sub _init_watchers($)
                                 $thrs_available = $n > 0 ? $n : 0;
                             }
 
-                            $self->wipe_prepare($prepare_queue->get)
-                                while $prepare_queue->size && $thrs_available--;
+                            $self->wipe_prepare($queue->{prepare}->get)
+                                while $queue->{prepare}->size && $thrs_available--;
                         }
                        );
 
@@ -417,33 +396,43 @@ sub _init_watchers($)
                             if ($self->{conf}{salvo})
                             {
                                 if (
-                                    !@get_coro     && $get_queue->size     == 0 && 
-                                    !@prepare_coro && $prepare_queue->size == 0 &&
-                                    !@post_coro    && $post_queue->size
+                                    !@get_coro     && $queue->{get}->size     == 0 && 
+                                    !@prepare_coro && $queue->{prepare}->size == 0 &&
+                                    !@post_coro    && $queue->{post}->size
                                    )
                                 {
-                                    $log->msg(1, "#~~~ ". scalar($post_queue->size) ." charges are ready. Strike! ~~~#");
-                                    $self->wipe_post($post_queue->get)
-                                        while $post_queue->size && $thrs_available--;
+                                    $log->msg(1, "#~~~ ". scalar($queue->{post}->size) ." charges are ready. Strike! ~~~#");
+                                    $self->wipe_post($queue->{post}->get)
+                                        while $queue->{post}->size && $thrs_available--;
                                 }
                             }
                             elsif ($self->{conf}{salvoX})
                             {
-                                if (!@post_coro && $post_queue->size >= $self->{conf}{max_pst_thrs})
+                                if (!@post_coro && $queue->{post}->size >= $self->{conf}{max_pst_thrs})
                                 {
-                                    $log->msg(1, "#~~~ ". scalar($post_queue->size) ." charges are ready. Strike! ~~~#");
-                                    $self->wipe_post($post_queue->get)
-                                        while $post_queue->size && $thrs_available--;
+                                    $log->msg(1, "#~~~ ". scalar($queue->{post}->size) ." charges are ready. Strike! ~~~#");
+                                    $self->wipe_post($queue->{post}->get)
+                                        while $queue->{post}->size && $thrs_available--;
                                 }
                             }
                             else
                             {
-                                $self->wipe_post($post_queue->get)
-                                    while $post_queue->size && $thrs_available--;
+                                $self->wipe_post($queue->{post}->get)
+                                    while $queue->{post}->size && $thrs_available--;
                             }
                         }
                        );
 
+    #-- post limit
+    $watchers->{post_limit} =
+        AnyEvent->timer(after => 5, interval => 5, cb => sub
+                        {
+                            if ($self->{stats}{posted} >= $self->{conf}{post_limit})
+                            {
+                                $self->stop;
+                            }
+                        },
+                       ) if $self->{conf}{post_limit};
     #-- Exit watchers
     #-- BUG: Если ставить слишком малый interval, при одной прокси будет выходить когда не надо
     $watchers->{exit} =
@@ -456,17 +445,13 @@ sub _init_watchers($)
                             if (!(scalar @get_coro)      &&
                                 !(scalar @post_coro)     &&
                                 !(scalar @prepare_coro)  &&
-                                !($get_queue->size)      &&
-                                !($post_queue->size)     &&
-                                !($prepare_queue->size)  or
-                                #-- post limit was reached
-                                ( $self->{conf}{post_limit} ?
-                                  ($self->{stats}{posted} >= $self->{conf}{post_limit}) :
-                                  undef ))
+                                !($queue->{get}->size)   &&
+                                !($queue->{post}->size)  &&
+                                !($queue->{prepare}->size))
                             {
                                 $self->stop;
                             }
                         }
-                       );
+                       ) if $self->{conf}{autoexit};
 }
 1;

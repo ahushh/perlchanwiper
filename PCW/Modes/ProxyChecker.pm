@@ -24,7 +24,7 @@ use PCW::Core::Captcha qw/captcha_report_bad/;
 #------------------------------------------------------------------------------------------------
 # Local variables
 #------------------------------------------------------------------------------------------------
-my $queue             ;
+my $queue        = {} ;
 my $watchers     = {} ;
 my @good_proxies = () ;
 #------------------------------------------------------------------------------------------------
@@ -75,15 +75,24 @@ sub check($$$)
 #------------------------------------------------------------------------------------------------
 #------------------------------------  MAIN CHECKER  --------------------------------------------
 #------------------------------------------------------------------------------------------------
+sub init($)
+{
+    my $self = shift;
+    my $log  = $self->{log};
+    $log->msg(1, "Initialization... ");
+    $self->_base_init();
+    $self->_init_watchers();
+    $self->_run_custom_watchers($watchers, $queue);
+    $self->_init_custom_watchers($watchers, $queue);
+}
+
 sub start($)
 {
     my $self = shift;
     my $log  = $self->{log};
     $log->msg(1, "Starting proxy checker mode...");
     async {
-        $self->_pre_init();
-        $queue->put({ proxy => $_ }) for (@{ $self->{proxies} });
-        $self->_init_watchers();
+        $queue->{main}->put({ proxy => $_ }) for (@{ $self->{proxies} });
         while ($self->{is_running})
         {
             Coro::Timer::sleep 1;
@@ -98,8 +107,8 @@ sub stop($)
     my $log  = $self->{log};
     $log->msg(1, "Stopping proxy checker mode...");
     $_->cancel for (grep {$_->desc =~ /check/ } Coro::State::list);
-    $watchers = {};
-    $queue    = undef;
+    $watchers      = {};
+    $queue->{main} = undef;
 
     my @g = @good_proxies;
     $self->{checked} = \@g;
@@ -114,13 +123,13 @@ sub stop($)
     $self->{is_running} = 0;
 }
 
-sub _pre_init($)
+sub _base_init($)
 {
     my $self = shift;
     $self->{is_running} = 1;
     $self->{stats}      = {bad => 0, good => 0, total => 0};
     $self->{checked}    = {};
-    $queue              = Coro::Channel->new();
+    $queue->{main}      = Coro::Channel->new();
 }
 
 sub _init_watchers($)
@@ -133,7 +142,7 @@ sub _init_watchers($)
                         sub
                         {
                             my @coros = grep { $_->desc eq 'check' } Coro::State::list;
-                            $log->msg(4, sprintf "run: %d; queue: %d", scalar(@coros), $queue->size);
+                            $log->msg(4, sprintf "run: %d; queue: %d", scalar(@coros), $queue->{main}->size);
 
                             for my $coro (@coros)
                             {
@@ -154,8 +163,8 @@ sub _init_watchers($)
                           {
                               my @checker_coro = grep { $_->desc eq 'check' } Coro::State::list;
                               my $thrs_available = $self->{conf}{max_thrs} - scalar @checker_coro;
-                              $self->check($queue->get)
-                                  while $queue->size && $thrs_available--;
+                              $self->check($queue->{main}->get)
+                                  while $queue->{main}->size && $thrs_available--;
                           }
                          );
 
@@ -165,7 +174,7 @@ sub _init_watchers($)
                           sub
                           {
                               my @checker_coro = grep { $_->desc =~ /check/ } Coro::State::list;
-                              if (!(scalar @checker_coro) && $queue->size == 0)
+                              if (!(scalar @checker_coro) && $queue->{main}->size == 0)
                               {
                                   $self->stop;
                               }
