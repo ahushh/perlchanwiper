@@ -12,7 +12,7 @@ our @EXPORT_OK = qw/make_text/;
 #------------------------------------------------------------------------------------------------
 use List::Util       qw/shuffle/;
 use Data::Random     qw/rand_set/;
-use PCW::Core::Utils qw/random took/;
+use PCW::Core::Utils qw/random took readfile/;
 
 use Coro;
 my $lock = Coro::Semaphore->new;
@@ -65,11 +65,8 @@ sub post_msg($$$)
             if (-e $data->{thread}) #-- read html form a file on disk
             {
                 $status = $data->{thread};
+                $html   = readfile($data->{thread});
                 $took   = 0;
-                open my $fh, '<', $data->{thread};
-                local $/ = undef;
-                $html = <$fh>;
-                close $fh;
             }
             else #-- download the thread
             {
@@ -97,11 +94,7 @@ sub boundary_msg($$$)
     $lock->down;
     if (!@text)
     {
-        open(my $fh, '<:utf8', $data->{path});
-        local $/ = undef;
-        my $text = <$fh>;
-        @text    = split /$boundary/, $text;
-        close $fh;
+        @text = split /$boundary/, readfile($data->{path}, 'utf8');
     }
     $lock->up;
 
@@ -128,9 +121,7 @@ sub string_msg($$$)
     $lock->down;
     if (!@text)
     {
-        open(my $fh, "<:utf8", $data->{path});
-        @text = <$fh>;
-        close $fh;
+        @text = readfile($data->{path}, 'utf8');
     }
     $lock->up;
 

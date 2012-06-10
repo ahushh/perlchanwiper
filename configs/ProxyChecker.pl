@@ -7,7 +7,6 @@ our %mode_config = (
     post_cnf => {
         board      => 'b',
         thread     => 0,
-        thread     => 10380824,
         email      => "",
         name       => "",
         subject    => "",

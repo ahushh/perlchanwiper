@@ -9,9 +9,10 @@ use Exporter 'import';
 our @EXPORT_OK = qw/make_vid/;
 
 #------------------------------------------------------------------------------------------------
-use Data::Random    qw/rand_set/;
-use List::MoreUtils qw/uniq/;
-use LWP::Simple     qw/get/;
+use Data::Random     qw/rand_set/;
+use List::MoreUtils  qw/uniq/;
+use LWP::Simple      qw/get/;
+use PCW::Core::Utils qw/readfile/;
 
 use Coro;
 my $lock = Coro::Semaphore->new;
@@ -48,12 +49,7 @@ sub file_vid($$$)
     $lock->down;
     if (!@vid_list)
     {
-        open(my $fh, '<', $data->{path});
-        local $/ = undef;
-        my $raw  = <$fh>;
-        close $fh;
-
-        @vid_list = split /\s+/, $raw;
+        @vid_list = split /\s+/, readfile($data->{path});
     }
     $lock->up;
 

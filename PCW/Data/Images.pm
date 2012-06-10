@@ -17,7 +17,7 @@ use File::Which        qw/which/;
 use List::Util         qw/shuffle reduce/;
 use Data::Random       qw/rand_set rand_image/;
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Utils qw/random shellquote/;
+use PCW::Core::Utils   qw/random shellquote readfile/;
 
 use Coro;
 my $lock = Coro::Semaphore->new;
@@ -137,13 +137,7 @@ sub img_altering($)
     {
         when ('randnums')
         {
-            open my $img_fh, "<", $full_name;
-            my $img;
-            {
-                local $/ = undef;
-                $img = <$img_fh>;
-                close $img_fh;
-            }
+            my $img = readfile($full_name);
             print $fh $img;
             my $n = $conf->{number_nums};
             for (my $i = 0; $i < $n; $i++)
@@ -154,13 +148,7 @@ sub img_altering($)
         }
         when ('randbytes')
         {
-            open my $img_fh, "<", $full_name;
-            my $img;
-            {
-                local $/ = undef;
-                $img = <$img_fh>;
-                close $img_fh;
-            }
+            my $img = readfile($full_name);
             print $fh $img;
             print $fh reduce { $a . chr(int(rand() * 256)) } ('', 1..$conf->{number_bytes});
             close $fh;
