@@ -306,8 +306,9 @@ sub prepare($$$$)
     {
         my ($took, $mm);
         #-- if text field is empty, compute mm only once
-        #-- TODO: compute mm only once if the text is static
-        if ($content{ $self->{fields}{post}{msg} } eq '' and !$self->{static_mm})
+        if (($content{ $self->{fields}{post}{msg} } eq '' or
+             $content{ $self->{fields}{post}{msg} !~ /#|%|@~/ } #-- text is static
+            ) and !$self->{static_mm})
         {
             $self->{static_mm} = took { compute_mm($content{mm} . $content{message} . $content{postpassword}) } \$took;
             $log->pretty_proxy(3, 'green', $task->{proxy}, 'PREPARE', "mm was computed: $self->{static_mm} (took $took sec.)");

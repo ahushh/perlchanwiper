@@ -208,6 +208,7 @@ my $cb_wipe_post = unblock_sub
         when ('critical_error')
         {
             $log->msg(1, "Critical chan error occured!", '', 'red');
+            $queue->{get}->put($new_task);
         }
         when ('flood')
         {
