@@ -142,8 +142,6 @@ sub _init_watchers($)
                         sub
                         {
                             my @coros = grep { $_->desc eq 'check' } Coro::State::list;
-                            $log->msg(4, sprintf "run: %d; queue: %d", scalar(@coros), $queue->{main}->size);
-
                             for my $coro (@coros)
                             {
                                 my $now = Time::HiRes::time;

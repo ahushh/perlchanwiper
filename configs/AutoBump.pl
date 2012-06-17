@@ -3,14 +3,14 @@ use utf8;
 # CONFIG STARTS HERE
 #------------------------------------------------------------------------------------------------------------
 use constant BOARD    => 'b';
-use constant THREAD   => 10120554;
+use constant THREAD   => 10456453;
 use constant PASSWORD => 'fNfR3';
 
 use constant BUMP_TIMEOUT => 60;
 use constant INTERVAL     => 60*1;      #--Проверять, нужен ли бамп, через заданный интервал
 
 use constant SILENT_BUMP   => 1;       #-- Удалять бампы. 0 для отключения
-use constant REGEXP        => 'test';  #-- Регэксп, по которому искать посты. e.g '.*' — все посты, 'bump' — содержащие слово bump
+use constant REGEXP        => 'bump';  #-- Регэксп, по которому искать посты. e.g '.*' — все посты, 'bump' — содержащие слово bump
 use constant DELETE_TIMOUT => 60;
 
 #-- Условие для бампа
@@ -27,6 +27,8 @@ my $find = {
     replies => {
         threads => [THREAD],     #-- в каких тредах искать (по id)
         regexp  => REGEXP,       #-- филтровать по регэкспу
+        include => 1,
+        take    => 'all',
     },
 };
 
@@ -37,6 +39,71 @@ my %del_set = (
     max_del_thrs   => 1,       #-- максимально количество запущенных потоков удаления
     delete_timeout => DELETE_TIMOUT,
 );
+
+#------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
+#-- watchers
+#------------------------------------------------------------------------------------------------------------
+#-- вывод количества запущенных и находящихся в очереди тредов
+my $w_coros_cb = sub
+{
+    use Coro;
+    my ($self, $conf, $queue) = @_;
+    async {
+        my @bump_coro   = grep { $_->desc ? ($_->desc eq 'bump')   : 0 } Coro::State::list;
+        my @delete_coro = grep { $_->desc ? ($_->desc eq 'delete') : 0 } Coro::State::list;
+
+        $self->{log}->msg($conf->{loglevel}, sprintf "run: %d bump, %d delete.",
+            scalar @bump_coro, scalar @delete_coro);
+        $self->{log}->msg($conf->{loglevel}, sprintf "queue: %d bump, %d delete.",
+            $queue->{bump}->size, $queue->{delete}->size);
+    };
+    cede;
+};
+#------------------------------------------------------------------------------------------------------------
+#-- поиск треда
+#-- !! тред и страницы качаются БЕЗ ПРОКСИ
+my $w_target_cnf = {
+                    interval  => 60*1,  #-- интервал обновления списка постов
+                    #-- найденные номера постов будут присвоены $post_cnf{thread}
+                    #board     => '_nrmt',   #-- доска, на которой искать треды
+                    board     => 'b',   #-- доска, на которой искать треды
+                    take      => 'last', #-- all - все посты, random - случайный, last - последний
+
+                    threads => {
+                                #post_limit => 300,  #-- TODO
+                                regexp  => 'kudere',   #-- фильтровать по регэкспу
+                                pages   => [0..4], #-- на каких страницах искать треды, в которые нужно отвечать
+                                #include => 0,
+                                #in_text => '',     #-- искать номера постов в тексте треда по регэкспу
+                                #regexp  => '<blockquote><div class="postmessage">(\s+)?</div></blockquote>',
+                                #pages   => [0], #-- на каких страницах искать треды, в которые нужно отвечать
+                                include => 1,
+                                #in_text => '',     #-- искать номера постов в тексте треда по регэкспу
+                               },
+                    #replies => {
+                        #include => 1,
+                        ##threads => 'found', #-- искать в уже найденных тредах (см. выше)
+                        #threads => [311], #-- искать в уже найденных тредах (см. выше)
+                        #regexp  => '',    #-- филтровать по регэкспу
+                        #in_text => '&gt;&gt;/b/(?<post>\d+)',     #-- искать номера постов в тексте ответа по регэкспу
+                    #},
+                   };
+
+my $w_target_cb = sub
+{
+    use Coro;
+    my ($self, $conf, $queue) = @_;
+    async { #-- Refresh the thread list
+        my $coro = $Coro::current;
+        $coro->desc('custom-watcher');
+        my @posts = $self->get_posts_by_regexp("http://no_proxy", $conf);
+        $self->{conf}{post_cnf}{thread} = \@posts;
+    };
+    cede;
+};
+#------------------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
 
 our %mode_config = (
     bump_if   => BUMP_IF,
@@ -53,6 +120,27 @@ our %mode_config = (
                   subject    => "",
                   password   => PASSWORD,
                  },
+    watchers =>
+    {
+        # coros  => { #-- вывод количества запущенных и находящихся в очереди тредов
+        #     cb       => $w_coros_cb,
+        #     after    => 0,
+        #     interval => 5,
+        #     conf     => { loglevel => 1 },
+        #     on_start => 1,       #-- 1 - выполнять ф-ю перед стартом
+        #       2 - выполнить ф-ю только перед стартом и не инициализировать
+        #     type     => 'timer', #-- тип вотчера, пока только AnyEvent->timer
+        # },
+        # target => {  #-- поиск треда; здесь в автобампе пока что не работает
+        #     cb       => $w_target_cb,
+        #     after    => $w_target_cnf->{interval},
+        #     interval => $w_target_cnf->{interval},
+        #     conf     => $w_target_cnf,
+        #     on_start => 1,       #-- 1 - выполнять ф-ю перед стартом
+        #                          #   2 - выполнить ф-ю только перед стартом и не инициализировать
+        #     type     => 'timer', #-- тип вотчера, пока только AnyEvent->timer
+        # },
+    },
 );
  
 delete $mode_config{silent}

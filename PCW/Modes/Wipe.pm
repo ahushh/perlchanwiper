@@ -330,11 +330,6 @@ sub _init_watchers($)
                             my @prepare_coro  = grep { $_->desc eq 'prepare' } Coro::State::list;
                             my @post_coro     = grep { $_->desc eq 'post'    } Coro::State::list;
 
-                            $log->msg(4, sprintf "run: %d captcha, %d post, %d prepare coros.",
-                                     scalar @get_coro, scalar @post_coro, scalar @prepare_coro);
-                            $log->msg(4, sprintf "queue: %d captcha, %d post, %d prepare coros.",
-                                     $queue->{get}->size, $queue->{post}->size, $queue->{prepare}->size);
-
                             for my $coro (@post_coro, @prepare_coro, @get_coro)
                             {
                                 my $now = Time::HiRes::time;
