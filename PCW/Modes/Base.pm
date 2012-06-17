@@ -169,7 +169,7 @@ sub get_posts_by_regexp($$$)
 
     $log->msg(2, sprintf "Total %d post(s) were found", scalar @posts);
     return unless @posts;
-    
+
     given ($cnf->{take})
     {
         when ('random')
@@ -187,6 +187,10 @@ sub get_posts_by_regexp($$$)
             return @last;
         }
         when ('all')
+        {
+            return @posts;
+        }
+        default
         {
             return @posts;
         }

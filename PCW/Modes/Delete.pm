@@ -154,7 +154,6 @@ sub _init_watchers($)
                         sub
                         {
                             my @delete_coro  = grep { $_->desc eq 'delete' } Coro::State::list;
-                            $log->msg(4, sprintf "run: %d; queue: %d", scalar @delete_coro, $queue->{delete}->size);
                             for my $coro (@delete_coro)
                             {
                                 my $now = Time::HiRes::time;
@@ -188,7 +187,7 @@ sub _init_watchers($)
 
     #-- Exit watchers
     $watchers->{exit} =
-        AnyEvent->timer(after => 1, interval => 2, cb =>
+        AnyEvent->timer(after => 10, interval => 2, cb =>
         sub
         {
             my @delete_coro  = grep { $_->desc eq 'delete' } Coro::State::list;

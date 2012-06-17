@@ -36,7 +36,7 @@ my $watchers = {};
 #------------------------------------------------------------------------------------------------
 my $run_cleanup = unblock_sub
 {
-    my ($engine, $task, $self) = @_;
+    my ($self, $task) = @_;
     my $log = $self->{log};
     $log->pretty_proxy(2, "green", $task->{proxy}, $task->{thread}, "Start deleting posts...");
     my @deletion_posts = $self->get_posts_by_regexp($task->{proxy}, $self->{conf}{silent}{find});
@@ -47,8 +47,8 @@ my $run_cleanup = unblock_sub
     {
         my $task = {
             proxy    => $task->{proxy},
-            board    => $self->{silent}{conf}{board},
-            password => $self->{silent}{conf}{password},
+            board    => $self->{conf}{silent}{board},
+            password => $self->{conf}{silent}{password},
             delete   => $postid,
         };
         $queue->{delete}->put($task);
@@ -77,7 +77,7 @@ my $cb_bump_thread = unblock_sub
         $log->pretty_proxy(2, "green", $task->{proxy}, "No. ". $task->{thread}, "sleep $self->{conf}{interval} seconds...");
 
         $log->msg(4, "run_cleanup(): try to start");
-        &$run_cleanup($self, $task, $self) if ($self->{conf}{silent});
+        &$run_cleanup($self, $task) if ($self->{conf}{silent});
     }
     elsif ($msg =~ /wrong_captcha|no_captcha/)
     {
@@ -173,6 +173,7 @@ sub bump_thread($$)
 my $cb_delete_post = unblock_sub
 {
     my ($msg, $task, $self) = @_;
+    $self->{log}->msg(4, "cb_delete_post(): message: $msg");
     $self->{stats}{delete}{total}++;
     given ($msg)
     {
@@ -195,6 +196,7 @@ sub delete_post($$)
 {
     my ($self, $task) = @_;
     my $engine = $self->{engine};
+    $self->{log}->msg(4, "delete_post();");
     async {
         my $coro = $Coro::current;
         $coro->desc('delete');
@@ -276,11 +278,6 @@ sub _init_watchers($)
                         {
                             my @bump_coro   = grep { $_->desc ? ($_->desc eq 'bump')   : 0 } Coro::State::list;
                             my @delete_coro = grep { $_->desc ? ($_->desc eq 'delete') : 0 } Coro::State::list;
-
-                            $log->msg(4, sprintf "run: %d bump, %d delete.",
-                                     scalar @bump_coro, scalar @delete_coro);
-                            $log->msg(4, sprintf "queue: %d bump, %d delete.",
-                                     $queue->{bump}->size, $queue->{delete}->size);
 
                             for my $coro (@bump_coro, @delete_coro)
                             {
