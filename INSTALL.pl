@@ -19,8 +19,6 @@ LWP::Protocol::https
 LWP::Protocol::socks
 JavaScript::Engine
 File::Which
-Win32::ShellQuote
-String::ShellQuote
 /;
 
 my @debian = qw/
@@ -42,6 +40,15 @@ libje-perl
 libstring-shellquote-perl
 libfile-which-perl
 /;
+
+if ($ARGV[0] eq 'windows')
+{
+    push @packages, 'Win32::ShellQuote';
+}
+else
+{
+    push @packages, 'String::ShellQuote';
+}
 
 given ($ARGV[0])
 {
