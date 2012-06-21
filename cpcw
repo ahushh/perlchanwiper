@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '0.2.2-69-tested';
+our $VERSION = '0.2.2-70';
 
 use v5.12;
 use utf8;
@@ -100,7 +100,7 @@ sub parse_args()
 #-----------------------------------------------------------------------------
 sub check_chan_config()
 {
-    for ( qw/post delete captcha page zero_page thread/ )
+    for ( qw/post delete page zero_page thread/ )
     {
         Carp::croak("Chan config error: Option urls => '$_' must be specified at chans/$cnf{chan}.pl")
                 unless ($chan_config->{urls}{$_});

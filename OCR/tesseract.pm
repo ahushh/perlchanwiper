@@ -17,7 +17,7 @@ sub _convert2tiff($)
     my $source = shift;
     my $dest   = File::Spec->catfile($tmpdir, rand().'.tif');
     my $cmd    = sprintf "%s %s %s %s %s %s",
-                $convert,
+                shellquote($convert),
                 shellquote($source),
                 '-compress',
                 'none',
@@ -34,7 +34,7 @@ sub _get_ocr($;$$)
     my $tif = _convert2tiff $img;
     my $cmd = 
         ( sprintf '%s %s %s',
-          $tesseract,
+          shellquote($tesseract),
           shellquote($tif),
           shellquote($tif)
         ) .
