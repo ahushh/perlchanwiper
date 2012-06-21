@@ -194,19 +194,22 @@ sub took(&$;$)
 #------------------------------------------------------------------------------------------------
 # CROSS PLATFORM SHELL QUOTE
 #------------------------------------------------------------------------------------------------
-use String::ShellQuote qw/shell_quote/;
-use Win32::ShellQuote  qw/quote_native/;
-
 sub shellquote($)
 {
     my $str = shift;
     if ($^O =~ /linux/)
     {
-        return shell_quote $str;
+        eval {
+            use String::ShellQuote qw/shell_quote/;
+            return shell_quote $str;
+        } or Carp::croak $@;
     }
     else
     {
-        return quote_native $str;
+        eval {
+            use Win32::ShellQuote  qw/quote_native/;
+            return quote_native $str;
+        } or Carp::croak $@;
     }
 }
 
