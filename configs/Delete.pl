@@ -23,7 +23,7 @@ my $find = {
     threads   => {         #-- треды
         include => 1,      #-- удалять найденные треды, 1 - да, 0 - нет
         ##regexp  => '.*',      #-- фильтровать по регэкспу
-        regexp  => '<blockquote><div class="postmessage">(\s+)?</div></blockquote>',   #-- треды без текста
+        regexp  => '<blockquote><div class="postmessage">(\s+)?</div></blockquote>',   #-- треды без текста (нульчан)
         pages   => [0..4],      #-- на каких страницах искать
         #in_text => '',     #-- искать номера постов в тексте треда по регэкспу
     },
