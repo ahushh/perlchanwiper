@@ -180,25 +180,9 @@ sub _get_post_content($$%)
     return $content;
 }
 
-sub _get_delete_content($$%)
-{
-    no utf8;
-    my ($self, %config) = @_;
-    Carp::croak("Delete, board and password parameters are not set!")
-        unless($config{board} && $config{password});
-
-    # my $deletestr = 'Удалить';
-    # utf8::encode($deletestr);
-
-    my $content = {
-        board      => $config{board},
-        password   => $config{password},
-        delete     => $config{delete},
-        deletepost => 'Удалить',
-        # deletepost => $deletestr,
-    };
-    return $content;
-}
+# sub _get_delete_content($$%)
+# {
+# }
 
 #------------------------------------------------------------------------------------------------
 #----------------------------- CREATE POST, DELETE POST -----------------------------------------
