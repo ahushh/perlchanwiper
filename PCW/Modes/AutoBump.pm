@@ -95,6 +95,7 @@ my $cb_bump_thread = unblock_sub
     {
         # может сделать смену прокси?
     }
+    $task->{thread} = $self->{conf}{post_cnf}{thread};
     $queue->{bump}->put($task);
 };
 
@@ -220,8 +221,8 @@ sub init($)
     my $log  = $self->{log};
     $log->msg(1, "Initialization... ");
     $self->_base_init();
-    $self->_init_watchers();
     $self->_run_custom_watchers($watchers, $queue);
+    $self->_init_watchers();
     $self->_init_custom_watchers($watchers, $queue);
 }
 

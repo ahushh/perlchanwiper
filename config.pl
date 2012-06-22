@@ -23,6 +23,7 @@ our $msg = {
     # text => '%unixtime%',
     # text => ">>#postid#\n>>#postid#\n",
     # text => '#delirium#',
+      text => 'dobrochan.ru',
       text => "bump %date%\n@~fortune psalms bible~@",
     #-------------------------------------------------------------------------------------------------------
     #-- #post# config
