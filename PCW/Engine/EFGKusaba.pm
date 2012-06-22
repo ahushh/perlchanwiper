@@ -175,8 +175,7 @@ sub _get_post_content($$%)
                    'board'         => $board,
                    'mm'            => 0,
                   };
-    $content->{nofile} = $nofile
-        if ($nofile);
+    $content->{nofile} = $nofile if $nofile;
     return $content;
 }
 
@@ -289,10 +288,9 @@ sub prepare($$$$)
     if ($content{board} eq 'b')
     {
         my ($took, $mm);
-        #-- if text field is empty, compute mm only once
-        if (($content{ $self->{fields}{post}{msg} } eq '' or
-             $content{ $self->{fields}{post}{msg} !~ /#|%|@~/ } #-- text is static
-            ) and !$self->{static_mm})
+        #-- if the text is empty or the text is staic, compute mm only once
+        if (($cnf->{msg_data}{text} eq '' or $cnf->{msg_data}{text} !~ /#|%|@~/)
+            and !$self->{static_mm})
         {
             $self->{static_mm} = took { compute_mm($content{mm} . $content{message} . $content{postpassword}) } \$took;
             $log->pretty_proxy(3, 'green', $task->{proxy}, 'PREPARE', "mm was computed: $self->{static_mm} (took $took sec.)");
