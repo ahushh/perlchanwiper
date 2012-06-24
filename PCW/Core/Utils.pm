@@ -199,14 +199,14 @@ sub shellquote($)
     my $str = shift;
     if ($^O =~ /linux/)
     {
-        eval {
+        eval qq{
             use String::ShellQuote qw/shell_quote/;
             return shell_quote $str;
         } or Carp::croak $@;
     }
     else
     {
-        eval {
+        eval qq{
             use Win32::ShellQuote  qw/quote_native/;
             return quote_native $str;
         } or Carp::croak $@;
