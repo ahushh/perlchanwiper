@@ -8,6 +8,9 @@ my $w_coros_cb = sub
     use Coro;
     my ($self, $conf, $queue) = @_;
     async {
+        my $coro = $Coro::current;
+        $coro->desc('custom-watcher');
+
         my @coros = grep { $_->desc eq 'check' } Coro::State::list;
         $self->{log}->msg($conf->{loglevel}, sprintf "run: %d; queue: %d", scalar(@coros), $queue->{main}->size);
     };
@@ -29,7 +32,7 @@ our %mode_config = (
     },
     max_thrs   => 50, #-- максимальное колличество запущенных потоков
     timeout    => 120,
-    save       => 'proxy/my/latest1', #-- сохранять хорошие прокси в файл; если не указано, прокси печаются при выходе
+    save       => 'proxy/my/0chan', #-- сохранять хорошие прокси в файл; если не указано, прокси печаются при выходе
     watchers   =>
     {
         coros  => { #-- вывод количества запущенных и находящихся в очереди тредов

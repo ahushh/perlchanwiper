@@ -8,6 +8,9 @@ my $w_coros_cb = sub
     use Coro;
     my ($self, $conf, $queue) = @_;
     async {
+        my $coro = $Coro::current;
+        $coro->desc('custom-watcher');
+
         my @delete_coro  = grep { $_->desc eq 'delete' } Coro::State::list;
         $self->{log}->msg(4, sprintf "run: %d; queue: %d", scalar @delete_coro, $queue->{delete}->size);
     };
