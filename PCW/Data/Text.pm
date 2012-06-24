@@ -41,7 +41,8 @@ sub make_text($$$)
     $text =~ s/#string#/string_msg($engine, $task, $conf->{string});/eg;
     $text =~ s/#post#/post_msg($engine, $task, $conf->{post});/eg;
 
-    return interpolate($text, $task);
+    my $after = $conf->{after} || sub { $_[0] };
+    return &$after(interpolate($text, $task));
 }
 
 #------------------------------------------------------------------------------------------------

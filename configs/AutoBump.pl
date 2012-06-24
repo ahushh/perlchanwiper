@@ -49,6 +49,9 @@ my $w_coros_cb = sub
     use Coro;
     my ($self, $conf, $queue) = @_;
     async {
+        my $coro = $Coro::current;
+        $coro->desc('custom-watcher');
+
         my @bump_coro   = grep { $_->desc ? ($_->desc eq 'bump'  ) : 0 } Coro::State::list;
         my @delete_coro = grep { $_->desc ? ($_->desc eq 'delete') : 0 } Coro::State::list;
 

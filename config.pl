@@ -25,6 +25,7 @@ our $msg = {
     # text => '#delirium#',
       text => 'dobrochan.ru',
       text => "bump %date%\n@~fortune psalms bible~@",
+      after => sub { $_=shift; s/--|\d+:\d+//g; s/\n/ /g; $_  },
     #-------------------------------------------------------------------------------------------------------
     #-- #post# config
     post  => {

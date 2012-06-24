@@ -80,9 +80,8 @@ sub wipe_get($$)
     my $log    = $self->{log};
     async {
         my $coro = $Coro::current;
-        $coro->desc('get');
+        $coro->desc('sleeping');
         $coro->{task} = $task;
-        $coro->on_destroy($cb_wipe_get);
 
         if ($task->{run_at})
         {
@@ -91,6 +90,9 @@ sub wipe_get($$)
                                sprintf("sleep %d...", $self->{conf}{flood_limit}));
             Coro::Timer::sleep( int($task->{run_at} - $now) );
         }
+
+        $coro->desc('get');
+        $coro->on_destroy($cb_wipe_get);
 
         my $status = 
         with_coro_timeout {
@@ -207,7 +209,7 @@ my $cb_wipe_post = unblock_sub
         }
         when ('critical_error')
         {
-            $log->msg(1, "Critical chan error occured!", '', 'red');
+            $log->msg(1, "Critical chan error has occured!", '', 'red');
             $queue->{get}->put($new_task);
         }
         when ('flood')
@@ -296,7 +298,7 @@ sub stop($)
     my $self = shift;
     my $log  = $self->{log};
     $log->msg(1, "Stopping wipe mode...");
-    $_->cancel for (grep {$_->desc =~ /get|prepare|post/ } Coro::State::list);
+    $_->cancel for (grep {$_->desc =~ /get|prepare|post|sleeping/ } Coro::State::list);
     for ( (keys(%$watchers), keys(%$queue)) )
     {
         $watchers->{$_} = undef;
@@ -438,9 +440,12 @@ sub _init_watchers($)
                             my @get_coro      = grep { $_->desc eq 'get'     } Coro::State::list;
                             my @prepare_coro  = grep { $_->desc eq 'prepare' } Coro::State::list;
                             my @post_coro     = grep { $_->desc eq 'post'    } Coro::State::list;
+                            my @sleep_coro    = grep { $_->desc eq 'sleeping'} Coro::State::list;
+
                             if (!(scalar @get_coro)      &&
                                 !(scalar @post_coro)     &&
                                 !(scalar @prepare_coro)  &&
+                                !(scalar @sleep_coro)    &&
                                 !($queue->{get}->size)   &&
                                 !($queue->{post}->size)  &&
                                 !($queue->{prepare}->size))
