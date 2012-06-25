@@ -201,14 +201,14 @@ sub shellquote($)
     {
         eval qq{
             use String::ShellQuote qw/shell_quote/;
-            return shell_quote $str;
+            return shell_quote "$str";
         } or Carp::croak $@;
     }
     else
     {
         eval qq{
             use Win32::ShellQuote  qw/quote_native/;
-            return quote_native $str;
+            return quote_native "$str";
         } or Carp::croak $@;
     }
 }
