@@ -124,13 +124,23 @@ Checked out on Ubuntu 12.04 LTS (perl 5.14.2) and Gentoo (perl 5.12.4 and 5.14.2
 
 =head1 Windows
 
+Install these programs:
+
 =over
 
-=item *
+=item B<Perl>
 
-Coming soon...
+  http://strawberryperl.com/ or http://www.activestate.com/activeperl/downloads
 
-=back 
+=item B<Imagemagick>
+
+  http://www.imagemagick.org/script/binary-releases.php#windows
+
+=item B<Tesseract-OCR>
+
+  http://code.google.com/p/tesseract-ocr/downloads/list
+
+=back
 
 =over
 

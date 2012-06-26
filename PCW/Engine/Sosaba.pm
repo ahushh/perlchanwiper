@@ -50,21 +50,9 @@ use PCW::Data::Text     qw/make_text/;
 # }
 
 # $self, %args -> (string)
-sub _get_captcha_url($$%)
-{
-    my ($self, %config) = @_;
-    Carp::croak("Board is not set! at _get_captcha_url")
-        unless($config{board});
-    if ($config{thread})
-    {
-        return sprintf $self->{urls}{captcha}, $config{board}, "res$config{thread}", $config{thread};
-    }
-    else
-    {
-        return sprintf $self->{urls}{captcha}, $config{board}, 'mainpage', '?';
-    }
-
-}
+# sub _get_captcha_url($$%)
+# {
+# }
 
 # $self, %args -> (string)
 #sub _get_page_url($$%)
