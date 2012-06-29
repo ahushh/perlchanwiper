@@ -57,7 +57,9 @@ else
 
 given ($ARGV[0])
 {
-    when ('debian' ) { system "sudo apt-get install @debian" }
+    when ('debian' ) { system "sudo apt-get install @debian";
+                       system "sudo cpan Mojolicious::Lite HTML::FromANSI";
+                     }
     when ('gentoo' ) { system "sudo g-cpan @packages"        }
     when ('windows') { system "cpan @packages"               }
     default          { pod2usage(-verbose => 2);             }

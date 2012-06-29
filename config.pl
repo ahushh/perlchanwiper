@@ -205,9 +205,9 @@ our $vid = {
 our $captcha_decode = {
     #-------------------------------------------------------------------------------------------------------
     #-- antigate mode
-    mode   => 'antigate',
-    key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
-    opt    => {},  #-- см. документацию к модулю WebService::Antigate
+    # mode   => 'antigate',
+    # key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
+    # opt    => {},  #-- см. документацию к модулю WebService::Antigate
     #-------------------------------------------------------------------------------------------------------
     #-- captchabot mode
     # mode   => 'captchabot',
@@ -227,8 +227,8 @@ our $captcha_decode = {
     # mode => 'none',
     #-- tesseract OCR
     #-- Необходим convert (пакет ImageMagick) и сам tesseract
-    # mode   => 'tesseract',
+      mode   => 'tesseract',
     # lang   => 'eng',          #-- eng, rus, etc.
-    # config => 'englishletters', #-- название конфига для tesseract. см README
+      config => 'englishletters', #-- название конфига для tesseract. см README
     # config => 'ruletters',    #-- название конфига для tesseract. см README
 };
