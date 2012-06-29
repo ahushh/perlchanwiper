@@ -15,49 +15,50 @@ our $msg = {
     #-- #delirium#   — сгенерированный бред
     #-- #string#     — чтение файла построчно
     #-- #boundary#   — чтение файла блоками
-    #-- #post#       — брать данные из текста поста
+    #-- #post#       — брать данные из текста скаченных постов
     #-------------------------------------------------------------------------------------------------------
     # text => "[code]#boundary#[/code]]",
     # text => "bump\n%date%",
     # text => '@~fortune psalms bible~@',
     # text => '%unixtime%',
-    # text => ">>#postid#\n>>#postid#\n",
+    # text => ">>#post#\n>>#post#\n",
     # text => '#delirium#',
-      text => '%date%',
-#      text => "bump %date%\n@~fortune psalms bible~@",
-#      after => sub { $_=shift; s/--|\d+:\d+//g; s/\n/ /g; $_  },
+    # text => '#post#',
+      text => 'test%10rand1000000%',
+    # text => "bump %date%\n@~fortune psalms bible~@",
+    # after => sub { $_=shift; s/--|\d+:\d+//g; s/\n/ /g; $_  },
     #-------------------------------------------------------------------------------------------------------
     #-- #post# config
     post  => {
-        board  => '',          #-- если не указано — текущая борда
-        thread => 10426106,    #-- из какого треда брать номера постов; если 0 - текущий вайпаемый тред
+        board  => 'b',          #-- если не указано — текущая борда
+        thread => 0,           #-- из какого треда брать номера постов; если 0 - текущий вайпаемый тред
         # thread => "$ENV{HOME}/1.html", #-- также можно указать путь до html-файла
-        update => 0,           #-- интервал обновления списка постов; 0 - отключить
-        take   => sub { #-- функция, которая извлекает нужные данные из поста. в данном случае - ID поста
-            use Data::Random     qw/rand_set/;
-            my ($engine, $task, $data, $replies) = @_;
-            my @ids = keys %$replies;
-            return ( @ids ? ${ rand_set(set => \@ids) } : '' );
-        },
-        # take   => sub { #-- текст постов
-        #     use HTML::Entities;
-        #     my $html2text = sub
-        #     {
-        #         my $html = shift;
-        #         decode_entities($html);
-        #         $html =~ s!<style.+?>.*?</style>!!sg;
-        #         $html =~ s!<script.+?>.*?</script>!!sg;
-        #         $html =~ s/{.*?}//sg; #-- style
-        #         $html =~ s/<!--.*?-->//sg; #-- comments
-        #         $html =~ s/<.*?>//sg;      #-- tags
-        #         return $html;
-        #     };
+        update => 100,           #-- интервал обновления списка постов; 0 - отключить
+        # take   => sub {        #-- функция, которая извлекает нужные данные из поста. в данном случае - ID поста
+        #     use Data::Random     qw/rand_set/;
         #     my ($engine, $task, $data, $replies) = @_;
-        #     my $pattern = $engine->{html}{text_regexp};
-        #     my @texts   = grep { s/\s//gr } map { $replies->{$_} =~ /$pattern/s; &$html2text( $+{text} =~ s|<br ?/?>|\n|gr ) } keys %$replies;
-        #     return ( @texts ? ${ rand_set(set => \@texts) } : '' );
+        #     my @ids = keys %$replies;
+        #     return ( @ids ? ${ rand_set(set => \@ids) } : '' );
         # },
-
+        take   => sub { #-- текст постов
+            use HTML::Entities;
+            use Data::Random     qw/rand_set/;
+            my $html2text = sub
+            {
+                my $html = shift;
+                decode_entities($html);
+                $html =~ s!<style.+?>.*?</style>!!sg;
+                $html =~ s!<script.+?>.*?</script>!!sg;
+                $html =~ s/{.*?}//sg; #-- style
+                $html =~ s/<!--.*?-->//sg; #-- comments
+                $html =~ s/<.*?>//sg;      #-- tags
+                return $html;
+            };
+            my ($engine, $task, $data, $replies) = @_;
+            my $pattern = $engine->{html}{text_regexp};
+            my @texts   = grep { s/\s//gr } map { $replies->{$_} =~ /$pattern/s; &$html2text( $+{text} =~ s|<br ?/?>|\n|gr ) } keys %$replies;
+            return ( @texts ? ${ rand_set(set => \@texts) } : '' );
+        },
     },
     #-- #delirium# config
     delirium => {
@@ -106,18 +107,18 @@ my $img_altering = {
     #-------------------------------------------------------------------------------------------------------
     #-- randbytes mode
     #-- Дописывать в файл случайные байты
-    # mode         => 'randbytes',
-    # number_bytes => 70,                   #-- количество дописываемых байтов
+    mode         => 'randbytes',
+    number_bytes => 70,                   #-- количество дописываемых байтов
     #-------------------------------------------------------------------------------------------------------
     #-- resize mode
     #-- Изменять разрешение картинки
     #-- необходима программа convert
     #-- работает весьма медленно
-    mode        => 'resize',
+    #mode        => 'resize',
     # convert     => 'convert',           #-- путь до программы; если не указано, определяется автоматически
     # args        => '-negate',           #-- дополнительные аргуметны
-    min         => 100,                 #-- минмальный размер от исходного в %
-    max         => 340,                 #-- максимальный размер
+    #min         => 100,                 #-- минмальный размер от исходного в %
+    #max         => 340,                 #-- максимальный размер
     #-------------------------------------------------------------------------------------------------------
     #-- convert mode
     #-- тот же convert, но без изменения разрешения
@@ -142,19 +143,27 @@ our $img = {
     #-- single mode
     #-- Постить один указанный файл
     # mode     => 'single',
-    # path       => 'c:\users\user\desktop\desu.png',    #-- путь к файлу
+    # path     => "extra/void.gif",    #-- путь к файлу
     #-- captcha mode
     #-- Постить изображение капчи
     # mode => 'captcha',
     #-------------------------------------------------------------------------------------------------------
     #-- dir mode
-    # #-- Постить файлы из каталогов
-    mode        => 'dir',
-    order       => 'random',               #-- random - перемешать файлы; normal - брать по порядку
-    path        => ["c:\\users\\user\\Desktop\\1"], #-- пути к файлу
-    regexp      => '',                   #-- фильтровать имена файлов (вместе с расширением) по регэкспам
-    recursively => 1,                    #-- искать файлы и в подпапках
-    types       => ['jpg', 'jpeg', 'gif', 'png'],    #-- резрешенные к загрузки типы файлов
+    #-- Постить файлы из каталогов
+    # mode        => 'dir',
+    # order       => 'random',               #-- random - перемешать файлы; normal - брать по порядку
+    # path        => ["c:\\users\\user\\Desktop\\1"], #-- пути к файлу
+    # regexp      => '',                   #-- фильтровать имена файлов (вместе с расширением) по регэкспам
+    # recursively => 1,                    #-- искать файлы и в подпапках
+    # types       => ['jpg', 'jpeg', 'gif', 'png'],    #-- резрешенные к загрузки типы файлов
+    #-------------------------------------------------------------------------------------------------------
+    #-- TODO: post mode
+    #-- скачивать картинки из тредов и постить их
+    # post  => {
+    #     board  => '',       #-- если не указано — текущая борда
+    #     thread => 10426106, #-- из какого треда брать номера постов; если 0 - текущий вайпаемый тред
+    #     update => 0,        #-- интервал обновления списка постов; 0 - отключить
+    # },
     #-------------------------------------------------------------------------------------------------------
     #-- common options
     max_size => 500,                   #-- ограничение на размер файла в кб. 0 для отключения
@@ -196,9 +205,9 @@ our $vid = {
 our $captcha_decode = {
     #-------------------------------------------------------------------------------------------------------
     #-- antigate mode
-    # mode   => 'antigate',
-    # key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
-    # opt    => {},  #-- см. документацию к модулю WebService::Antigate
+    mode   => 'antigate',
+    key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
+    opt    => {},  #-- см. документацию к модулю WebService::Antigate
     #-------------------------------------------------------------------------------------------------------
     #-- captchabot mode
     # mode   => 'captchabot',
@@ -215,7 +224,7 @@ our $captcha_decode = {
     #-- Необходим Gtk2
     # mode   => 'guihand',
     #-- просто заглушка
-    mode => 'none',
+    # mode => 'none',
     #-- tesseract OCR
     #-- Необходим convert (пакет ImageMagick) и сам tesseract
     # mode   => 'tesseract',

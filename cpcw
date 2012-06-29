@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '0.2.2-78';
+our $VERSION = '0.2.2-79';
 
 use v5.12;
 use utf8;
@@ -322,7 +322,7 @@ sub show_stats($)
     say "~" x 30;
     for my $k (keys %stats)
     {
-        say ucfirst($k) .": $stats{$k}";
+        say ucfirst($k =~ s/_/ /gr) .": $stats{$k}";
     }
 }
 

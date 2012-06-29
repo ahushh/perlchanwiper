@@ -130,19 +130,9 @@ sub _get_post_content($%)
     return $content;
 }
 
-sub _get_delete_content($%)
-{
-    my ($self, %config) = @_;
-    Carp::croak("Delete and password parameters are not set!")
-        unless($config{delete} && $config{password});
-
-    my $content = {
-        task     => 'delete',
-        password => $config{password},
-        delete   => $config{delete},
-    };
-    return $content;
-}
+# sub _get_delete_content($%)
+# {
+# }
 
 #------------------------------------------------------------------------------------------------
 #----------------------------- CREATE POST, DELETE POST -----------------------------------------

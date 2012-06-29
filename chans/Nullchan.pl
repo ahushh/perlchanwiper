@@ -81,6 +81,7 @@ our $chan_config =
         threads_regexp => '(?<thread><div id="thread(?<id>\d+)\w+">.+?</div>\s*<br clear="left">)',
         catalog_regexp => '/res/(?<id>\d+).html',
         text_regexp    => '<blockquote><div class="postmessage">(?<text>.*)</div></blockquote>',
+        img_regexp     => '(?<img>)',
     },
 
     headers => {
