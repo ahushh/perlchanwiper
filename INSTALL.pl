@@ -19,6 +19,8 @@ LWP::Protocol::https
 LWP::Protocol::socks
 JavaScript::Engine
 File::Which
+Mojolicious::Lite
+HTML::FromANSI
 /;
 
 my @debian = qw/
@@ -39,6 +41,9 @@ liblwp-protocol-socks-perl
 libje-perl
 libstring-shellquote-perl
 libfile-which-perl
+# нужно еще найти эти два пакета:
+# Mojolicious::Lite
+# HTML::FromANSI
 /;
 
 if ($ARGV[0] eq 'windows')

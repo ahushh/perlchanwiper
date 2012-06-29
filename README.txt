@@ -15,7 +15,8 @@ ahushh@gmail.com
 
 Файлы и каталоги
 ~~~~~~~~~~~~~~~~
-* cpcw         — запуск
+* cpcw         — запуск через консоль
+* wpcw         — запуск веб-интерфейса
 * proxychecker — простой прокси чекер, работающий на основе WWW:ProxyChecker
 * config.pl    — настройки изображений/видео/текста, распознавания капчи
 * configs      — настройки для режимов работы (Wipe, AutoBump, Delete, ProxyChecker)
@@ -27,6 +28,10 @@ ahushh@gmail.com
 
 Примеры использования
 ---------------------
+Веб-интерфейс:
+ ./wpcw daemon
+потом в браузере открыть http://localhost:3000
+
 Вайп:
  ./cpcw --mode Wipe --chan Nullchan --proxy proxy/my/0chan
 
