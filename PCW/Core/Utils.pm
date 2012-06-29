@@ -218,7 +218,7 @@ sub shellquote($)
 #------------------------------------------------------------------------------------------------
 sub readfile($;$)
 {
-    my ($path, $enc) = shift;
+    my ($path, $enc) = @_;
     open my $fh, '<'. ($enc ? ":$enc" : ''), $path;
     local $/ = undef unless wantarray();
     my @data = <$fh>;

@@ -30,6 +30,8 @@ ahushh@gmail.com
 ---------------------
 Веб-интерфейс:
  ./wpcw daemon
+или в винде:
+ perl .\wpcw daemon
 потом в браузере открыть http://localhost:3000
 
 Вайп:

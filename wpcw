@@ -8,13 +8,14 @@ use Carp;
 use lib 'lib';
 binmode(STDOUT, ":utf8");
 
+our $DEBUG = 0;
 #-----------------------------------------------------------------------------
 use MIME::Base64; 
 use Getopt::Long qw/:config bundling/;
 use File::Spec;
 use File::Temp qw/tempfile/;
 #-----------------------------------------------------------------------------
-use PCW::Core::Utils qw/get_proxylist/;
+use PCW::Core::Utils qw/get_proxylist readfile/;
 use PCW::Core::Log;
 #-----------------------------------------------------------------------------
 # Global variables
@@ -43,7 +44,7 @@ my %cnf = (
     mode_config   => 'configs/Wipe.pl',
 
     loglevel   => 1,
-    lognocolor => undef,
+    lognocolor => 0,
     logfile    => $log_file_path,
 );
 
@@ -53,8 +54,9 @@ my %cnf = (
 sub load_configs()
 {
     our ($img, $msg, $vid, $captcha_decode);
-    require $cnf{common_config};
-    require $cnf{mode_config};  #-- load %mode_config
+    our %mode_config;
+    do $cnf{common_config};
+    do $cnf{mode_config};  #-- load %mode_config
 
     $mode_config{img_data} = $img;
     $mode_config{msg_data} = $msg;
@@ -77,7 +79,9 @@ sub load_agents()
 sub load_chan()
 {
     my $package = File::Spec->catfile('chans', "$cnf{chan}.pl");
-    require "$package"; #-- load $chan_config
+    say $chan_config->{urls}{post} if $DEBUG;
+    do "$package"; #-- load $chan_config
+    say $chan_config->{urls}{post} if $DEBUG;
 }
 
 sub load_logging()
@@ -89,6 +93,7 @@ sub load_engine()
 {
     my $package = "PCW::Engine::". $chan_config->{engine};
     eval("use $package");
+    say "$package" if $DEBUG;
     Carp::croak($@) if ($@);
     $engine = $package->new(%$chan_config, agents => \@agents, log => $logging, verbose => $cnf{verbose});
 }
@@ -96,6 +101,7 @@ sub load_engine()
 sub load_mode()
 {
     my $package = "PCW::Modes::$cnf{mode}";
+    say "$package" if $DEBUG;
     eval("use $package");
     Carp::croak($@) if ($@);
     return $package->new(engine   => $engine,
@@ -116,6 +122,7 @@ sub load_all()
     load_chan();         #-- load $chan_config
     load_logging();
     load_engine();
+    say 'loaded' if $DEBUG;
     return load_mode();
 }
 
@@ -150,7 +157,6 @@ get '/stop'  => sub {
 
 get '/reload' => sub {
     my $self = shift;
-    $pcw->stop; #-- на всякий случай
     $pcw = load_all();
     $self->render(text => '');
 };
@@ -203,7 +209,7 @@ get '/log/read' => sub {
   $stream->on(
     close => sub {
       my $stream = shift;
-      say "Close";    # DEBUG
+      say "Close" if $DEBUG;    # DEBUG
       $self->finish("event:log\ndata:Log Closed<br><br>\n\n") if ( $self && $self->tx && !$self->tx->is_finished );
     }
   );
@@ -211,7 +217,7 @@ get '/log/read' => sub {
   $stream->on(
     error => sub {
       my ( $stream, $err ) = @_;
-      say "MY Error: $err";    # DEBUG
+      say "MY Error: $err" if $DEBUG;    # DEBUG
       $self->finish("event:log\ndata:Error...Closing<br><br>\n\n") if ( $self && $self->tx && !$self->tx->is_finished );
     }
   );
@@ -222,9 +228,7 @@ get '/log/read' => sub {
   $self->on(
     finish => sub {
       my $self = shift;
-      say "Finishing";         # DEBUG
-#    Mojo::IOLoop->singleton->drop($fh);
-#    $stream->close;
+      # say "Finishing";         # DEBUG
       # Kill child
       kill( "TERM", $pid ) if $pid;
       undef $pid;
@@ -233,7 +237,7 @@ get '/log/read' => sub {
 };
 
 #-----------------------------------------------------------------------------
-# config
+# editing config
 #-----------------------------------------------------------------------------
 get '/config/get' => [ format => ['json'] ] => sub {
     my $self = shift;
@@ -249,10 +253,34 @@ get '/config/set/(:var)/(:val)' => sub {
     {
         $cnf{'mode_config'} = File::Spec->catfile('configs', "$val.pl"),
     }
+    use Data::Dumper; say Dumper %cnf  if $DEBUG;
     $self->render(text => 'ok');
 };
+
 #-----------------------------------------------------------------------------
-# get/set
+# Read/Write config files
+#-----------------------------------------------------------------------------
+get '/config/read/:name'  => sub {
+    my $self = shift;
+    my $name = $self->param('name');
+    my $filename = $cnf{$name . '_config'};
+    my $content = readfile($filename, 'utf8');
+    $self->render(text => $content);
+};
+
+post '/config/write/:name'  => sub {
+    my $self = shift;
+    my $name = $self->param('name');
+    my $filename  = $cnf{$name . '_config'};
+    my $content   = $self->param('content');
+    open my $fh, '>', $filename;
+    print $fh $content;
+    close $fh;
+    $self->render(text => 'ok');
+};
+
+#-----------------------------------------------------------------------------
+# get mode or chan list
 #-----------------------------------------------------------------------------
 get '/get/:var' => [ format => ['json'] ] => sub {
     my $self = shift;
@@ -269,8 +297,13 @@ get '/get/:var' => [ format => ['json'] ] => sub {
             my @chans = map { m|/(\w+)\.pl|; $1 } glob("chans/*.pl");
             $self->render_json([ @chans ]);
         }
+        when('proxy_type')
+        {
+            $self->render_json([ qw/http socks socks4/ ]);
+        }
     }
 };
+
 
 get '/style.css' => 'style';
 #-----------------------------------------------------------------------------
@@ -285,8 +318,9 @@ __DATA__
 @@ style.css.ep
 html {
     height: 90%;
-    background: url("/desu.gif") no-repeat bottom left grey;
+    background: grey;
 }
+
 body {
     height: 90%;
 }
@@ -301,7 +335,7 @@ a:hover {
 }
 
 #status {
-    color: red;
+    color: #5cff00;
     font-size: 17pt;
 }
 
@@ -319,64 +353,45 @@ a:hover {
     padding: 5px;
 }
 
+#editorContainer {
+    display: none;
+}
+
 #summary {
     width: 30%;
     height: 80%;
     float: left;
     padding: 5px;
+    background: url("/desu.gif") no-repeat bottom left grey;
 }
 
 @@ index.html.ep
+% our $VERSION = '0.2.2-80';
 %= javascript 'http://code.jquery.com/jquery-1.7.2.min.js'
 %= javascript begin
 // config
 function setConfig(variable, value) {
     $.get('/config/set/' + variable + '/' + btoa(value));
-    updateConfig();
 }
 
 function updateConfig() {
     $.getJSON('/config/get.json', function(data) {
-        $('#config').empty();
-        $('#config').append("Chan: <a id='chan' class='menuJSON' href='#'>"+ data['chan'] +"</a><br>");
-        $('#config').append('<span id="chan_menu" style="display: none"></span>');
-
-        $('#config').append("Mode: <a id='mode' class='menuJSON' href='#'>"+ data['mode'] +"</a><br>");
-        $('#config').append('<span id="mode_menu" style="display: none"></span>');
-
-        $('#config').append("Common config: <a id='common_config' class='input' href='#'>" + data['common_config'] +"</a><br>");
-        $('#config').append('<span id="common_config_input" style="display: none"></span>');
-
-        $('#config').append("Mode config: <a id='mode_config' class='input' href='#'>"   + data['mode_config']   +"</a><br>");
-        $('#config').append('<span id="mode_config_input" style="display: none"></span>');
-
-        $('#config').append("Proxy file: <a id='proxy_file' class='input' href='#'>"     + data['proxy_file']    +"</a><br>");
-        $('#config').append('<span id="proxy_file_input" style="display: none"></span>');
-
-        $('#config').append("Proxy type: <a id='proty_type' class='input' href='#'>"     + data['proxy_type']    +"</a><br>");
-        $('#config').append('<span id="proxy_type_input" style="display: none"></span>');
-
-        $('#config').append("Loglevel: <a id='loglevel' class='input' href='#'>"         + data['loglevel']      +"</a><br>");
-        $('#config').append('<span id="loglevel_input" style="display: none"></span>');
-
-        $('#config').append("Lognocolor: <a id='lognocolor' class='input' href='#'>"     + data['lognocolor']    +"</a><br>");
-        $('#config').append('<span id="lognocolor_input" style="display: none"></span>');
-
-        $('#config').append("Verbose: <a id='verbose' class='input' href='#'>"           + data['verbose']       +"</a><br>");
-        $('#config').append('<span id="verbose_input" style="display: none"></span>');
-
-        $('#config').append("UserAgents: <a id='useragents' class='input' href='#'>"     + data['useragents']    +"</a><br>");
-        $('#config').append('<span id="useragents_input" style="display: none"></span>');
-
+        for (k in data) {
+            $('#' + k).empty();
+            $('#' + k).append(data[k]);
+        }
         $('#config a.input').each(function(i) {
             var elem = this.id;
 
-            $('#'+ elem +'_input').append('<input type="text" value="'+ $('#' + elem).html() +'" class="'+ elem +'"><br>');
+            $('#' + elem + '_input').empty();
+            $('#' + elem + '_input').append('<input type="text" value="'+ $('#' + elem).html() +'" class="'+ elem +'"><br>');
 
             $('#'+ elem + '_input input').blur(function() {
                 var newVal = $(this).val();
                 $('#'+ elem).html(newVal);
                 setConfig(elem, newVal);
+                $('#' + elem + '_input').empty();
+                $('#' + elem + '_input').append('<input type="text" value="'+ newVal +'" class="'+ elem +'"><br>');
             });
             $('#'+ elem).click(function() {
                 $('#' + elem +'_input').toggle();
@@ -394,8 +409,13 @@ function updateConfig() {
                 });
 
                 $.each(items, function(i, val) {
-                    $('#'+ elem +'_menu').append(' <a href="#" class="'+ elem +'">' + val  + '</a><br>');
+                    $('#'+ elem +'_menu').empty();
                 });
+
+                $.each(items, function(i, val) {
+                    $('#'+ elem +'_menu').append('&nbsp; <a href="#" class="'+ elem +'">' + val  + '</a><br>');
+                });
+
                 $('#'+ elem + '_menu a').click(function() {
                     var newVal = $(this).html();
                     $('#'+ elem).html(newVal);
@@ -415,6 +435,8 @@ function updateStats() {
         if (data) {
             $('#stats').empty();
             $.each(data, function(key, val) {
+                key = key.charAt(0).toUpperCase() + key.slice(1);
+                key = key.replace('_', ' ');
                 $('#stats').append(key + ' : ' + val + '<br/>');
             });
         }
@@ -431,49 +453,62 @@ $(document).ready(function(){
         $("#log").scrollTop( $("#log").scrollTop() + 1000 );
     }, false);
 
+
     // status
     setInterval(function() {
         $.get('/status', function(data) {
             $('#status').html(data);
         });
     }, 2000);
-
-    // stats
-    var statsInterval;
-    setInterval(function() {  // если произошел выход не по нажатию статуса
-        if ($('#status').html() == 'start') {
-            clearInterval(statsInterval);
-        }
-    }, 3000);
-
     $("#status").click(function() {
         if ($(this).html() == 'start') {
             $.get('/start');
-            statsInterval = setInterval(updateStats, 5000);
-            updateStats();
         } else {
             $.get('/stop');
-            clearInterval(statsInterval);
         }
     });
+
+    // stats
+    var statsInterval = setInterval(updateStats, 5000);
 
     // clear log
     $("#clearLog").click(function() {
         $("#log").empty();
     });
 
-    // reload
+    // reload config
     $("#reload").click(function() {
         var c = $(this);
         $.get('/reload');
         c.html('…');
-        setTimeout( function() { c.html('apply') }, 1000 );;
+        setTimeout( function() { c.html('reload') }, 1000 );;
     });
+
+    // config editor
+    $(".edit").click(function(modeName) {
+        $('#logContainer').css('display', 'none');
+        $('#editorContainer').css('display', 'block');
+        var cnfName = $(this).attr('name');
+        $('#saveConfig').attr('name', cnfName);
+        $.get('/config/read/' + cnfName, function(data) {
+            $('#editor').val( data );
+        });
+    });
+    $("#saveConfig").click(function() {
+        var data = $('textarea#editor').val();
+        $.post('/config/write/' + $(this).attr('name'), { content: data });
+        $('#logContainer').css('display', 'block');
+        $('#editorContainer').css('display', 'none');
+    });
+    $("#hideConfig").click(function() {
+        $('#logContainer').css('display', 'block');
+        $('#editorContainer').css('display', 'none');
+    });
+
     updateStats();
     updateConfig();
 });
-
-% end 
+% end
 
 <!DOCTYPE html>
 <html>
@@ -482,20 +517,47 @@ $(document).ready(function(){
 <link type="text/css" href="/style.css" rel="stylesheet">
 </head>
 <body>
-    <div class="ui">
-        <a href="#" id="status">start</a>
+    <span style='color:red; font-size: 17pt;'>Perl Chan Wiper v<%= $VERSION %></span> — <a href="#" id="status">start</a>
     <hr>
     <div id="summary">
       <h4>Configure</h4>
-      <div id="config"></div>
-      [ <a href="#" id="reload">apply</a> ]
+      <div id="config">
+        Chan: <a id='chan' class='menuJSON' href='#'></a><br>
+        <span id="chan_menu" style="display: none"></span>
+        Mode: <a id='mode' class='menuJSON' href='#'></a><br>
+        <span id="mode_menu" style="display: none"></span>
+        [<a class='edit' href='#' name='common'>edit</a>] Common config: <a id='common_config' class='input' href='#'></a><br>
+        <span id="common_config_input" style="display: none"></span>
+        [<a class='edit' href='#' name='mode'>edit</a>] Mode config: <a id='mode_config' class='input' href='#'></a><br>
+        <span id="mode_config_input" style="display: none"></span>
+        Proxy file: <a id='proxy_file' class='input' href='#'></a><br>
+        <span id="proxy_file_input" style="display: none"></span>
+        Proxy type: <a id='proxy_type' class='menuJSON' href='#'></a><br>
+        <span id="proxy_type_menu" style="display: none"></span>
+        Loglevel: <a id='loglevel' class='input' href='#'></a><br>
+        <span id="loglevel_input" style="display: none"></span>
+        Lognocolor: <a id='lognocolor' class='input' href='#'></a><br>
+        <span id="lognocolor_input" style="display: none"></span>
+        Verbose: <a id='verbose' class='input' href='#'></a><br>
+        <span id="verbose_input" style="display: none"></span>
+        UserAgents: <a id='useragents' class='input' href='#'></a><br>
+        <span id="useragents_input" style="display: none"></span>
+     </div>
+      [ <a href="#" id="reload">reload</a> ]
       <hr>
       <h4>Stats</h4>
       <div id="stats"></div>
     </div>
-    <h4>Log</h4>
-    [ <a href="#" id="clearLog">clear log</a> ]
-    <div id="log">
+    <div id="logContainer">
+      <h4>Log</h4>
+      [ <a href="#" id="clearLog">clear log</a> ]
+      <div id="log"> </div>
+    </div>
+    <div id="editorContainer">
+      <h4>Editor</h4>
+      [ <a href="#" id="saveConfig">save</a> - <a href="#" id='hideConfig'>close</a> ]
+      <textarea name='' id='editor' rows='50' cols='120'>
+      </textarea>
     </div>
 </body>
 </html>
