@@ -136,19 +136,16 @@ sub _get_post_content($%)
     my $nofile   = $config{nofile};
 
     my $content = {
-        'task'       => 'post',
-        'name'       => '',
-        'link'       => '',
-        'gb2'        => 'board',
-        'email'      => $email,
-        'subject'    => $subject,
-        'password'   => $password,
+        task       => 'post',
+        name       => '',
+        link       => '',
+        gb2        => 'board',
+        email      => $email,
+        subject    => $subject,
+        password   => $password,
     };
-    $content->{nofile} = $nofile
-        if ($nofile);
-
-    $content->{thread} = $thread
-        if ($thread);
+    $content->{nofile} = $nofile if $nofile;
+    $content->{thread} = $thread || 0;
 
     return $content;
 }
@@ -224,8 +221,11 @@ sub get($$$$)
         $log->pretty_proxy(1, 'green', $task->{proxy}, 'GET', '[SUCCESS]{ok..recaptcha obtaining went well}');
         $task->{content} = { @fields };
     }
-    my $path_to_captcha = save_file($captcha_img, $self->{captcha_extension});
-    $task->{path_to_captcha} = $path_to_captcha;
+    if ($captcha_img)
+    {
+        my $path_to_captcha = save_file($captcha_img, $self->{captcha_extension});
+        $task->{path_to_captcha} = $path_to_captcha;
+    }
 
     my $headers = HTTP::Headers->new(%{ $self->_get_post_headers(%{ $task->{post_cnf} }) });
     $headers->user_agent(rand_set(set => $self->{agents}));

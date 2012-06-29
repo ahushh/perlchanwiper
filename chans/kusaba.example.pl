@@ -89,6 +89,7 @@ our $chan_config =
         threads_regexp => '(?<thread><span class="filesize">.+?<a name="(?<id>\d+)"></a>.+?<br clear="left" /><hr />)',
         catalog_regexp => '/res/(?<id>\d+).html',
         text_regexp    => '',
+        img_regexp     => '(?<img>)',
     },
 
     headers => {

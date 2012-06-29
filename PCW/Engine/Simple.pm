@@ -88,7 +88,7 @@ sub _get_page_url($%)
 sub _get_thread_url($%)
 {
     my ($self, %config) = @_;
-    Carp::croak("Board and thread are not set!")
+    Carp::croak("Board and thread are not set! at _get_thread_url")
         unless($config{board} && $config{thread});
 
     return sprintf $self->{urls}{thread}, $config{board}, $config{thread};
@@ -144,6 +144,7 @@ sub is_thread_on_page($%)
     my $task = { proxy => $config{proxy} };
     my $cnf  = { page  => $config{page}, board => $config{board} };
 
+    $log->msg(2, "Looking for $config{thread} thread on $config{page} page...");
     my ($page, undef, $status) = $self->get_page($task, $cnf);
     $log->msg(2, "Page $config{page} downloaded: $status");
     my %threads = $self->get_all_threads($page);
@@ -399,7 +400,7 @@ sub ban_check($$$)
     my %content = %{ merge_hashes( $self->_get_post_content(%{ $task->{post_cnf} }), $self->{fields}{post}) };
     #---- Form data
     #-- Message
-    if ($cnf->{msg_data}{mode} ne 'no')
+    if ($cnf->{msg_data}{text})
     {
         my $text = make_text( $self, $task, $cnf->{msg_data} );
         $content{ $self->{fields}{post}{msg} } = $text;

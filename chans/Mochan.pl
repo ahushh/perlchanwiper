@@ -13,7 +13,7 @@ our $chan_config =
 
     response => {
         post => {
-            banned        => [403, 'CDN', 'Доступ к отправке сообщений с этого ip закрыт'],
+            banned        => [403, 'Доступ к отправке сообщений с этого IP закрыт'],
             net_error     => ['Service Unavailable Connection', 502],
             post_error    => [
                               'Этот файл уже был загружен',
@@ -21,6 +21,7 @@ our $chan_config =
                              ],
             wrong_captcha => [
                               'Неверный код подтверждения',
+                              'Вероятно, вы забыли ввести капчу для отправки сообщений',
                              ],
             flood         => [
                               'Обнаружен флуд, пост не отправлен',
@@ -69,7 +70,8 @@ our $chan_config =
     html => {
         replies_regexp => '(?<post><table id="post_(?<id>\d+)" class="post">.+?</table>(<table|</div))',
         threads_regexp => '(?<thread><div id="thread_(?<id>\d+)" class="thread">.+?</div><br style="clear:left;" />)',
-        text_regexp    => '',
+        text_regexp    => '<blockquote id="m\d+" class="postMessage"><p>(?<text>.*)</p></blockquote>',
+        img_regexp     => '(?<img>)',
     },
 
     headers => {

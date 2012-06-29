@@ -112,12 +112,12 @@ sub _is_thread_on_page_catalog($%)
     my $pattern = $self->{html}{catalog_regexp};
     my $task    = { proxy => $cnf{proxy} };
     my $c_cnf   = { board => $cnf{board} };
+    $log->msg(2, "Looking for $cnf{thread} thread on the catalog...");
     my ($html, undef, $status) = $self->get_catalog($task, $c_cnf);
     $log->msg(2, "Catalog was downloaded: $status");
 
     my (%threads, $count);
     while ($html =~ /$pattern/sg)
-    # while ($html =~ /$pattern/mg)
     {
         $threads{ $count++ } = $+{id};
     }
@@ -180,7 +180,7 @@ sub _get_post_content($$%)
     my $nofile   = $config{nofile};
 
     my $content = {
-        MAX_FILE_SIZE => 10240000, 
+        MAX_FILE_SIZE => 10240000,
         email         => $email,
         subject       => $subject,
         password      => $password,

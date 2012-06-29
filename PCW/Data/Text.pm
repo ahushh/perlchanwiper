@@ -55,33 +55,36 @@ sub post_msg($$$)
     state %replies;
     state $time = time;
 
+    my $thread = $data->{thread} || $task->{post_cnf}{thread};
+    my $board  = $data->{board}  || $task->{post_cnf}{board};
     $lock->down;
-    if (!%replies or ($data->{update} && (time() - $time) >= $data->{update}))
+    if (!$replies{$thread} or ($data->{update} && (time() - $time) >= $data->{update}))
     {
         my $get_task = { proxy  => 'no_proxy' };
-        my $cnf      = { thread => ($data->{thread} || $task->{post_cnf}{thread}),
-                         board  => ($data->{board}  || $task->{post_cnf}{board} ) };
+        my $cnf      = { thread => $thread, board => $board };
         my $c = async {
             my ($html, $status, $took);
+            $log->msg(3, "Looking for posts on $cnf->{thread} thread...");
             if (-e $data->{thread}) #-- read html form a file on disk
             {
                 $status = $data->{thread};
                 $html   = readfile($data->{thread});
                 $took   = 0;
             }
-            else #-- download the thread
+            else#-- download the thread
             {
                 $log->msg(3, "Downloading $cnf->{thread} thread...");
                 ($html, undef, $status) = took { $engine->get_thread($get_task, $cnf) } \$took;
             }
-            %replies = $engine->get_all_replies($html);
-            $log->msg(2, scalar(keys %replies) ." posts were found in $cnf->{thread} thread: $status (took $took sec.)");
+            my %r = $engine->get_all_replies($html);
+            $replies{$thread} = \%r;
+            $log->msg(2, scalar(keys %{$replies{$thread}} ) ." posts were found in $cnf->{thread} thread: $status (took $took sec.)");
         };
         $c->join();
     }
     $lock->up;
     my $take = $data->{take};
-    my $c = async { &$take($engine, $task, $data, \%replies) };
+    my $c = async { &$take($engine, $task, $data, $replies{$thread}) };
     return $c->join();
 }
 
