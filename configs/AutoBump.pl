@@ -6,11 +6,11 @@ use constant BOARD    => 'b';
 use constant THREAD   => 10499356;
 use constant PASSWORD => 'fNfR3';
 
-use constant BUMP_TIMEOUT => 60;
+use constant BUMP_TIMEOUT => 160;
 use constant INTERVAL     => 60*1;      #--Проверять, нужен ли бамп, через заданный интервал
 
 use constant SILENT_BUMP   => 1;       #-- Удалять бампы. 0 для отключения
-use constant REGEXP        => 'bump';  #-- Регэксп, по которому искать посты. e.g '.*' — все посты, 'bump' — содержащие слово bump
+use constant REGEXP        => 'autobump';  #-- Регэксп, по которому искать посты. e.g '.*' — все посты, 'bump' — содержащие слово bump
 use constant DELETE_TIMOUT => 60;
 
 #-- Условие для бампа
@@ -68,28 +68,28 @@ my $w_coros_cb = sub
 my $w_target_cnf = { #-- текущая конфигурация - ищется последний номер RMT на доске _nrmt
                     interval  => 60*10,  #-- интервал обновления списка постов
                     #-- найденные номера постов будут присвоены $post_cnf{thread}
-                    board     => '_nrmt',   #-- доска, на которой искать треды
+                    board     => 'b',   #-- доска, на которой искать треды
                     #board     => 'b',   #-- доска, на которой искать треды
                     take      => 'last', #-- all - все посты, random - случайный, last - последний
 
-                    # threads => {
-                    #             #post_limit => 300,  #-- TODO
-                    #             #regexp  => '311',   #-- фильтровать по регэкспу
-                    #             #pages   => [0], #-- на каких страницах искать треды, в которые нужно отвечать
-                    #             #include => 0,
-                    #             #in_text => '',     #-- искать номера постов в тексте треда по регэкспу
-                    #             #regexp  => '<blockquote><div class="postmessage">(\s+)?</div></blockquote>',
-                    #             #pages   => [0], #-- на каких страницах искать треды, в которые нужно отвечать
-                    #             #include => 1,
-                    #             #in_text => '',     #-- искать номера постов в тексте треда по регэкспу
-                    #            },
-                    replies => {
-                        include => 1,
+                     threads => {
+                                 #post_limit => 300,  #-- TODO
+                                 regexp  => 'kuudere',   #-- фильтровать по регэкспу
+                                 pages   => [0..4], #-- на каких страницах искать треды, в которые нужно отвечать
+                                 include => 1,
+                                 #in_text => '',     #-- искать номера постов в тексте треда по регэкспу
+                                 #regexp  => '<blockquote><div class="postmessage">(\s+)?</div></blockquote>',
+                                 #pages   => [0], #-- на каких страницах искать треды, в которые нужно отвечать
+                                 #include => 1,
+                                 #in_text => '',     #-- искать номера постов в тексте треда по регэкспу
+                                },
+                    #replies => {
+                     #   include => 1,
                         #threads => 'found', #-- искать в уже найденных тредах (см. выше)
-                        threads => [1199], #-- искать в уже найденных тредах (см. выше)
-                        regexp  => '',    #-- филтровать по регэкспу
-                        in_text => '&gt;&gt;/b/(?<post>\d+)',     #-- искать номера постов в тексте ответа по регэкспу
-                    },
+                      #  threads => [1199], #-- искать в уже найденных тредах (см. выше)
+                       # regexp  => '',    #-- филтровать по регэкспу
+                        #in_text => '&gt;&gt;/b/(?<post>\d+)',     #-- искать номера постов в тексте ответа по регэкспу
+                    #},
 
                    };
 
@@ -136,15 +136,15 @@ our %mode_config = (
         #                          #   2 - выполнить ф-ю только перед стартом и не инициализировать
         #     type     => 'timer', #-- тип вотчера, пока только AnyEvent->timer
         # },
-        # target => {  #-- поиск треда
-        #     cb       => $w_target_cb,
-        #     after    => $w_target_cnf->{interval},
-        #     interval => $w_target_cnf->{interval},
-        #     conf     => $w_target_cnf,
-        #     on_start => 1,       #-- 1 - выполнять ф-ю перед стартом
-        #                          #   2 - выполнить ф-ю только перед стартом и не инициализировать
-        #     type     => 'timer', #-- тип вотчера, пока только AnyEvent->timer
-        # },
+         target => {  #-- поиск треда
+             cb       => $w_target_cb,
+             after    => $w_target_cnf->{interval},
+             interval => $w_target_cnf->{interval},
+             conf     => $w_target_cnf,
+             on_start => 1,       #-- 1 - выполнять ф-ю перед стартом
+                                  #   2 - выполнить ф-ю только перед стартом и не инициализировать
+             type     => 'timer', #-- тип вотчера, пока только AnyEvent->timer
+         },
     },
 );
  
