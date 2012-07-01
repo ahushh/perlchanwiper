@@ -40,7 +40,7 @@ sub _get_ocr($;$$)
         ) .
         ( defined $lang   ? " -l $lang"         : '' ) .
         ( defined $config ? " nobatch $config"  : '' ) .
-        ( $^O =~ /linux/  ? " 2>/dev/null 1>&2" : '' );
+        ( $^O =~ /linux/  ? " 2>/dev/null 1>&2" : ' > NUL' );
 
     system $cmd;
     return readfile("$tif.txt");

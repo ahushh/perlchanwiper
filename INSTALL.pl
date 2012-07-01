@@ -41,10 +41,10 @@ liblwp-protocol-socks-perl
 libje-perl
 libstring-shellquote-perl
 libfile-which-perl
-# нужно еще найти эти два пакета:
-# Mojolicious::Lite
-# HTML::FromANSI
+libmojolicious-perl
 /;
+# нужно еще найти
+# HTML::FromANSI
 
 if ($ARGV[0] eq 'windows')
 {
@@ -58,7 +58,7 @@ else
 given ($ARGV[0])
 {
     when ('debian' ) { system "sudo apt-get install @debian";
-                       system "sudo cpan Mojolicious::Lite HTML::FromANSI";
+                       system "sudo cpan HTML::FromANSI";
                      }
     when ('gentoo' ) { system "sudo g-cpan @packages"        }
     when ('windows') { system "cpan @packages"               }

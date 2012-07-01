@@ -88,7 +88,7 @@ FAQ
     или
     /usr/share/tesseract-ocr/tessdata/configs
     для винды
-    c:\program files\tesseract-ocr\tessdata\configss
+    c:\program files\tesseract-ocr\tessdata\configs
 
 2.  Отредактировать его например так (для английских строчных буквы):
     tessedit_char_whitelist abcdefghijklmnopqrstuvwxyz
