@@ -17,6 +17,7 @@ use File::Temp qw/tempfile/;
 #-----------------------------------------------------------------------------
 use PCW::Core::Utils qw/get_proxylist readfile/;
 use PCW::Core::Log;
+use Storable;
 #-----------------------------------------------------------------------------
 # Global variables
 #-----------------------------------------------------------------------------
@@ -31,7 +32,7 @@ my $logging;
 #-----------------------------------------------------------------------------
 # Config
 #-----------------------------------------------------------------------------
-my ($fh, $log_file_path) = tempfile('pcw-log-XXXXXX', UNLINK => 1, SUFFIX => ".log");
+my $lastcnf = '.lastcnf';
 my %cnf = (
     chan       => 'Mochan',
     mode       => 'Wipe',
@@ -41,16 +42,25 @@ my %cnf = (
     proxy_type => 'http',
 
     common_config => 'config.pl',
-    mode_config   => 'configs/Wipe.pl',
+    mode_config   => File::Spec->catfile('configs', 'Wipe.pl'),
 
     loglevel   => 1,
     lognocolor => 0,
-    logfile    => $log_file_path,
 );
 
 #-----------------------------------------------------------------------------
 # Load
 #-----------------------------------------------------------------------------
+sub load_cnf()
+{
+    if (-e $lastcnf)
+    {
+        %cnf = %{ retrieve($lastcnf) };
+    }
+    my ($fh, $log_file_path) = tempfile('pcw-log-XXXXXX', UNLINK => 1, SUFFIX => ".log");
+    $cnf{logfile} = $log_file_path;
+}
+
 sub load_configs()
 {
     our ($img, $msg, $vid, $captcha_decode);
@@ -114,6 +124,7 @@ sub load_mode()
 #-----------------------------------------------------------------------------
 # RUN
 #-----------------------------------------------------------------------------
+load_cnf(); #-- read %cnf from disk if it exist
 sub load_all()
 {
     load_configs();      #-- load %mode_config
@@ -157,6 +168,7 @@ get '/stop'  => sub {
 
 get '/reload' => sub {
     my $self = shift;
+    store \%cnf, $lastcnf;
     $pcw = load_all();
     $self->render(text => '');
 };
@@ -199,7 +211,7 @@ get '/log/read' => sub {
   $stream->on(
     read => sub {
       my ( $stream, $chunk ) = @_;
-      my $h  = HTML::FromANSI->new(fill_cols => 1, style => '<line-height: 1; letter-spacing: 0; font-size: 6pt>');
+      my $h  = HTML::FromANSI->new(fill_cols => 1, style => 'line-height: 1; letter-spacing: 0; font-size: 9pt');
       $h->add_text($chunk);
       $chunk = $h->html;
       $self->write("event:log\ndata:$chunk\n\n");
@@ -249,29 +261,25 @@ get '/config/set/(:var)/(:val)' => sub {
     my $var  = $self->param('var');
     my $val  = decode_base64($self->param('val'));
     $cnf{$var} = $val;
-    if ($var eq 'mode')
-    {
-        $cnf{'mode_config'} = File::Spec->catfile('configs', "$val.pl"),
-    }
     use Data::Dumper; say Dumper %cnf  if $DEBUG;
     $self->render(text => 'ok');
 };
 
 #-----------------------------------------------------------------------------
-# Read/Write config files
+# Read/Write files
 #-----------------------------------------------------------------------------
-get '/config/read/:name'  => sub {
+get '/file/read/:name'  => sub {
     my $self = shift;
     my $name = $self->param('name');
-    my $filename = $cnf{$name . '_config'};
+    my $filename = $cnf{$name};
     my $content = readfile($filename, 'utf8');
     $self->render(text => $content);
 };
 
-post '/config/write/:name'  => sub {
+post '/file/write/:name'  => sub {
     my $self = shift;
     my $name = $self->param('name');
-    my $filename  = $cnf{$name . '_config'};
+    my $filename  = $cnf{$name};
     my $content   = $self->param('content');
     open my $fh, '>', $filename;
     print $fh $content;
@@ -366,9 +374,13 @@ a:hover {
 }
 
 @@ index.html.ep
-% our $VERSION = '0.2.2-80';
+% our $VERSION = '0.2.2-82';
 %= javascript 'http://code.jquery.com/jquery-1.7.2.min.js'
 %= javascript begin
+var cnf = {
+    autoscroll: true,
+};
+
 // config
 function setConfig(variable, value) {
     $.get('/config/set/' + variable + '/' + btoa(value));
@@ -390,8 +402,8 @@ function updateConfig() {
                 var newVal = $(this).val();
                 $('#'+ elem).html(newVal);
                 setConfig(elem, newVal);
-                $('#' + elem + '_input').empty();
-                $('#' + elem + '_input').append('<input type="text" value="'+ newVal +'" class="'+ elem +'"><br>');
+                // $('#' + elem + '_input').empty();
+                // $('#' + elem + '_input').append('<input type="text" value="'+ newVal +'" class="'+ elem +'"><br>');
             });
             $('#'+ elem).click(function() {
                 $('#' + elem +'_input').toggle();
@@ -430,50 +442,89 @@ function updateConfig() {
     });
 }
 
+// stats
 function updateStats() {
-    $.getJSON('/stats.json', function(data) {
-        if (data) {
-            $('#stats').empty();
-            $.each(data, function(key, val) {
+    var printStats = function(data) {
+        $.each(data, function(key, val) {
+            if (typeof(val) == 'object') {
+                key = key.charAt(0).toUpperCase() + key.slice(1);
+                key = key.replace('_', ' ');
+                $('#stats').append('<b>' + key + '</b> :<br/>');
+                printStats(val);
+            } else {
                 key = key.charAt(0).toUpperCase() + key.slice(1);
                 key = key.replace('_', ' ');
                 $('#stats').append(key + ' : ' + val + '<br/>');
-            });
+            }
+        });
+    };
+    $.getJSON('/stats.json', function(data) {
+        if (data) {
+            $('#stats').empty();
+            printStats(data);
         }
     });
 }
 
+// logging
+function printLog(str) {
+    $("#log").append(str);
+    if (cnf['autoscroll']) {
+        $("#log").scrollTop( $("#log").scrollTop() + 1000 );
+    }
+}
+
+function errorLog(str) {
+    $("#log").append('<tt><font face="fixedsys, lucida console, terminal, vga, monospace" style="line-height: 1; letter-spacing: 0; font-size: 10pt"><span style="color: red; background: black;">' + str + '<br></span></font></tt>');
+    if (cnf['autoscroll']) {
+        $("#log").scrollTop( $("#log").scrollTop() + 1000 );
+    }
+}
 //--------------------------------------------------------------------------
 
 $(document).ready(function(){
+    $(document).ajaxError(function (e, xhr, settings, exception) {
+        errorLog('Ajax Error at [' + settings.type + '] '  + settings.url + ': ' + '"' + xhr.responseText + '" (' + xhr.statusText + ')');
+    });
+
     // logging
     var logging = new EventSource('/log/read');
     logging.addEventListener('log', function(event) {
-        $("#log").append(event.data);
-        $("#log").scrollTop( $("#log").scrollTop() + 1000 );
+        printLog(event.data);
     }, false);
-
 
     // status
     setInterval(function() {
         $.get('/status', function(data) {
             $('#status').html(data);
         });
-    }, 2000);
+    }, 10000);
     $("#status").click(function() {
         if ($(this).html() == 'start') {
             $.get('/start');
         } else {
             $.get('/stop');
         }
+        $.get('/status', function(data) {
+            $('#status').html(data);
+        });
     });
-
     // stats
-    var statsInterval = setInterval(updateStats, 5000);
+    setInterval(updateStats, 5000);
 
     // clear log
     $("#clearLog").click(function() {
         $("#log").empty();
+    });
+
+    $("#autoscroll").click(function() {
+        if (cnf['autoscroll']) {
+            cnf['autoscroll'] = false;
+            $("#autoscroll").html('autoscroll(off)');
+        } else {
+            cnf['autoscroll'] = true;
+            $("#autoscroll").html('autoscroll(on)');
+        }
     });
 
     // reload config
@@ -484,23 +535,23 @@ $(document).ready(function(){
         setTimeout( function() { c.html('reload') }, 1000 );;
     });
 
-    // config editor
+    // file editor
     $(".edit").click(function(modeName) {
         $('#logContainer').css('display', 'none');
         $('#editorContainer').css('display', 'block');
-        var cnfName = $(this).attr('name');
-        $('#saveConfig').attr('name', cnfName);
-        $.get('/config/read/' + cnfName, function(data) {
+        var fileName = $(this).attr('name');
+        $('#saveFile').attr('name', fileName);
+        $.get('/file/read/' + fileName, function(data) {
             $('#editor').val( data );
         });
     });
-    $("#saveConfig").click(function() {
+    $("#saveFile").click(function() {
         var data = $('textarea#editor').val();
-        $.post('/config/write/' + $(this).attr('name'), { content: data });
+        $.post('/file/write/' + $(this).attr('name'), { content: data });
         $('#logContainer').css('display', 'block');
         $('#editorContainer').css('display', 'none');
     });
-    $("#hideConfig").click(function() {
+    $("#hideFile").click(function() {
         $('#logContainer').css('display', 'block');
         $('#editorContainer').css('display', 'none');
     });
@@ -526,11 +577,11 @@ $(document).ready(function(){
         <span id="chan_menu" style="display: none"></span>
         Mode: <a id='mode' class='menuJSON' href='#'></a><br>
         <span id="mode_menu" style="display: none"></span>
-        [<a class='edit' href='#' name='common'>edit</a>] Common config: <a id='common_config' class='input' href='#'></a><br>
+        [<a class='edit' href='#' name='common_config'>edit</a>] Common config: <a id='common_config' class='input' href='#'></a><br>
         <span id="common_config_input" style="display: none"></span>
-        [<a class='edit' href='#' name='mode'>edit</a>] Mode config: <a id='mode_config' class='input' href='#'></a><br>
+        [<a class='edit' href='#' name='mode_config'>edit</a>] Mode config: <a id='mode_config' class='input' href='#'></a><br>
         <span id="mode_config_input" style="display: none"></span>
-        Proxy file: <a id='proxy_file' class='input' href='#'></a><br>
+        [<a class='edit' href='#' name='proxy_file'>edit</a>] Proxy file: <a id='proxy_file' class='input' href='#'></a><br>
         <span id="proxy_file_input" style="display: none"></span>
         Proxy type: <a id='proxy_type' class='menuJSON' href='#'></a><br>
         <span id="proxy_type_menu" style="display: none"></span>
@@ -550,12 +601,12 @@ $(document).ready(function(){
     </div>
     <div id="logContainer">
       <h4>Log</h4>
-      [ <a href="#" id="clearLog">clear log</a> ]
+      [ <a href="#" id="clearLog">clear log</a> - <a href="#" id="autoscroll">autoscroll(on)</a> ]
       <div id="log"> </div>
     </div>
     <div id="editorContainer">
       <h4>Editor</h4>
-      [ <a href="#" id="saveConfig">save</a> - <a href="#" id='hideConfig'>close</a> ]
+      [ <a href="#" id="saveFile">save</a> - <a href="#" id='hideFile'>close</a> ]
       <textarea name='' id='editor' rows='50' cols='120'>
       </textarea>
     </div>
