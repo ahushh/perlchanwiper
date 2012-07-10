@@ -46,6 +46,29 @@ libmojolicious-perl
 # нужно еще найти
 # HTML::FromANSI
 
+my @arch = qw/
+perl-yaml-syck
+perl-anyevent
+perl-carp-clan
+perl-coro
+perl-data-random
+perl-getopt-long
+perl-html-parser
+perl-list-moreutils
+perl-params-util
+ruby-term-ansicolor
+perl-data-random
+perl-file-find-rule
+perl-libwww
+perl-lwp-protocol-https
+perl-lwp-protocol-socks
+perl-javascript-spidermonkey
+perl-string-shellquote
+perl-file-which
+/;
+# нужно еще найти
+# HTML::FromANSI и Mojolicious::Lite
+
 if ($ARGV[0] eq 'windows')
 {
     push @packages, 'Win32::ShellQuote';
@@ -61,8 +84,12 @@ given ($ARGV[0])
                        system "sudo cpan HTML::FromANSI";
                      }
     when ('gentoo' ) { system "sudo g-cpan @packages"        }
+    when ('arch'   ) {
+                       system "sudo yaourt -S @arch";
+                       system "sudo cpan HTML::FromANSI Mojolicious::Lite";
+                     }
     when ('windows') { system "cpan @packages"               }
-    when ('cpan')    { system "sudo cpan @packages"          }
+    when ('cpan'   ) { system "sudo cpan @packages"          }
     default          { pod2usage(-verbose => 2);             }
 }
 
@@ -73,7 +100,7 @@ Install script
 
 =head1 SYNOPSIS 
 
-./INSTALL.pl [debian|gentoo|windows|cpan]
+./INSTALL.pl [debian|gentoo|arch|windows|cpan]
 
 =head1 Linux
 
@@ -93,6 +120,8 @@ Install tesseract or tesseract-ocr (program which will be used to solve captcha)
 
     sudo apt-get install tesseract-ocr imagemagick
 
+    sudo emerge imagemagick tesseract
+
 =item *
 
 If you use debian-based distro, install libssl-dev lib (is necessary for socks-proxy, https and some other things):
@@ -109,14 +138,17 @@ Dunno what its name is in other distros. Everything is ok without this library o
 
 =over
 
-=item I<Debian/Ubuntu (via apt)>
+=item I<Debian/Ubuntu (via apt and cpan)>
 
     ./INSTALL.pl debian
-
 
 =item I<Gentoo (required g-cpan)>
 
     ./INSTALL.pl gentoo
+
+=item I<Arch (via yaourt and cpan)>
+
+    ./INSTALL.pl arch
 
 =item I<Everything else>
 
