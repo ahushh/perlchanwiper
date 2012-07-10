@@ -57,7 +57,7 @@ sub load_cnf()
     {
         %cnf = %{ retrieve($lastcnf) };
     }
-    my ($fh, $log_file_path) = tempfile('pcw-log-XXXXXX', UNLINK => 1, SUFFIX => ".log");
+    my ($fh, $log_file_path) = tempfile('pcw-log-XXXXXX', UNLINK => 1, TMPDIR => 1, SUFFIX => ".log");
     $cnf{logfile} = $log_file_path;
 }
 
@@ -168,8 +168,8 @@ get '/stop'  => sub {
 
 get '/reload' => sub {
     my $self = shift;
-    store \%cnf, $lastcnf;
     $pcw = load_all();
+    store \%cnf, $lastcnf;
     $self->render(text => '');
 };
 
@@ -184,6 +184,11 @@ get '/stats' => [ format => ['json'] ] => sub {
 get '/status' => sub {
     my $self = shift;
     $self->render_json($pcw->{is_running} ? 'stop' : 'start');
+};
+
+get '/countproxies' => sub {
+    my $self = shift;
+    $self->render( text => scalar(@proxies) );
 };
 
 #-----------------------------------------------------------------------------
@@ -374,7 +379,7 @@ a:hover {
 }
 
 @@ index.html.ep
-% our $VERSION = '0.2.2-82';
+% our $VERSION = '0.2.2-83';
 %= javascript 'http://code.jquery.com/jquery-1.7.2.min.js'
 %= javascript begin
 var cnf = {
@@ -388,10 +393,19 @@ function setConfig(variable, value) {
 
 function updateConfig() {
     $.getJSON('/config/get.json', function(data) {
-        for (k in data) {
+        for (k in data) { // fill the configs fields
             $('#' + k).empty();
-            $('#' + k).append(data[k]);
+            if (k == 'lognocolor' || k == 'verbose') {
+                if (data[k] == 1) {
+                    $('#' + k).append('on');
+                } else {
+                    $('#' + k).append('off');
+                }
+            } else {
+                $('#' + k).append(data[k]);
+            }
         }
+
         $('#config a.input').each(function(i) {
             var elem = this.id;
 
@@ -407,6 +421,20 @@ function updateConfig() {
             });
             $('#'+ elem).click(function() {
                 $('#' + elem +'_input').toggle();
+            });
+        });
+
+        $('#config a.toggle').each(function(i) {
+            var elem = this.id;
+            $('#'+ elem).click(function() {
+                var val = $(this).html();
+                if (val == 'on') {
+                    $('#'+ elem).html('off');
+                    setConfig(elem, 0);
+                } else {
+                    $('#'+ elem).html('on');
+                    setConfig(elem, 1);
+                }
             });
         });
 
@@ -438,7 +466,9 @@ function updateConfig() {
                 });
             });
         });
-
+    });
+    $.get('/countproxies', function(data) {
+        $('#proxy_count').html(data);
     });
 }
 
@@ -484,7 +514,11 @@ function errorLog(str) {
 
 $(document).ready(function(){
     $(document).ajaxError(function (e, xhr, settings, exception) {
-        errorLog('Ajax Error at [' + settings.type + '] '  + settings.url + ': ' + '"' + xhr.responseText + '" (' + xhr.statusText + ')');
+        if (xhr.responseText) { 
+            $('html').html(xhr.responseText);
+        } else {
+            errorLog('Ajax Error at [' + settings.type + '] '  + settings.url + ': '  + xhr.statusText);
+        }
     });
 
     // logging
@@ -530,8 +564,11 @@ $(document).ready(function(){
     // reload config
     $("#reload").click(function() {
         var c = $(this);
-        $.get('/reload');
         c.html('…');
+        $.get('/reload');
+        $.get('/countproxies', function(data) {
+            $('#proxy_count').html(data);
+        });
         setTimeout( function() { c.html('reload') }, 1000 );;
     });
 
@@ -581,16 +618,14 @@ $(document).ready(function(){
         <span id="common_config_input" style="display: none"></span>
         [<a class='edit' href='#' name='mode_config'>edit</a>] Mode config: <a id='mode_config' class='input' href='#'></a><br>
         <span id="mode_config_input" style="display: none"></span>
-        [<a class='edit' href='#' name='proxy_file'>edit</a>] Proxy file: <a id='proxy_file' class='input' href='#'></a><br>
-        <span id="proxy_file_input" style="display: none"></span>
+        [<a class='edit' href='#' name='proxy_file'>edit</a>] Proxy file: <a id='proxy_file' class='input' href='#'></a> (<span id='proxy_count'>0</span>)<br> 
+        <span id="proxy_file_input" style="display: none"></span> 
         Proxy type: <a id='proxy_type' class='menuJSON' href='#'></a><br>
         <span id="proxy_type_menu" style="display: none"></span>
         Loglevel: <a id='loglevel' class='input' href='#'></a><br>
         <span id="loglevel_input" style="display: none"></span>
-        Lognocolor: <a id='lognocolor' class='input' href='#'></a><br>
-        <span id="lognocolor_input" style="display: none"></span>
-        Verbose: <a id='verbose' class='input' href='#'></a><br>
-        <span id="verbose_input" style="display: none"></span>
+        Lognocolor: <a id='lognocolor' class='toggle' href='#'></a><br>
+        Verbose: <a id='verbose' class='toggle' href='#'></a><br>
         UserAgents: <a id='useragents' class='input' href='#'></a><br>
         <span id="useragents_input" style="display: none"></span>
      </div>
@@ -601,7 +636,7 @@ $(document).ready(function(){
     </div>
     <div id="logContainer">
       <h4>Log</h4>
-      [ <a href="#" id="clearLog">clear log</a> - <a href="#" id="autoscroll">autoscroll(on)</a> ]
+      [ <a href="#" id="clearLog">clear</a> - <a href="#" id="autoscroll">autoscroll(on)</a> ]
       <div id="log"> </div>
     </div>
     <div id="editorContainer">
