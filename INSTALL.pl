@@ -62,6 +62,7 @@ given ($ARGV[0])
                      }
     when ('gentoo' ) { system "sudo g-cpan @packages"        }
     when ('windows') { system "cpan @packages"               }
+    when ('cpan')    { system "sudo cpan @packages"          }
     default          { pod2usage(-verbose => 2);             }
 }
 
