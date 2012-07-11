@@ -8,7 +8,8 @@ use Carp;
 use lib 'lib';
 binmode(STDOUT, ":utf8");
 
-our $DEBUG = 0;
+my $PASSWORD = 'desu';
+my $DEBUG    = 0;
 #-----------------------------------------------------------------------------
 use MIME::Base64; 
 use Getopt::Long qw/:config bundling/;
@@ -148,10 +149,27 @@ use HTML::FromANSI ();
 #-----------------------------------------------------------------------------
 # control
 #-----------------------------------------------------------------------------
-get '/' => sub {
+get '/login' => sub {
     my $self = shift;
-    $self->render('index');
+    my $pass = $self->param('pass') || '';
+    return $self->render if $pass ne $PASSWORD;
+    $self->session(pass => $pass);
+    $self->redirect_to('/');
+} => 'login';
+
+under sub {
+    my $self = shift;
+    $self->redirect_to('login') if !$self->session('pass') and $PASSWORD;
+    return 1;
 };
+
+get '/' =>  'index';
+
+get '/logout' => sub {
+    my $self = shift;
+    $self->session(expires => 1);
+    $self->redirect_to('/');
+} => 'logout';
 
 get '/start'  => sub {
     my $self = shift;
@@ -317,8 +335,8 @@ get '/get/:var' => [ format => ['json'] ] => sub {
     }
 };
 
-
-get '/style.css' => 'style';
+get '/main.css' => 'main';
+get '/login.css' => 'login';
 #-----------------------------------------------------------------------------
 app->start;
 
@@ -328,58 +346,74 @@ __DATA__
 @@ config/get.json.ep
 @@ log/read.html.ep
 
-@@ style.css.ep
-html {
-    height: 90%;
-    background: grey;
-}
+@@ main.css.ep
+  html body {
+      height: 90%;
+      background: grey;
+  }
 
-body {
-    height: 90%;
-}
+  a {
+      color: blue;
+      text-decoration: none;
+  }
 
-a {
-    color: blue;
-    text-decoration: none;
-}
+  a:hover {
+      text-decoration: underline;
+  }
 
-a:hover {
-    text-decoration: underline;
-}
+  #status {
+      color: #5cff00;
+      font-size: 17pt;
+  }
 
-#status {
-    color: #5cff00;
-    font-size: 17pt;
-}
+  #stats {
+      min-height: 100px;
+  }
 
-#stats {
-    min-height: 100px;
-}
+  #log {
+      background-color: black;
+      overflow: auto;
+      width: 65%;
+      height: 90%;
+      overflow-x: hidden;
+      border: 1px dotted white; 
+      padding: 5px;
+  }
 
-#log {
-    background-color: black;
-    overflow: auto;
-    width: 65%;
-    height: 90%;
-    overflow-x: hidden;
-    border: 1px dotted white; 
-    padding: 5px;
-}
+  #editorContainer {
+      display: none;
+  }
 
-#editorContainer {
-    display: none;
-}
+  #summary {
+      width: 30%;
+      height: 80%;
+      float: left;
+      padding: 5px;
+      background: url("/desu.gif") no-repeat bottom left grey;
+  }
 
-#summary {
-    width: 30%;
-    height: 80%;
-    float: left;
-    padding: 5px;
-    background: url("/desu.gif") no-repeat bottom left grey;
-}
+@@ login.html.ep
+  <!doctype html>
+  <html>
+    <head>
+      <title>Login</title>
+    </head>
+    <body>
+      <span style='text-align:center'>
+      <%= form_for login => begin %>
+      <% if (param 'pass') { %>
+        <h3><b>Invalid password</b></h3><br>
+      <% } %>
+      Password 
+      <%= password_field 'pass' %>
+      <%= submit_button 'OK' %>
+      <% end %>
+      </span>
+    </body>
+  </html>
 
 @@ index.html.ep
-% our $VERSION = '0.2.2-84';
+% our $VERSION = '0.2.2-85';
 %= javascript 'http://code.jquery.com/jquery-1.7.2.min.js'
 %= javascript begin
 var cnf = {
@@ -598,55 +632,61 @@ $(document).ready(function(){
 });
 % end
 
-<!DOCTYPE html>
-<html>
-<head>
-<title>Perl Chan Wiper</title>
-<link type="text/css" href="/style.css" rel="stylesheet">
-</head>
-<body>
-    <span style='color:red; font-size: 17pt;'>Perl Chan Wiper v<%= $VERSION %></span> — <a href="#" id="status">start</a>
-    <hr>
-    <div id="summary">
-      <h4>Configure</h4>
-      <div id="config">
-        Chan: <a id='chan' class='menuJSON' href='#'></a><br>
-        <span id="chan_menu" style="display: none"></span>
-        Mode: <a id='mode' class='menuJSON' href='#'></a><br>
-        <span id="mode_menu" style="display: none"></span>
-        [<a class='edit' href='#' name='common_config'>edit</a>] Common config: <a id='common_config' class='input' href='#'></a><br>
-        <span id="common_config_input" style="display: none"></span>
-        [<a class='edit' href='#' name='mode_config'>edit</a>] Mode config: <a id='mode_config' class='input' href='#'></a><br>
-        <span id="mode_config_input" style="display: none"></span>
-        [<a class='edit' href='#' name='proxy_file'>edit</a>] Proxy file: <a id='proxy_file' class='input' href='#'></a> (<span id='proxy_count'>0</span>)<br> 
-        <span id="proxy_file_input" style="display: none"></span> 
-        Proxy type: <a id='proxy_type' class='menuJSON' href='#'></a><br>
-        <span id="proxy_type_menu" style="display: none"></span>
-        Loglevel: <a id='loglevel' class='input' href='#'></a><br>
-        <span id="loglevel_input" style="display: none"></span>
-        Lognocolor: <a id='lognocolor' class='toggle' href='#'></a><br>
-        Verbose: <a id='verbose' class='toggle' href='#'></a><br>
-        UserAgents: <a id='useragents' class='input' href='#'></a><br>
-        <span id="useragents_input" style="display: none"></span>
-     </div>
-      [ <a href="#" id="reload">reload</a> ]
+  <!DOCTYPE html>
+  <html>
+    <head>
+      <title>Perl Chan Wiper</title>
+      %= stylesheet '/main.css'
+    </head>
+    <body>
+      <span style='color:red; font-size: 17pt;'>Perl Chan Wiper v<%= $VERSION %></span> — <a href="#" id="status">start</a>
+      <% if (session 'pass') { %>
+        — 
+        <%= link_to logout => begin %>
+        logout
+        <% end %>
+      <% } %>
       <hr>
-      <h4>Stats</h4>
-      <div id="stats"></div>
-    </div>
-    <div id="logContainer">
-      <h4>Log</h4>
-      [ <a href="#" id="clearLog">clear</a> - <a href="#" id="autoscroll">autoscroll(on)</a> ]
-      <div id="log"> </div>
-    </div>
-    <div id="editorContainer">
-      <h4>Editor</h4>
-      [ <a href="#" id="saveFile">save</a> - <a href="#" id='hideFile'>close</a> ]
-      <textarea name='' id='editor' rows='50' cols='120'>
-      </textarea>
-    </div>
-</body>
-</html>
+      <div id="summary">
+        <h4>Configure</h4>
+        <div id="config">
+          Chan: <a id='chan' class='menuJSON' href='#'></a><br>
+          <span id="chan_menu" style="display: none"></span>
+          Mode: <a id='mode' class='menuJSON' href='#'></a><br>
+          <span id="mode_menu" style="display: none"></span>
+          [<a class='edit' href='#' name='common_config'>edit</a>] Common config: <a id='common_config' class='input' href='#'></a><br>
+          <span id="common_config_input" style="display: none"></span>
+          [<a class='edit' href='#' name='mode_config'>edit</a>] Mode config: <a id='mode_config' class='input' href='#'></a><br>
+          <span id="mode_config_input" style="display: none"></span>
+          [<a class='edit' href='#' name='proxy_file'>edit</a>] Proxy file: <a id='proxy_file' class='input' href='#'></a> (<span id='proxy_count'>0</span>)<br> 
+          <span id="proxy_file_input" style="display: none"></span> 
+          Proxy type: <a id='proxy_type' class='menuJSON' href='#'></a><br>
+          <span id="proxy_type_menu" style="display: none"></span>
+          Loglevel: <a id='loglevel' class='input' href='#'></a><br>
+          <span id="loglevel_input" style="display: none"></span>
+          Lognocolor: <a id='lognocolor' class='toggle' href='#'></a><br>
+          Verbose: <a id='verbose' class='toggle' href='#'></a><br>
+          UserAgents: <a id='useragents' class='input' href='#'></a><br>
+          <span id="useragents_input" style="display: none"></span>
+        </div>
+        [ <a href="#" id="reload">reload</a> ]
+        <hr>
+        <h4>Stats</h4>
+        <div id="stats"></div>
+      </div>
+      <div id="logContainer">
+        <h4>Log</h4>
+        [ <a href="#" id="clearLog">clear</a> - <a href="#" id="autoscroll">autoscroll(on)</a> ]
+        <div id="log"> </div>
+      </div>
+      <div id="editorContainer">
+        <h4>Editor</h4>
+        [ <a href="#" id="saveFile">save</a> - <a href="#" id='hideFile'>close</a> ]
+        <textarea name='' id='editor' rows='50' cols='120'>
+        </textarea>
+      </div>
+    </body>
+  </html>
 @@ desu.gif (base64)
 R0lGODlhGAG5AMQaAO7ZxIx3aStfRF1AL8rFwP/x5bajm/3Js4KIiE5ZWC8+Pk87L5IqDD1jCc3X
 2vlrWGi6I8c2I0mGFg8uHoCGoHhVQU+AXLh8bP///wAAAP///wAAAAAAAAAAAAAAAAAAACH/C05F
