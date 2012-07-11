@@ -307,13 +307,13 @@ sub stop($)
     $self->{is_running} = 0;
 }
 
-
 sub _base_init($)
 {
     my $self = shift;
     $self->{is_running}   = 1;
+    $self->{start_time}   = time;
     $self->{failed_proxy} = {};
-    $self->{stats}    = {error => 0, posted => 0, wrong_captcha => 0, total => 0};
+    $self->{stats}    = {error => 0, posted => 0, wrong_captcha => 0, total => 0, speed => ''};
     $queue->{get}     = Coro::Channel->new();
     $queue->{prepare} = Coro::Channel->new();
     $queue->{post}    = Coro::Channel->new();
@@ -341,6 +341,20 @@ sub _init_watchers($)
                                     $coro->cancel('timeout', $coro->{task}, $self);
                                 }
                             }
+                        }
+                       );
+
+    #-- Speed measuring
+    $watchers->{speed} =
+        AnyEvent->timer(after => 5, interval => 5, cb =>
+                        sub
+                        {
+                            my ($posted, $stime, $u) = ($self->{stats}{posted}, $self->{start_time}, $self->{conf}{speed});
+                            my $d;
+                            $d = 1    if $u eq 'second';
+                            $d = 60   if $u eq 'minute';
+                            $d = 3600 if $u eq 'hour';
+                            $self->{stats}{speed} = sprintf "%.3f posts per %s", ($posted / ((time - $stime)/$d)), $u;
                         }
                        );
 

@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '0.2.2-82';
+our $VERSION = '0.2.2-84';
 
 use v5.12;
 use utf8;
@@ -55,8 +55,6 @@ my %cnf = (
     loglevel   => 1,
     logfile    => '',
     lognocolor => undef,
-
-    umeasure   => 'minute',
 );
 
 #-----------------------------------------------------------------------------
@@ -78,7 +76,6 @@ sub parse_args()
                             'verbose'    => \$cnf{verbose},
                             'help|?'     => \$help,
                             'desu'       => \$desu,
-                            'umeasure=s' => \$cnf{umeasure},
                            );
     if ($desu)
     {
@@ -275,8 +272,6 @@ UI options:
     --help          Show this message and exit
     --desu          Show desu and exit
 
-    --umeasure      Unit of measurement of posting speed (minute/hour/second)
-
 Supported chan engines: @engines
 Version $VERSION
 DESU
@@ -326,16 +321,6 @@ sub show_stats($)
     }
 }
 
-sub measure_speed($$$)
-{
-    my ($posted, $start_time, $u) = @_;
-    my $d;
-    $d = 1    if $u eq 'second';
-    $d = 60   if $u eq 'minute';
-    $d = 3600 if $u eq 'hour';
-    return sprintf "%.3f", ($posted / ((time - $start_time)/$d));
-}
-
 given ($cnf{mode})
 {
     when ('ProxyChecker')
@@ -348,11 +333,6 @@ given ($cnf{mode})
     {
         show_stats $pcw->{stats}{bump};
         show_stats $pcw->{stats}{delete};
-    }
-    when ('Wipe')
-    {
-        show_stats $pcw->{stats};
-        say sprintf("Speed: %s posts per $cnf{umeasure}", measure_speed($pcw->{stats}{posted}, $start_time, $cnf{umeasure}));
     }
     default
     {
