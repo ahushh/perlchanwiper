@@ -17,7 +17,6 @@ ahushh@gmail.com
 ~~~~~~~~~~~~~~~~
 * cpcw         — запуск через консоль
 * wpcw         — запуск веб-интерфейса
-* proxychecker — простой прокси чекер, работающий на основе WWW:ProxyChecker
 * config.pl    — настройки изображений/видео/текста, распознавания капчи
 * configs      — настройки для режимов работы (Wipe, AutoBump, Delete, ProxyChecker)
 * captcha      — сохраненные файлы капчи (см. опцию 'save_captcha' режима wipe)
@@ -26,6 +25,7 @@ ahushh@gmail.com
 * OCR          — скрипты, распознающие капчу
 * lib          — сторонние модифицированные библиотеки и бинарники
 * extra        — разный дополнительный мусор
+- proxychecker — простой прокси чекер, работающий на основе WWW:ProxyChecker
 
 Веб-морда
 ---------------------
@@ -37,7 +37,7 @@ http://localhost:3000
 вход по паролю так же можно отключить:
  my $PASSWORD = '';
 
-Под windows пока не работает.
+Под windows не работает и не будет.
 
 Примеры использования
 ---------------------
@@ -60,7 +60,7 @@ http://localhost:3000
 Список хороших прокси будет напечатан при выходе или сохранен в файл (см. конфиг)
 
 Просто прочекать прокси из файла proxy/my/all и сохранить хорошие в proxy/my/checked
- ./proxychecker proxy/my/all proxy/my/checked
+ ./extra/proxychecker proxy/my/all proxy/my/checked
 
 Для винды:
  perl .\cpcw [...]
@@ -77,7 +77,8 @@ http://localhost:3000
 ---------
 ./INSTALL.pl
 или
-perl ./INSTALL.pl
+perl INSTALL.pl
+sudo perl ./INSTALL.pl
 
 Добавление новых чанов
 ----------------------
