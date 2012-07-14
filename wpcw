@@ -413,7 +413,7 @@ __DATA__
   </html>
 
 @@ index.html.ep
-% our $VERSION = '0.2.2-85';
+% our $VERSION = '0.2.2-86';
 %= javascript 'http://code.jquery.com/jquery-1.7.2.min.js'
 %= javascript begin
 var cnf = {

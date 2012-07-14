@@ -1,11 +1,11 @@
 #!/usr/bin/perl
 use v5.12;
 use Pod::Usage;
-use File::Which qw/which/;
 
-my $OS      = $ARGV[0] or pod2usage(-verbose => 2);
+my $OS      = $ARGV[0];
 my $sudo    = 'sudo ' if $ENV{USER} ne 'root';
-my $deb_cmd = (which('aptitude') ? 'aptitude' : 'apt-get' ) . ' install';
+system 'aptitude'; #-- check if aptitude is installed
+my $deb_cmd = ($? ? 'apt-get' : 'aptitude' ) . ' install';
 
 my @base = qw/
 YAML
@@ -106,6 +106,8 @@ my %H = (
                      webui        => { $sudo ."cpan" => [ @webui        ] },
                     }
         );
+
+pod2usage(-verbose => 2) if !$OS or !(map { $OS =~ /^$_$/ } keys(%H));
 
 my @parts = ();
 my %parts = (
