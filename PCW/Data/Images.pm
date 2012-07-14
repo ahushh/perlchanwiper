@@ -133,44 +133,44 @@ sub img_altering($)
 
     my $mode = $conf->{mode};
     my ($fh, $filename) = tempfile(UNLINK => 1, SUFFIX => ".$suffix");
+    binmode $fh;
+
+    my $interpolate = sub {
+        my $_ = shift;
+        s|%(\d+)rand(\d+)%|random($1, $2);|eg;
+        s|%(\d+)digits%|join('',map{int(rand(10))}(1..$1))|eg;
+        s|%source%|shellquote($full_name);|eg;
+        s|%dest%|shellquote($filename);|eg;
+        return $_;
+    };
+
     given ($mode)
     {
         when ('randnums')
         {
-            my $img = readfile($full_name);
+            my $img    = readfile($full_name);
+            my $digits = join '', map {int rand 10} &$interpolate($conf->{number_nums});
             print $fh $img;
-            my $n = $conf->{number_nums};
-            for (my $i = 0; $i < $n; $i++)
-            {
-                print $fh int(rand(10));
-            }
+            print $fh $digits;
             close $fh;
         }
         when ('randbytes')
         {
             my $img = readfile($full_name);
             print $fh $img;
-            print $fh reduce { $a . chr(int(rand() * 256)) } ('', 1..$conf->{number_bytes});
+            print $fh reduce { $a . chr(int(rand() * 256)) } ('', 1..&$interpolate($conf->{number_bytes}));
             close $fh;
-        }
-        when ('resize')
-        {
-            close $fh;
-            my $convert = $conf->{convert} || which('convert');
-            my $args    = $conf->{args};
-            my $k       = random($conf->{min}, $conf->{max});
-            system($convert, $args, '-resize', "$k%", shellquote($full_name), shellquote($filename));
         }
         when ('convert')
         {
             close $fh;
             my $convert = $conf->{convert} || which('convert');
-            my $args    = $conf->{args};
-            system($convert, $args, shellquote($full_name), shellquote($filename));
+            my $args    = &$interpolate($conf->{args});
+            system("$convert $args");
         }
         default
         {
-            warn "Image altering method '$mode' doesn't exist. Skipping altering...";
+            warn "Image altering method '$mode' doesn't exist. Check your config! Skipping altering...";
             close $fh;
             return $full_name;
         }
