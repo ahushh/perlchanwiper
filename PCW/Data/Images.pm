@@ -127,7 +127,7 @@ sub img_altering($)
 
     unless ($suffix)
     {
-        warn "$full_name is not an image file. Skipping altering";
+        warn "$full_name is not an image file. Skipping altering...";
         return $full_name;
     }
 
