@@ -9,7 +9,7 @@ our @EXPORT_OK = qw/get_recaptcha http_get http_post/;
 use HTTP::Headers;
 use Coro::LWP;
 eval("use LWP::Protocol::socks;");
-warn "LWP::Protocol::socks are not installed. Skipping..." if $@;
+warn "LWP::Protocol::socks not installed. Skipping..." if $@;
 
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------

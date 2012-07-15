@@ -20,8 +20,7 @@ sub new($%)
     my $colored    = delete $args{colored};
 
     my @k = keys %args;
-    Carp::croak("These options aren't defined: @k")
-        if %args;
+    Carp::croak("These options aren't defined: @k") if %args;
 
     my $fh;
     if ($file)
@@ -62,7 +61,7 @@ sub pretty_proxy($$$$$$)
     return 0 if $self->{level} < $l;
     my $fh    = $self->{file};
 
-    $self->msg($l, undef, $type); #-- print then time and type
+    $self->msg($l, undef, $type); #-- print time and the type
     print $fh with_color($self->{colored}, $color, sprintf(" %-30s ", $proxy));
     say $fh $msg;
 

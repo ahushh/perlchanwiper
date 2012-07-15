@@ -75,7 +75,7 @@ sub _get_captcha_url($%)
 sub _get_catalog_url($%)
 {
     my ($self, %config) = @_;
-    Carp::croak("Board is not set!")
+    Carp::croak("Board is not set! at _get_catalog_url")
             unless($config{board});
 
     return sprintf $self->{urls}{catalog}, $config{board};
@@ -194,7 +194,7 @@ sub _get_post_content($$%)
 sub _get_delete_content($$%)
 {
     my ($self, %config) = @_;
-    Carp::croak("Delete, board and password parameters are not set!")
+    Carp::croak("Delete, board and password parameters are not set! at _get_delete_content")
         unless($config{board} && $config{password});
 
     my $content = {

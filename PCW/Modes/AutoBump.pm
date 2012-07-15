@@ -76,7 +76,7 @@ my $cb_bump_thread = unblock_sub
         $run_at = $now + $self->{conf}{interval};
         $log->pretty_proxy(2, "green", $task->{proxy}, "No. ". $task->{thread}, "sleep $self->{conf}{interval} seconds...");
 
-        $log->msg(4, "run_cleanup(): try to start");
+        $log->msg(4, "run_cleanup(): tried to start");
         &$run_cleanup($self, $task) if ($self->{conf}{silent});
     }
     elsif ($msg =~ /wrong_captcha|no_captcha/)
@@ -107,7 +107,7 @@ sub is_need_to_bump($$)
     my %check_cnf = ( proxy => $task->{proxy}, board => $self->{conf}{post_cnf}{board}, thread => $task->{thread} );
     if ($self->{conf}{bump_if}{on_pages})
     {
-        $log->pretty_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "Checking whether thread needs to bump...");
+        $log->pretty_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "Checking whether thread needs to be bumped...");
         my @pages = @{ $self->{conf}{bump_if}{on_pages} };
         for my $page (@pages)
         {
@@ -119,12 +119,12 @@ sub is_need_to_bump($$)
                 return 1;
             }
         }
-        $log->pretty_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "Thread doesn't need to bump");
+        $log->pretty_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "Thread doesn't need to be bumped");
         return undef;
     }
     elsif ($self->{conf}{bump_if}{not_on_pages})
     {
-        $log->pretty_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "Checking whether thread needs to bump...");
+        $log->pretty_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "Checking whether thread needs to be bumped...");
         my @pages = @{ $self->{conf}{bump_if}{not_on_pages} };
         for my $page (@pages)
         {
@@ -132,7 +132,7 @@ sub is_need_to_bump($$)
             my $is_it = $engine->is_thread_on_page(%check_cnf);
             if ($is_it)
             {
-                $log->pretty_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "Thread doesn't need to bump");
+                $log->pretty_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "Thread doesn't need to be bumped");
                 return undef;
             }
         }
@@ -231,6 +231,7 @@ sub start($)
     my $self = shift;
     my $log  = $self->{log};
     $log->msg(1, "Starting autobump mode...");
+    Carp::croak('Hey, what thread are you going to bump?') unless $self->{conf}{post_cnf}{thread};
     async {
         my $proxy = shift @{ $self->{proxies} };
         $queue->{bump}->put({ proxy => $proxy, thread => $self->{conf}{post_cnf}{thread} });

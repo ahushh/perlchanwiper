@@ -172,7 +172,7 @@ sub _get_captcha_headers($%)
 {
     my ($self, %config) = @_;
 
-    Carp::croak("Board is not set! at _get_post_headers")
+    Carp::croak("Board is not set! at _get_captcha_headers")
         unless($config{board});
 
     my $referer = ($config{thread} ? $self->_get_thread_url(%config) : $self->_get_page_url(%config));
@@ -203,14 +203,12 @@ sub _get_default_headers($%)
 #------------------------------------------------------------------------------------------------
 sub _get_post_content($%)
 {
-    my ($self, %config) = @_;
-    Carp::croak("Call a virtual method!");
+    Carp::croak("This method is abstract and cannot be called directly.");
 }
 
 sub _get_delete_content($%)
 {
-    my ($self, %config) = @_;
-    Carp::croak("Call a virtual method!");
+    Carp::croak("This method is abstract and cannot be called directly.");
 }
 
 #------------------------------------------------------------------------------------------------
