@@ -76,7 +76,7 @@ sub _get_catalog_url($%)
 {
     my ($self, %config) = @_;
     Carp::croak("Board is not set! at _get_catalog_url")
-            unless($config{board});
+            unless(defined $config{board});
 
     return sprintf $self->{urls}{catalog}, $config{board};
 }
@@ -195,7 +195,7 @@ sub _get_delete_content($$%)
 {
     my ($self, %config) = @_;
     Carp::croak("Delete, board and password parameters are not set! at _get_delete_content")
-        unless($config{board} && $config{password});
+        unless(defined $config{board} and defined $config{password});
 
     my $content = {
         board      => $config{board},
@@ -322,8 +322,8 @@ sub prepare($$$$)
         }
         unless ($captcha_text or $captcha_text =~ s/\s//gr)
         {
-            #-- recognizer returned empty string
-            return('no_captcha');
+            $log->pretty_proxy(2, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned a empty string (took $took sec.)");
+            return('no_text');
         }
 
         $log->pretty_proxy(2, 'green', $task->{proxy}, 'PREPARE', "solved captcha: $captcha_text (took $took sec.)");

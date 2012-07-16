@@ -79,7 +79,7 @@ my $cb_bump_thread = unblock_sub
         $log->msg(4, "run_cleanup(): tried to start");
         &$run_cleanup($self, $task) if ($self->{conf}{silent});
     }
-    elsif ($msg =~ /wrong_captcha|no_captcha/)
+    elsif ($msg =~ /wrong_captcha|no_text|error/)
     {
         $self->{stats}{bump}{error}++;
         captcha_report_bad($self->{log}, $self->{conf}{captcha_decode}, $task->{path_to_captcha});

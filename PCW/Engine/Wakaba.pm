@@ -44,7 +44,7 @@ sub _get_post_url($%)
 {
     my ($self, %config) = @_;
     Carp::croak("Board is not set! at _get_post_url")
-        unless($config{board});
+        unless(defined $config{board});
     return sprintf $self->{urls}{post}, $config{board};
 }
 
@@ -53,7 +53,7 @@ sub _get_delete_url($%)
 {
     my ($self, %config) = @_;
     Carp::croak("Board is not set! at _get_delete_url")
-        unless($config{board});
+        unless(defined $config{board});
     return sprintf $self->{urls}{delete}, $config{board};
 }
 
@@ -62,7 +62,7 @@ sub _get_captcha_url($$%)
 {
     my ($self, %config) = @_;
     Carp::croak("Board is not set! at _get_captcha_url")
-        unless($config{board});
+        unless(defined $config{board});
     if ($config{thread})
     {
         return sprintf $self->{urls}{captcha}, $config{board}, "res$config{thread}", $config{thread};
@@ -154,7 +154,7 @@ sub _get_delete_content($%)
 {
     my ($self, %config) = @_;
     Carp::croak("Delete and password parameters are not set!")
-        unless($config{delete} && $config{password});
+        unless(defined $config{delete} and defined $config{password});
 
     my $content = {
         task     => 'delete',
@@ -265,8 +265,8 @@ sub prepare($$$$)
         }
         unless ($captcha_text or $captcha_text =~ s/\s//gr)
         {
-            #-- recognizer returned empty string
-            return('no_captcha');
+            $log->pretty_proxy(2, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned a empty string (took $took sec.)");
+            return('no_text');
         }
 
         $log->pretty_proxy(2, 'green', $task->{proxy}, 'PREPARE', "solved captcha: $captcha_text (took $took sec.)");

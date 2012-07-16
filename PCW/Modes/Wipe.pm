@@ -32,11 +32,6 @@ use PCW::Core::Utils   qw/with_coro_timeout/;
 use PCW::Core::Captcha qw/captcha_report_bad/;
 
 #------------------------------------------------------------------------------------------------
-# Package variables
-#------------------------------------------------------------------------------------------------
-our $CAPTCHA_DIR = File::Spec->catfile($Bin, 'captcha');
-
-#------------------------------------------------------------------------------------------------
 # Local variables
 #------------------------------------------------------------------------------------------------
 my $watchers  = {};
@@ -55,20 +50,29 @@ my $cb_wipe_get = unblock_sub
 {
     my ($msg, $task, $self) = @_;
     return unless @_;
+    my $log = $self->{log};
 
     given ($msg)
     {
         when ('success')
         {
+            $self->{failed_proxy}{ $task->{proxy} } = 0;
+            $log->pretty_proxy(4, 'green', $task->{proxy}, 'GET CB', "$msg: push into the PREPARE queue");
             $queue->{prepare}->put($task);
-        }
-        when (/net_error|timeout/)
-        {
-            $self->{failed_proxy}{ $task->{proxy} }++;
         }
         default
         {
-            $self->{failed_proxy}{ $task->{proxy} } = 0;
+            $self->{failed_proxy}{ $task->{proxy} }++;
+            if ($self->{failed_proxy}{ $task->{proxy} } < $self->{conf}{get_attempts})
+            {
+                my $new_task = {proxy => $task->{proxy} };
+                $log->pretty_proxy(4, 'red', $task->{proxy}, 'GET CB', "$msg: push into the GET queue");
+                $queue->{get}->put($new_task);
+            }
+            else
+            {
+                $log->pretty_proxy(4, 'red', $task->{proxy}, 'GET CB', "$msg: reached the error limit; threw away the proxy");
+            }
         }
     }
 };
@@ -118,24 +122,29 @@ my $cb_wipe_prepare = unblock_sub
         when ('success')
         {
             $queue->{post}->put($task);
-        }
-        when ('no_captcha')
-        {
-            my $new_task = {proxy => $task->{proxy} };
-            $self->{failed_proxy}{ $task->{proxy} }++;
-            if ($self->{conf}{wcap_retry} && $self->{failed_proxy}{ $task->{proxy} } < $self->{conf}{proxy_attempts})
-            {
-                $log->msg(4, "push into the get queue: $task->{proxy}");
-                $queue->{get}->put($new_task);
-            }
-        }
-        when (/net_error|timeout|error/)
-        {
-            $self->{failed_proxy}{ $task->{proxy} }++;
-        }
-        default
-        {
+            $log->pretty_proxy(4, 'green', $task->{proxy}, 'PREPARE CB', "$msg: push into the POST queue");
             $self->{failed_proxy}{ $task->{proxy} } = 0;
+        }
+        when ('no_text')
+        {
+            captcha_report_bad($self->{log}, $self->{conf}{captcha_decode}, $task->{path_to_captcha});
+        }
+        when (/no_text|error/)
+        {
+            $self->{failed_proxy}{ $task->{proxy} }++;
+            if ($self->{conf}{wcap_retry} || $self->{conf}{loop})
+            {
+                if ($self->{failed_proxy}{ $task->{proxy} } < $self->{conf}{prepare_attempts})
+                {
+                    my $new_task = {proxy => $task->{proxy} };
+                    $log->pretty_proxy(4, 'red', $task->{proxy}, 'PREPARE CB', "$msg: push into the GET queue");
+                    $queue->{get}->put($new_task);
+                }
+                else
+                {
+                    $log->pretty_proxy(4, 'red', $task->{proxy}, 'PREPARE CB', "$msg: reached the error limit; threw away the proxy");
+                }
+            }
         }
     }
 };
@@ -184,8 +193,9 @@ my $cb_wipe_post = unblock_sub
             if ($self->{conf}{save_captcha} && $task->{path_to_captcha})
             {
                 my ($name, $path, $suffix) = fileparse($task->{path_to_captcha}, 'png', 'jpeg', 'jpg', 'gif');
-                move $task->{path_to_captcha},
-                    File::Spec->catfile($CAPTCHA_DIR, $task->{captcha_text} ."--". time .".$suffix");
+                my $dest = File::Spec->catfile($self->{conf}{save_captcha}, $task->{captcha_text} ."--". time .".$suffix");
+                move $task->{path_to_captcha}, $dest;
+                $log->msg(4, "move $task->{path_to_captcha} to $dest");
             }
             $self->{stats}{posted}++;
 
@@ -201,7 +211,7 @@ my $cb_wipe_post = unblock_sub
             captcha_report_bad($self->{log}, $self->{conf}{captcha_decode}, $task->{path_to_captcha});
             if ($self->{conf}{wcap_retry})
             {
-                $log->msg(4, "push into the get queue: $task->{proxy}");
+                $log->pretty_proxy(4, 'yellow', $task->{proxy}, 'POST CB', "$msg: push into the GET queue");
                 $new_task->{proxy} = $task->{proxy};
                 $queue->{get}->put($new_task);
                 return;
@@ -210,6 +220,7 @@ my $cb_wipe_post = unblock_sub
         when ('critical_error')
         {
             $log->msg(1, "Critical chan error has occured!", '', 'red');
+            $log->pretty_proxy(4, 'red', $task->{proxy}, 'POST CB', "$msg: push into the POST queue");
             $queue->{get}->put($new_task);
         }
         when ('flood')
@@ -236,12 +247,19 @@ my $cb_wipe_post = unblock_sub
         $self->{failed_proxy}{ $task->{proxy} } = 0;
     }
 
-    if ($self->{conf}{loop} && $msg ne 'banned' &&
-        $self->{failed_proxy}{ $task->{proxy} } < $self->{conf}{proxy_attempts})
+    if ($self->{conf}{loop} && $msg ne 'banned')
     {
-        $log->msg(4, "push into the get queue: $task->{proxy}");
-        $new_task->{proxy} = $task->{proxy};
-        $queue->{get}->put($new_task);
+        if ($self->{failed_proxy}{ $task->{proxy} } < $self->{conf}{post_attempts})
+        {
+            $log->pretty_proxy(4, 'red', $task->{proxy}, 'POST CB', "$msg: push into the GET queue");
+            $new_task->{proxy} = $task->{proxy};
+            $queue->{get}->put($new_task);
+        }
+        else
+        {
+            $log->pretty_proxy(4, 'red', $task->{proxy}, 'POST CB', "$msg: reached the error limit; threw away the proxy");
+        }
+
     }
 };
 
