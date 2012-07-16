@@ -19,7 +19,6 @@ use Time::HiRes;
 # Importing internal PCW packages
 #------------------------------------------------------------------------------------------------
 use PCW::Core::Utils   qw/with_coro_timeout/;
-use PCW::Core::Captcha qw/captcha_report_bad/;
 
 #------------------------------------------------------------------------------------------------
 # Local variables

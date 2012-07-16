@@ -17,7 +17,6 @@ use HTTP::Headers;
 # Import internal PCW packages
 #------------------------------------------------------------------------------------------------
 use PCW::Core::Utils   qw/merge_hashes parse_cookies html2text save_file unrandomize/;
-use PCW::Core::Captcha qw/captcha_recognizer/;
 use PCW::Core::Net     qw/http_get http_post get_recaptcha/;
 use PCW::Data::Images  qw/make_pic/;
 use PCW::Data::Text    qw/make_text/;

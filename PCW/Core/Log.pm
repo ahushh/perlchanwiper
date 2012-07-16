@@ -11,6 +11,13 @@ use POSIX qw/strftime/;
 use IO::Handle;
 
 #------------------------------------------------------------------------------------------------
+sub _with_color($$$)
+{
+    my ($t, $color, $msg) = @_;
+    return $msg unless $t;
+    return colored [$color], $msg;
+}
+
 #------------------------------------------------------------------------------------------------
 sub new($%)
 {
@@ -35,14 +42,6 @@ sub new($%)
     bless $self, $class;
 
 }
-
-sub with_color($$$)
-{
-    my ($t, $color, $msg) = @_;
-    return $msg unless $t;
-    return colored [$color], $msg;
-}
-
 sub msg($$;$$$)
 {
     my ($self, $l, $msg, $type, $color) = @_;
@@ -51,7 +50,7 @@ sub msg($$;$$$)
 
     print  $fh strftime("[%H:%M:%S]", localtime(time));
     printf $fh "[%15s]", $type         if $type;
-    say $fh with_color($self->{colored}, $color, " $msg") if $msg;
+    say $fh _with_color($self->{colored}, $color, " $msg") if $msg;
     return 1;
 }
 
@@ -62,7 +61,7 @@ sub pretty_proxy($$$$$$)
     my $fh    = $self->{file};
 
     $self->msg($l, undef, $type); #-- print time and the type
-    print $fh with_color($self->{colored}, $color, sprintf(" %-30s ", $proxy));
+    print $fh _with_color($self->{colored}, $color, sprintf(" %-30s ", $proxy));
     say $fh $msg;
 
     return 1;

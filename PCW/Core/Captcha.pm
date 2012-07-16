@@ -13,9 +13,9 @@ use File::Spec;
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
 
-sub captcha_recognizer($$)
+sub captcha_recognizer($$$)
 {
-    my ($captcha_decode, $file_path) = @_;
+    my ($log, $captcha_decode, $file_path) = @_;
     my $mode      = $captcha_decode->{mode};
     my $mode_path = File::Spec->catfile($Bin, 'OCR', "$mode.pm");
 
@@ -23,15 +23,15 @@ sub captcha_recognizer($$)
         unless (-e $mode_path);
 
     require File::Spec->catfile($Bin, 'OCR', "$mode.pm");
-    return decode_captcha($captcha_decode, $file_path);
+    return decode_captcha($log, $captcha_decode, $file_path);
 }
 
-sub captcha_report_bad($$)
+sub captcha_report_bad($$$)
 {
-    my ($captcha_decode, $file_path) = @_;
+    my ($log, $captcha_decode, $file_path) = @_;
     my $mode = $captcha_decode->{mode};
     require File::Spec->catfile($Bin, 'OCR', "$mode.pm");
-    return abuse($captcha_decode, $file_path);
+    return abuse($log, $captcha_decode, $file_path);
 }
 
 1;
