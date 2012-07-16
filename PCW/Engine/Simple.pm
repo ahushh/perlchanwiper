@@ -72,7 +72,7 @@ sub _get_page_url($%)
 {
     my ($self, %config) = @_;
     Carp::croak("Board is not set! at _get_page_url")
-        unless($config{board});
+        unless(defined $config{board});
     if ($config{page})
     {
         return sprintf $self->{urls}{page}, $config{board}, $config{page};
@@ -88,7 +88,7 @@ sub _get_thread_url($%)
 {
     my ($self, %config) = @_;
     Carp::croak("Board and thread are not set! at _get_thread_url")
-        unless($config{board} && $config{thread});
+        unless(defined $config{board} and defined $config{thread});
 
     return sprintf $self->{urls}{thread}, $config{board}, $config{thread};
 }
@@ -158,7 +158,7 @@ sub _get_post_headers($%)
 {
     my ($self, %config) = @_;
     Carp::croak("Board is not set! at _get_post_headers")
-        unless($config{board});
+        unless(defined $config{board});
 
     my $referer = ($config{thread} ? $self->_get_thread_url(%config) : $self->_get_page_url(%config));
 
@@ -172,7 +172,7 @@ sub _get_captcha_headers($%)
     my ($self, %config) = @_;
 
     Carp::croak("Board is not set! at _get_captcha_headers")
-        unless($config{board});
+        unless(defined $config{board});
 
     my $referer = ($config{thread} ? $self->_get_thread_url(%config) : $self->_get_page_url(%config));
 
@@ -186,7 +186,7 @@ sub _get_delete_headers($%)
 {
     my ($self, %config) = @_;
     Carp::croak("Board is not set! at _get_delete_headers")
-        unless($config{board});
+        unless(defined $config{board});
     $self->_get_post_headers(%config);
 }
 

@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '0.2.2-86';
+our $VERSION = '0.2.2-87';
 
 use v5.12;
 use utf8;
@@ -176,7 +176,7 @@ sub load_configs()
 
 sub load_proxies()
 {
-    @proxies = get_proxylist($cnf{proxy_file}, $cnf{proxy_type});
+    @proxies = reverse get_proxylist($cnf{proxy_file}, $cnf{proxy_type});
 }
 
 sub load_agents()
