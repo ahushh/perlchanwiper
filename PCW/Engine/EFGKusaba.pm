@@ -247,10 +247,16 @@ sub prepare($$$$)
     if ($task->{path_to_captcha})
     {
         my $took;
-        my $captcha_text = took { captcha_recognizer($cnf->{captcha_decode}, $task->{path_to_captcha}) } \$took;
-        unless ($captcha_text)
+        my $captcha_text = took { captcha_recognizer($log, $cnf->{captcha_decode}, $task->{path_to_captcha}) } \$took;
+        unless (defined $captcha_text)
         {
+            #-- an error has occured while recognizing captcha
             $log->pretty_proxy(2, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned undef (took $took sec.)");
+            return('error');
+        }
+        unless ($captcha_text or $captcha_text =~ s/\s//gr)
+        {
+            #-- recognizer returned empty string
             return('no_captcha');
         }
 

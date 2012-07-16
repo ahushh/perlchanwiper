@@ -138,9 +138,9 @@ our $img = {
     #-------------------------------------------------------------------------------------------------------
     #-- single mode
     #-- Постить один указанный файл
-#    mode     => 'single',
+    mode     => 'single',
     path     => "extra/void.gif",    #-- путь к файлу
-    path     => "extra/desu.gif",    #-- путь к файлу
+#    path     => "extra/desu.gif",    #-- путь к файлу
     #-- captcha mode
     #-- Постить изображение капчи
     # mode => 'captcha',
@@ -202,7 +202,7 @@ our $vid = {
 our $captcha_decode = {
     #-------------------------------------------------------------------------------------------------------
     #-- antigate mode
-    # mode   => 'antigate',
+     mode   => 'antigate',
      key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
      opt    => {},  #-- см. документацию к модулю WebService::Antigate
     #-------------------------------------------------------------------------------------------------------
@@ -224,7 +224,8 @@ our $captcha_decode = {
     # mode => 'none',
     #-- tesseract OCR
     #-- Необходим convert (пакет ImageMagick) и сам tesseract
-      mode   => 'tesseract',
+    # mode   => 'tesseract',
+      after  => sub { my $_=shift; s/\s+//g; $_ }, #-- функция для дополнительно обработки разгаданного текста
     # lang   => 'eng',          #-- eng, rus, etc.
       config => 'englishletters', #-- название конфига для tesseract. см README
     # config => 'ruletters',    #-- название конфига для tesseract. см README

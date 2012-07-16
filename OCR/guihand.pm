@@ -33,12 +33,19 @@ sub cap($)
     return $text;
 }
 
-sub decode_captcha($$)
+sub decode_captcha($$$)
 {
-    my ($captcha_decode, $file_path) = @_;
-    return cap($file_path) || undef;
+    my ($log, $captcha_decode, $file_path) = @_;
+    my $text;
+    eval { $text = cap($file_path) };
+    if ($@)
+    {
+        $log->msg(1, $@, 'DECODE CAPTCHA', 'red') if $@;
+        return undef;
+    }
+    return $text;
 }
 
-sub abuse($$) { }
+sub abuse($$$) { }
  
 1;

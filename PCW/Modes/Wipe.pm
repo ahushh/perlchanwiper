@@ -129,7 +129,7 @@ my $cb_wipe_prepare = unblock_sub
                 $queue->{get}->put($new_task);
             }
         }
-        when (/net_error|timeout/)
+        when (/net_error|timeout|error/)
         {
             $self->{failed_proxy}{ $task->{proxy} }++;
         }
@@ -198,7 +198,7 @@ my $cb_wipe_post = unblock_sub
         when ('wrong_captcha')
         {
             $self->{stats}{wrong_captcha}++;
-            captcha_report_bad($self->{conf}{captcha_decode}, $task->{path_to_captcha});
+            captcha_report_bad($self->{log}, $self->{conf}{captcha_decode}, $task->{path_to_captcha});
             if ($self->{conf}{wcap_retry})
             {
                 $log->msg(4, "push into the get queue: $task->{proxy}");

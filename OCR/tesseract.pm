@@ -1,7 +1,6 @@
 use v5.12;
 use utf8;
 
-use Carp;
 use File::Temp qw/tempdir tempfile/;
 use File::Spec;
 
@@ -16,15 +15,15 @@ sub _convert2tiff($)
 {
     my $source = shift;
     my $dest   = File::Spec->catfile($tmpdir, rand().'.tif');
-    my $cmd    = sprintf "%s %s %s %s %s %s",
+    my $cmd    = sprintf "%s %s %s %s %s %s 2>&1",
                 shellquote($convert),
                 shellquote($source),
                 '-compress',
                 'none',
                 '+matte',
                 shellquote($dest);
-    my $err    = `$cmd`; 
-    Carp::croak $err if $?;
+    my $err    = `$cmd`;
+    die "Error while converting a captcha to tif:$err" if $?;
     return $dest;
 }
 
@@ -42,28 +41,27 @@ sub _get_ocr($;$$)
         ( defined $config ? " nobatch $config"  : '' ) .
         ( $^O =~ /linux/  ? " 2>/dev/null 1>&2" : ' > NUL' );
 
-    system $cmd;
-    return readfile("$tif.txt");
+    my $err = `$cmd`;
+    die "Error while getting tesseract OCR: $err" if $?;
+    return readfile("$tif.txt") || '';
 }
 #--------------------------------------------------------------------------------------------
-sub decode_captcha($$)
+sub decode_captcha($$$)
 {
-    my ($captcha_decode, $file_path) = @_;
+    my ($log, $captcha_decode, $file_path) = @_;
+    my $after = $captcha_decode->{after};
     my $text;
     eval {
         $text = _get_ocr($file_path, $captcha_decode->{lang}, $captcha_decode->{config});
     };
-    #warn $@ if $@;
-    #warn "Error while recognizing a captcha" if $@;
-
-    #$text =~ s/^\s*//;
-    #$text =~ s/\s*$//;
-    #$text =~ s/\n//;
-    $text =~ s/\s//g;
-
-    return $text || undef;
+    if ($@)
+    {
+        $log->msg(1, $@, 'DECODE CAPTCHA', 'red');
+        return undef;
+    }
+    return &$after($text);
 }
 
-sub abuse($$) { }
+sub abuse($$$) { }
 
 1;
