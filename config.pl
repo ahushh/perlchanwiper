@@ -140,7 +140,7 @@ our $img = {
     #-- Постить один указанный файл
     mode     => 'single',
     path     => "extra/void.gif",    #-- путь к файлу
-#    path     => "extra/desu.gif",    #-- путь к файлу
+    # path     => "extra/desu.gif",    #-- путь к файлу
     #-- captcha mode
     #-- Постить изображение капчи
     # mode => 'captcha',
@@ -226,7 +226,7 @@ our $captcha_decode = {
     #-- Необходим convert (пакет ImageMagick) и сам tesseract
     # mode   => 'tesseract',
       after  => sub { my $_=shift; s/\s+//g; $_ }, #-- функция для дополнительно обработки разгаданного текста
-    # lang   => 'eng',          #-- eng, rus, etc.
+    # lang   => 'eng',            #-- eng, rus, etc.
       config => 'englishletters', #-- название конфига для tesseract. см README
-    # config => 'ruletters',    #-- название конфига для tesseract. см README
+    # config => 'ruletters',
 };
