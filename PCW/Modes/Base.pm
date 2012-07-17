@@ -42,6 +42,7 @@ sub _run_custom_watchers($$$)
     for my $name (keys %{ $self->{conf}{watchers} })
     {
         my $wt = $self->{conf}{watchers}{$name};
+        next unless $wt->{enable};
         if ($wt->{on_start})
         {
             &{ curry( $wt->{cb}, $self, $wt->{conf}, $queue ) };
@@ -59,6 +60,7 @@ sub _init_custom_watchers($$$)
     for my $name (keys %{ $self->{conf}{watchers} })
     {
         my $wt = $self->{conf}{watchers}{$name};
+        next unless $wt->{enable};
         given ($wt->{type})
         {
             when ('timer')
