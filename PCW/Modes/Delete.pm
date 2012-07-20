@@ -84,8 +84,20 @@ sub init($)
     my $log  = $self->{log};
     $log->msg(1, "Initialization... ");
     $self->_base_init();
-    $self->_init_watchers();
+    $self->_init_base_watchers();
     $self->_run_custom_watchers($watchers, $queue);
+    $self->_init_custom_watchers($watchers, $queue);
+}
+
+sub re_init_all_watchers($)
+{
+    my $self = shift;
+    $_->cancel for (grep {$_->desc =~ /custom-watcher/ } Coro::State::list);
+    for ( keys(%$watchers) )
+    {
+        $watchers->{$_} = undef;
+    }
+    $self->_init_base_watchers();
     $self->_init_custom_watchers($watchers, $queue);
 }
 
@@ -127,7 +139,7 @@ sub stop($)
     my $self = shift;
     my $log  = $self->{log};
     $log->msg(1, "Stopping delete mode...");
-    $_->cancel for (grep {$_->desc =~ /delete/ } Coro::State::list);
+    $_->cancel for (grep {$_->desc =~ /custom-watcher|delete/ } Coro::State::list);
     for ( (keys(%$watchers), keys(%$queue)) )
     {
         $watchers->{$_} = undef;
@@ -144,7 +156,7 @@ sub _base_init($)
     $queue->{delete}    = Coro::Channel->new();
 }
 
-sub _init_watchers($)
+sub _init_base_watchers($)
 {
     my $self = shift;
     my $log = $self->{log};

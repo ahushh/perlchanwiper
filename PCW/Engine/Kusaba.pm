@@ -322,7 +322,7 @@ sub prepare($$$$)
         }
         unless ($captcha_text or $captcha_text =~ s/\s//gr)
         {
-            $log->pretty_proxy(2, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned a empty string (took $took sec.)");
+            $log->pretty_proxy(2, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned an empty string (took $took sec.)");
             return('no_text');
         }
 

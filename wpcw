@@ -75,11 +75,19 @@ sub load_configs()
     $mode_config{captcha_decode} = $captcha_decode;
 }
 
+sub set_configs($)
+{
+    my $pcw = shift;
+    load_configs();
+    $pcw->{conf} = \%mode_config;
+}
+#-----------------------------------------------------------------------------
 sub load_proxies()
 {
     @proxies = get_proxylist($cnf{proxy_file}, $cnf{proxy_type});
 }
 
+#-----------------------------------------------------------------------------
 sub load_agents()
 {
     open my $fh, '<', $cnf{useragents};
@@ -87,6 +95,13 @@ sub load_agents()
     close $fh;
 }
 
+sub set_agents($)
+{
+    my $pcw = shift;
+    load_agents();
+    $pcw->{engine}{agents} = \@agents;
+}
+#-----------------------------------------------------------------------------
 sub load_chan()
 {
     my $package = File::Spec->catfile('chans', "$cnf{chan}.pl");
@@ -95,11 +110,31 @@ sub load_chan()
     say $chan_config->{urls}{post} if $DEBUG;
 }
 
+# sub set_chan($)
+# {
+#     my $pcw = shift;
+#     load_chan();
+#     for (keys %$chan_config)
+#     {
+#         $pcw->{engine}{$_} = $chan_config->{$_};
+#     }
+# }
+#-----------------------------------------------------------------------------
 sub load_logging()
 {
     $logging = PCW::Core::Log->new(file => $cnf{logfile}, level => $cnf{loglevel}, colored => !$cnf{lognocolor} );
 }
 
+sub set_logging($)
+{
+    my $pcw = shift;
+    load_logging();
+    $pcw->{log}         = $logging;
+    $pcw->{engine}{log} = $logging;
+    $pcw->{verbose}         = $cnf{verbose};
+    $pcw->{engine}{verbose} = $cnf{verbose};
+}
+#-----------------------------------------------------------------------------
 sub load_engine()
 {
     my $package = "PCW::Engine::". $chan_config->{engine};
@@ -109,6 +144,12 @@ sub load_engine()
     $engine = $package->new(%$chan_config, agents => \@agents, log => $logging, verbose => $cnf{verbose});
 }
 
+sub set_engine($)
+{
+    my $pcw = shift;
+    $pcw->{engine} = load_engine();
+}
+#-----------------------------------------------------------------------------
 sub load_mode()
 {
     my $package = "PCW::Modes::$cnf{mode}";
@@ -184,13 +225,61 @@ get '/stop'  => sub {
     $self->render(text => 'ok');
 };
 
-get '/reload' => sub {
+#-----------------------------------------------------------------------------
+# reload
+#-----------------------------------------------------------------------------
+get '/reload/all' => sub {
     my $self = shift;
+    if ($pcw->{is_running})
+    {
+        $pcw->stop();
+        sleep 1 while ($pcw->{is_running});
+    }
     $pcw = load_all();
     store \%cnf, $lastcnf;
     $self->render(text => '');
 };
 
+get '/reload/configs' => sub {
+    my $self = shift;
+    set_configs($pcw);
+    store \%cnf, $lastcnf;
+    $self->render(text => '');
+};
+
+get '/reload/watchers' => sub {
+    my $self = shift;
+    $pcw->re_init_all_watchers();
+    $self->render(text => '');
+};
+
+get '/reload/agents' => sub {
+    my $self = shift;
+    set_agents($pcw);
+    store \%cnf, $lastcnf;
+    $self->render(text => '');
+};
+
+# get '/reload/chan' => sub {
+#     my $self = shift;
+#     set_chan($pcw);
+#     store \%cnf, $lastcnf;
+#     $self->render(text => '');
+# };
+
+get '/reload/log' => sub {
+    my $self = shift;
+    set_logging($pcw);
+    store \%cnf, $lastcnf;
+    $self->render(text => '');
+};
+
+# get '/reload/engine' => sub {
+#     my $self = shift;
+#     set_engine($pcw);
+#     store \%cnf, $lastcnf;
+#     $self->render(text => '');
+# };
 #-----------------------------------------------------------------------------
 # info
 #-----------------------------------------------------------------------------
@@ -413,7 +502,7 @@ __DATA__
   </html>
 
 @@ index.html.ep
-% our $VERSION = '0.2.2-88';
+% our $VERSION = '0.2.2-89';
 %= javascript 'http://code.jquery.com/jquery-1.7.2.min.js'
 %= javascript begin
 var cnf = {
@@ -570,6 +659,7 @@ $(document).ready(function(){
     $("#status").click(function() {
         if ($(this).html() == 'start') {
             $.get('/start');
+            errorLog('Do NOT click "stop" while initialization is running!');
         } else {
             $.get('/stop');
         }
@@ -596,14 +686,20 @@ $(document).ready(function(){
     });
 
     // reload config
-    $("#reload").click(function() {
-        var c = $(this);
-        c.html('…');
-        $.get('/reload');
-        $.get('/countproxies', function(data) {
-            $('#proxy_count').html(data);
+    $(".reload").each(function(i) {
+        var elem = $(this);
+        var name = elem.attr('name')
+        elem.click(function() {
+            var oldHtml = elem.html();
+            elem.html('…');
+            $.get('/reload/' + name);
+            if (name == 'all') {
+                $.get('/countproxies', function(data) {
+                    $('#proxy_count').html(data);
+                });
+            }
+            setTimeout( function() { elem.html(oldHtml) }, 1000 );
         });
-        setTimeout( function() { c.html('reload') }, 1000 );;
     });
 
     // file editor
@@ -650,26 +746,34 @@ $(document).ready(function(){
       <div id="summary">
         <h4>Configure</h4>
         <div id="config">
-          Chan: <a id='chan' class='menuJSON' href='#'></a><br>
-          <span id="chan_menu" style="display: none"></span>
           Mode: <a id='mode' class='menuJSON' href='#'></a><br>
           <span id="mode_menu" style="display: none"></span>
+
+          Chan: <a id='chan' class='menuJSON' href='#'></a><br>
+          <span id="chan_menu" style="display: none"></span>
+          <!-- &nbsp;&nbsp;<a class="reload" name="chan" href="#">reload chan</a><br> -->
+
           [<a class='edit' href='#' name='common_config'>edit</a>] Common config: <a id='common_config' class='input' href='#'></a><br>
           <span id="common_config_input" style="display: none"></span>
           [<a class='edit' href='#' name='mode_config'>edit</a>] Mode config: <a id='mode_config' class='input' href='#'></a><br>
           <span id="mode_config_input" style="display: none"></span>
-          [<a class='edit' href='#' name='proxy_file'>edit</a>] Proxy file: <a id='proxy_file' class='input' href='#'></a> (<span id='proxy_count'>0</span>)<br> 
+
+          [<a class='edit' href='#' name='proxy_file'>edit</a>] Proxy file: <a id='proxy_file' class='input' href='#'></a> (<span id='proxy_count'>0</span>)<br>
           <span id="proxy_file_input" style="display: none"></span> 
           Proxy type: <a id='proxy_type' class='menuJSON' href='#'></a><br>
           <span id="proxy_type_menu" style="display: none"></span>
+
           Loglevel: <a id='loglevel' class='input' href='#'></a><br>
           <span id="loglevel_input" style="display: none"></span>
           Lognocolor: <a id='lognocolor' class='toggle' href='#'></a><br>
           Verbose: <a id='verbose' class='toggle' href='#'></a><br>
+
           UserAgents: <a id='useragents' class='input' href='#'></a><br>
           <span id="useragents_input" style="display: none"></span>
+
+          Reload:<br>
+          [ <a class="reload" name="all" href="#">all</a> | <a class="reload" name="configs" href="#">configs</a> & <a class="reload" name="watchers" href="#">watchers</a> | <a class="reload" name="log" href="#">log</a> | <a class="reload" name="agents" href="#">UserAgents</a> ]
         </div>
-        [ <a href="#" id="reload">reload</a> ]
         <hr>
         <h4>Stats</h4>
         <div id="stats"></div>
