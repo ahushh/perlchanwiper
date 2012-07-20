@@ -47,9 +47,10 @@ sub file_vid($$$)
     state @vid_list;
 
     $lock->down;
-    if (!@vid_list)
+    if (!@vid_list or !$data->{loaded})
     {
         @vid_list = split /\s+/, readfile($data->{path});
+        $data->{loaded} = 1;
     }
     $lock->up;
 
@@ -75,7 +76,7 @@ sub download_vid($$$)
     state @vid_list;
 
     $lock->down;
-    if (!@vid_list)
+    if (!@vid_list or !$data->{loaded})
     {
         my $log = $engine->{log};
         $log->msg(2, "Start fetching video ID's from $data->{type}..");
@@ -107,6 +108,7 @@ sub download_vid($$$)
             close $fh;
             $log->msg("Video ID's saved to $path");
         }
+        $data->{loaded} = 1;
     }
     $lock->up;
 

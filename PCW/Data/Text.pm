@@ -96,9 +96,10 @@ sub boundary_msg($$$)
     state $i = 0;
 
     $lock->down;
-    if (!@text)
+    if (!@text or !$data->{loaded})
     {
         @text = split /$boundary/, readfile($data->{path}, 'utf8');
+        $data->{loaded} = 1;
     }
     $lock->up;
 
@@ -123,9 +124,10 @@ sub string_msg($$$)
     $i = 0 if ($i >= scalar @text);
 
     $lock->down;
-    if (!@text)
+    if (!@text or $data->{loaded})
     {
         @text = readfile($data->{path}, 'utf8');
+        $data->{loaded} = 1;
     }
     $lock->up;
 
