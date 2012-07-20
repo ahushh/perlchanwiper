@@ -76,7 +76,7 @@ sub dir_img($)
 
     state @img_list;
     $lock->down;
-    if (!@img_list)
+    if (!@img_list or !$data->{loaded})
     {
         my @types = @{ $data->{types} };
         Carp::croak "Allowed types are not specified!"
@@ -101,6 +101,7 @@ sub dir_img($)
             if $data->{max_size};
         @img_list = grep { basename($_) =~ /$data->{regexp}/ } @img_list
             if $data->{regexp};
+        $data->{loaded} = 1;
     }
     $lock->up;
     state $i = 0;
