@@ -78,6 +78,7 @@ http://localhost:3000
 ./INSTALL.pl
 или
 perl INSTALL.pl
+или
 sudo perl ./INSTALL.pl
 
 Добавление новых чанов

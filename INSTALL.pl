@@ -257,4 +257,4 @@ perl \.INSTALL.pl windows
 
 =back
 
-Almost no tested
+Almost not tested
