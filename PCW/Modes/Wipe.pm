@@ -189,7 +189,8 @@ my $cb_wipe_post = unblock_sub
     {
         when ('success')
         {
-            $self->{stats}{OCR_acuracy} = sprintf("%d%", 100 * $self->{stats}{posted} / ($self->{stats}{wrong_captcha} + $self->{stats}{posted}));
+            $self->{stats}{OCR_accuracy} = sprintf("%d%", 100 * $self->{stats}{posted} / ($self->{stats}{wrong_captcha} + $self->{stats}{posted}))
+                if ($self->{stats}{wrong_captcha} + $self->{stats}{posted});
             #-- Move successfully recognized captcha into the specified dir
             if ($self->{conf}{save_captcha} && $task->{path_to_captcha})
             {
@@ -209,7 +210,8 @@ my $cb_wipe_post = unblock_sub
         when ('wrong_captcha')
         {
             $self->{stats}{wrong_captcha}++;
-            $self->{stats}{OCR_acuracy} = sprintf("%d%", 100 * $self->{stats}{posted} / ($self->{stats}{wrong_captcha} + $self->{stats}{posted}));
+            $self->{stats}{OCR_accuracy} = sprintf("%d%", 100 * $self->{stats}{posted} / ($self->{stats}{wrong_captcha} + $self->{stats}{posted}))
+                if ($self->{stats}{wrong_captcha} + $self->{stats}{posted});
             captcha_report_bad($self->{log}, $self->{conf}{captcha_decode}, $task->{path_to_captcha});
             if ($self->{conf}{wcap_retry})
             {
@@ -346,7 +348,7 @@ sub _base_init($)
     $self->{is_running}   = 1;
     $self->{start_time}   = time;
     $self->{failed_proxy} = {};
-    $self->{stats}    = {error => 0, posted => 0, wrong_captcha => 0, total => 0, speed => '', OCR_acuracy => '' };
+    $self->{stats}    = {error => 0, posted => 0, wrong_captcha => 0, total => 0, speed => '', OCR_accuracy => '' };
     $queue->{get}     = Coro::Channel->new();
     $queue->{prepare} = Coro::Channel->new();
     $queue->{post}    = Coro::Channel->new();

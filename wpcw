@@ -323,7 +323,7 @@ get '/log/read' => sub {
   $stream->on(
     read => sub {
       my ( $stream, $chunk ) = @_;
-      my $h  = HTML::FromANSI->new(fill_cols => 1, style => 'line-height: 1; letter-spacing: 0; font-size: 9pt');
+      my $h  = HTML::FromANSI->new(style => 'line-height: 1; letter-spacing: 0; font-size: 9pt');
       $h->add_text($chunk);
       $chunk = $h->html;
       $self->write("event:log\ndata:$chunk\n\n");
@@ -382,7 +382,7 @@ get '/config/set/(:var)/(:val)' => sub {
 #-----------------------------------------------------------------------------
 get '/file/read/:name'  => sub {
     my $self = shift;
-    my $name = $self->param('name');
+    my $name = decode_base64($self->param('name'));
     my $filename = $cnf{$name};
     my $content = readfile($filename, 'utf8');
     $self->render(text => $content);
@@ -390,13 +390,19 @@ get '/file/read/:name'  => sub {
 
 post '/file/write/:name'  => sub {
     my $self = shift;
-    my $name = $self->param('name');
+    my $name = decode_base64($self->param('name'));
     my $filename  = $cnf{$name};
     my $content   = $self->param('content');
     open my $fh, '>', $filename;
     print $fh $content;
     close $fh;
     $self->render(text => 'ok');
+};
+
+get '/file/exists/:name'  => sub {
+    my $self = shift;
+    my $name = decode_base64($self->param('name'));
+    $self->render(text => (-e $name ? 'yes' : 'no' ) );
 };
 
 #-----------------------------------------------------------------------------
@@ -502,7 +508,7 @@ __DATA__
   </html>
 
 @@ index.html.ep
-% our $VERSION = '0.2.2-90';
+% our $VERSION = '0.2.2-91';
 %= javascript 'http://code.jquery.com/jquery-1.7.2.min.js'
 %= javascript begin
 var cnf = {
@@ -537,8 +543,25 @@ function updateConfig() {
 
             $('#'+ elem + '_input input').blur(function() {
                 var newVal = $(this).val();
-                $('#'+ elem).html(newVal);
-                setConfig(elem, newVal);
+                switch (elem)
+                {
+                    case 'proxy_file':
+                    case 'mode_config':
+                    case 'common_config':
+                    case 'useragents':
+                        $.get('/file/exists/' + btoa(newVal), function(data) {
+                            if (data == 'yes') {
+                                $('#'+ elem).html(newVal);
+                                setConfig(elem, newVal);
+                            } else {
+                                printLog('File ' + newVal + ' does not exist!', 'red');
+                            }
+                        });
+                        break;
+                    default:
+                        $('#'+ elem).html(newVal);
+                        setConfig(elem, newVal);
+                }
                 // $('#' + elem + '_input').empty();
                 // $('#' + elem + '_input').append('<input type="text" value="'+ newVal +'" class="'+ elem +'"><br>');
             });
@@ -620,19 +643,13 @@ function updateStats() {
 }
 
 // logging
-function printLog(str) {
-    $("#log").append(str);
+function printLog(str, color) {
+    $("#log").append('<tt><font face="fixedsys, lucida console, terminal, vga, monospace" style="line-height: 1; letter-spacing: 0; font-size: 9pt"><span style="color: ' + color + '; background: black;">' + str + '<br></span></font></tt>');
     if (cnf['autoscroll']) {
         $("#log").scrollTop( $("#log").scrollTop() + 1000 );
     }
 }
 
-function errorLog(str) {
-    $("#log").append('<tt><font face="fixedsys, lucida console, terminal, vga, monospace" style="line-height: 1; letter-spacing: 0; font-size: 10pt"><span style="color: red; background: black;">' + str + '<br></span></font></tt>');
-    if (cnf['autoscroll']) {
-        $("#log").scrollTop( $("#log").scrollTop() + 1000 );
-    }
-}
 //--------------------------------------------------------------------------
 
 $(document).ready(function(){
@@ -640,14 +657,17 @@ $(document).ready(function(){
         if (xhr.responseText) { 
             $('html').html(xhr.responseText);
         } else {
-            errorLog('Ajax Error at [' + settings.type + '] '  + settings.url + ': '  + xhr.statusText);
+            printLog('Ajax Error at [' + settings.type + '] '  + settings.url + ': '  + xhr.statusText, 'red');
         }
     });
 
     // logging
     var logging = new EventSource('/log/read');
     logging.addEventListener('log', function(event) {
-        printLog(event.data);
+        $("#log").append(event.data);
+        if (cnf['autoscroll']) {
+            $("#log").scrollTop( $("#log").scrollTop() + 1000 );
+        }
     }, false);
 
     // status
@@ -659,7 +679,7 @@ $(document).ready(function(){
     $("#status").click(function() {
         if ($(this).html() == 'start') {
             $.get('/start');
-            errorLog('Do NOT click "stop" while initialization is running!');
+            printLog('Do NOT click "stop" while initialization is running!', 'yellow');
         } else {
             $.get('/stop');
         }
@@ -708,13 +728,13 @@ $(document).ready(function(){
         $('#editorContainer').css('display', 'block');
         var fileName = $(this).attr('name');
         $('#saveFile').attr('name', fileName);
-        $.get('/file/read/' + fileName, function(data) {
+        $.get('/file/read/' + btoa(fileName), function(data) {
             $('#editor').val( data );
         });
     });
     $("#saveFile").click(function() {
         var data = $('textarea#editor').val();
-        $.post('/file/write/' + $(this).attr('name'), { content: data });
+        $.post('/file/write/' + btoa($(this).attr('name')), { content: data });
         $('#logContainer').css('display', 'block');
         $('#editorContainer').css('display', 'none');
     });
