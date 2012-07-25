@@ -30,7 +30,7 @@ our $chan_config =
                               'В этом разделе для начала треда нужно загрузить файл',
                               'Вы ничего не написали в сообщении', 
                               ],
-            success       => ['Go West', 'wakaba.html'],
+            success       => ['Go West', 303],
         },
         delete => {
             success => [303],
