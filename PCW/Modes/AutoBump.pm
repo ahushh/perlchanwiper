@@ -243,6 +243,7 @@ sub start($)
 {
     my $self = shift;
     my $log  = $self->{log};
+    return unless $self->{is_running};
     $log->msg(1, "Starting autobump mode...");
     Carp::croak('Hey, what thread are you going to bump?') unless $self->{conf}{post_cnf}{thread};
     async {

@@ -45,7 +45,8 @@ sub _run_custom_watchers($$$)
         next unless $wt->{enable};
         if ($wt->{on_start})
         {
-            &{ curry( $wt->{cb}, $self, $wt->{conf}, $queue ) };
+            my $cb = $wt->{cb};
+            &$cb($self, $wt->{conf}, $queue);
         }
     }
     while (grep {$_->desc eq 'custom-watcher' } Coro::State::list)
