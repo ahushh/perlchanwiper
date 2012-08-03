@@ -24,7 +24,7 @@ our $msg = {
     # text => ">>#post#\n>>#post#\n",
     # text => '#delirium#',
     # text => '#post#',
-      text => '@~fortune psalms bible~@',
+      text => 'A fire goeth before him, and burneth up his enemies round about.',
     # text => "bump %date%\n@~fortune psalms bible~@",
     # after => sub { $_=shift; s/--|\d+:\d+//g; s/\n/ /g; $_  },
     #-------------------------------------------------------------------------------------------------------
@@ -202,9 +202,9 @@ our $vid = {
 our $captcha_decode = {
     #-------------------------------------------------------------------------------------------------------
     #-- antigate mode
-     mode   => 'antigate',
-     key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
-     opt    => {},  #-- см. документацию к модулю WebService::Antigate
+    # mode   => 'antigate',
+      key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
+      opt    => {},  #-- см. документацию к модулю WebService::Antigate
     #-------------------------------------------------------------------------------------------------------
     #-- captchabot mode
     # mode   => 'captchabot',
@@ -224,9 +224,10 @@ our $captcha_decode = {
     # mode => 'none',
     #-- tesseract OCR
     #-- Необходим convert (пакет ImageMagick) и сам tesseract
-    # mode   => 'tesseract',
+      mode   => 'tesseract',
       after  => sub { my $_=shift; s/\s+//g; $_ }, #-- функция для дополнительно обработки разгаданного текста
     # lang   => 'eng',            #-- eng, rus, etc.
-      config => 'englishletters', #-- название конфига для tesseract. см README
+      config => 'englishletters', #-- название конфига для tesseract. см. README
     # config => 'ruletters',
+    # psm    => undef,            #-- только для версии 3.01, см. tesseract --help
 };

@@ -39,13 +39,13 @@ sub abuse($$$)
     my $key = $captcha_decode->{key};
     my $id  = delete $captcha_decode->{$file_path};
     my $recognizer = WebService::Antigate->new("key" => $key);
-    unless ($recognizer->abuse($id))
+    if ($recognizer->abuse($id))
     {
-        $log->msg(2, "Error while send an abuse on $id captcha ($WebService::Antigate::DOMAIN): ". $recognizer->errno, 'ABUSE CAPTCHA', 'red');
+        $log->msg(3, "Abuse on $id captcha was sent successfuly ($WebService::Antigate::DOMAIN)", 'ABUSE CAPTCHA', 'green');
     }
     else
     {
-        $log->msg(3, "Abuse on $id captcha was sended successfuly ($WebService::Antigate::DOMAIN)", 'ABUSE CAPTCHA', 'green');
+        $log->msg(2, "Error while sending an abuse on $id captcha ($WebService::Antigate::DOMAIN): ". $recognizer->errno, 'ABUSE CAPTCHA', 'red');
     }
 }
 
