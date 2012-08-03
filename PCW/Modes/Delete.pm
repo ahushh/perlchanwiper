@@ -105,6 +105,7 @@ sub start($)
 {
     my $self = shift;
     my $log  = $self->{log};
+    return unless $self->{is_running};
     $log->msg(1, "Starting delete mode...");
     async {
         #-------------------------------------------------------------------

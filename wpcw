@@ -508,7 +508,7 @@ __DATA__
   </html>
 
 @@ index.html.ep
-% our $VERSION = '0.2.2-91';
+% our $VERSION = '0.2.2-92';
 %= javascript 'http://code.jquery.com/jquery-1.7.2.min.js'
 %= javascript begin
 var cnf = {
@@ -679,7 +679,6 @@ $(document).ready(function(){
     $("#status").click(function() {
         if ($(this).html() == 'start') {
             $.get('/start');
-            printLog('Do NOT click "stop" while initialization is running!', 'yellow');
         } else {
             $.get('/stop');
         }

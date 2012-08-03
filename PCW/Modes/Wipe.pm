@@ -317,6 +317,7 @@ sub start($)
 {
     my $self = shift;
     my $log  = $self->{log};
+    return unless $self->{is_running};
     $log->msg(1, "Starting wipe mode...");
     async {
         $queue->{get}->put({ proxy => $_ }) for (@{ $self->{proxies} });
