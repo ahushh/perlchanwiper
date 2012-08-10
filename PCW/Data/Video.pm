@@ -124,7 +124,10 @@ sub download_vid($$$)
         $i = 0 if ($i >= scalar @vid_list);
         $video = $vid_list[$i++];
     }
-
+    else
+    {
+        Carp::croak("Order is not specified. Check your general config.");
+    }
     return $video;
 }
 
