@@ -78,9 +78,11 @@ sub dir_img($)
     $lock->down;
     if (!@img_list or !$data->{loaded})
     {
-        my @types = @{ $data->{types} };
-        Carp::croak "Allowed types are not specified!"
-                unless @types;
+        my @types;
+        if (!$data->{types} or !(@types = @{ $data->{types} }))
+        {
+            Carp::croak "Allowed types are not specified!"
+        }
 
         if ($data->{recursively})
         {
@@ -115,6 +117,10 @@ sub dir_img($)
     {
         $i = 0 if ($i >= scalar @img_list);
         $path_to_img = $img_list[$i++];
+    }
+    else
+    {
+        Carp::croak("Order is not specified. Check your general config.");
     }
     return img_altering($path_to_img, $data->{altering})
         if $data->{altering};

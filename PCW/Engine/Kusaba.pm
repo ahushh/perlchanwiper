@@ -201,7 +201,7 @@ sub _get_delete_content($$%)
         board      => $config{board},
         password   => $config{password},
         delete     => $config{delete},
-        deletepost => 'Удалить',
+        deletepost => $config{deletepost},
     };
     return $content;
 }

@@ -113,6 +113,10 @@ sub boundary_msg($$$)
         $i = 0 if ($i >= scalar @text);
         $msg = $text[$i++];
     }
+    else
+    {
+        Carp::croak("Order is not specified. Check your general config.");
+    }
     return $msg;
 }
 
@@ -143,6 +147,10 @@ sub string_msg($$$)
     {
         my $j = random(0, scalar(@text) - $num_str);
         $msg .= $text[$j++] while $num_str--;
+    }
+    else
+    {
+        Carp::croak("Order is not specified. Check your general config.");
     }
     return $msg;
 }
