@@ -41,11 +41,11 @@ sub abuse($$$)
     my $recognizer = WebService::Antigate->new("key" => $key);
     if ($recognizer->abuse($id))
     {
-        $log->msg(3, "Abuse on $id captcha was sent successfuly ($WebService::Antigate::DOMAIN)", 'ABUSE CAPTCHA', 'green');
+        $log->msg(3, "Abuse to $id captcha was sent successfuly ($WebService::Antigate::DOMAIN)", 'ABUSE CAPTCHA', 'green');
     }
     else
     {
-        $log->msg(2, "Error while sending an abuse on $id captcha ($WebService::Antigate::DOMAIN): ". $recognizer->errno, 'ABUSE CAPTCHA', 'red');
+        $log->msg(2, "Error while sending an abuse to $id captcha ($WebService::Antigate::DOMAIN): ". $recognizer->errno, 'ABUSE CAPTCHA', 'red');
     }
 }
 

@@ -313,8 +313,8 @@ sub prepare($$$$)
         #-- Add mm to post headers
         my $h = $task->{headers};
         my $c = $h->header('Cookie');
-        $c =~ s/; $//;
-        $h->header('Cookie' => "$c; mm=$mm");
+        $c =~ s/\s*$//;
+        $h->header('Cookie' => "$c; mm2=1; mm=$mm");
     }
 
     $task->{content} = \%content;
