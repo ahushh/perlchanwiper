@@ -6,7 +6,7 @@ our $chan_config =
     description        => 'Нульчик-стульчик',
     engine             => 'EFGKusaba',
     captcha_extension  => 'png',
-    cookies            => ['PHPSESSID'],
+    cookies            => ['PHPSESSID', 'cap'],
     threads_per_page   => 20,
 
     response => {
@@ -67,9 +67,9 @@ our $chan_config =
     },
 
     urls => {
-        post      => 'https://'. HOST .'/board.php',
-        delete    => 'https://'. HOST .'/board.php',
-        captcha   => 'https://'. HOST .'/captcha.php',
+        post      => 'http://'. HOST .'/board.php',
+        delete    => 'http://'. HOST .'/board.php',
+        captcha   => 'http://'. HOST .'/captcha.php',
         page      => 'http://'. HOST .'/%s/%d.html',
         zero_page => 'http://'. HOST .'/%s',
         thread    => 'http://'. HOST .'/%s/res/%d.html',
