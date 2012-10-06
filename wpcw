@@ -14,6 +14,7 @@ my $DEBUG    = 0;
 use MIME::Base64; 
 use Getopt::Long qw/:config bundling/;
 use File::Spec;
+use File::Basename;
 use File::Temp qw/tempfile/;
 #-----------------------------------------------------------------------------
 use PCW::Core::Utils qw/get_proxylist readfile/;
@@ -29,6 +30,7 @@ my @proxies;
 my @agents;
 my $engine;
 my $logging;
+# my $log_settings;
 
 #-----------------------------------------------------------------------------
 # Config
@@ -64,7 +66,7 @@ sub load_cnf()
 
 sub load_configs()
 {
-    our ($img, $msg, $vid, $captcha_decode);
+    our ($img, $msg, $vid, $captcha_decode);#, $log_settings);
     our %mode_config;
     do $cnf{common_config};
     do $cnf{mode_config};  #-- load %mode_config
@@ -122,7 +124,10 @@ sub load_chan()
 #-----------------------------------------------------------------------------
 sub load_logging()
 {
-    $logging = PCW::Core::Log->new(file => $cnf{logfile}, level => $cnf{loglevel}, colored => !$cnf{lognocolor} );
+    $logging = PCW::Core::Log->new(file     => $cnf{logfile},
+                                   level    => $cnf{loglevel},
+                                   colored  => !$cnf{lognocolor});
+                                   # settings => $log_settings );
 }
 
 sub set_logging($)
@@ -185,6 +190,7 @@ my $pcw = load_all();
 # Web UI
 #-----------------------------------------------------------------------------
 use Mojolicious::Lite;
+use Mojo::Base 'Mojo::Cookie';
 use HTML::FromANSI ();
 
 #-----------------------------------------------------------------------------
@@ -222,6 +228,8 @@ get '/start'  => sub {
 get '/stop'  => sub {
     my $self = shift;
     $pcw->stop;
+    # очищаем капчи
+    $pcw->{conf}{captcha_decode}{web} = undef;
     $self->render(text => 'ok');
 };
 
@@ -361,6 +369,31 @@ get '/log/read' => sub {
 };
 
 #-----------------------------------------------------------------------------
+# captcha input
+#-----------------------------------------------------------------------------
+get '/captcha/get' => sub {
+    my $self = shift;
+    my $path = shift @{ $pcw->{conf}{captcha_decode}{web}{request} };
+    return unless $path;
+    $self->cookie('captcha_path' => $path);
+    my $content = readfile($path);
+    my (undef, undef, $suf) = fileparse($path, 'png', 'jpeg', 'jpg', 'gif', 'bmp');
+    $self->render( data => $content, format => $suf );
+};
+
+post '/captcha/send' => sub {
+    my $self = shift;
+    my $path = $self->cookie('captcha_path');
+    my $text = $self->param('text');
+    if ($path)
+    {
+        $pcw->{conf}{captcha_decode}{web}{answers}{$path} = $text;
+        $self->cookie('captcha_path' => '');
+    }
+    $self->render(text => 'ok');
+};
+
+#-----------------------------------------------------------------------------
 # editing config
 #-----------------------------------------------------------------------------
 get '/config/get' => [ format => ['json'] ] => sub {
@@ -479,6 +512,10 @@ __DATA__
       display: none;
   }
 
+  #captcha_img {
+      padding: 5px;
+  }
+
   #summary {
       width: 30%;
       height: 80%;
@@ -508,7 +545,7 @@ __DATA__
   </html>
 
 @@ index.html.ep
-% our $VERSION = '0.2.2-96';
+% our $VERSION = '0.2.2-97';
 %= javascript 'http://code.jquery.com/jquery-1.7.2.min.js'
 %= javascript begin
 var cnf = {
@@ -518,6 +555,17 @@ var cnf = {
 // config
 function setConfig(variable, value) {
     $.get('/config/set/' + variable + '/' + btoa(value));
+}
+
+function updateCaptcha() {
+    $("#captcha_img").removeAttr("src").attr("src", "/captcha/get?" + Math.random() );
+}
+
+function sendCaptcha(value) {
+    $.post('/captcha/send', { text: value }, function() {
+        $("#captcha_input").val('');
+        updateCaptcha();
+    });
 }
 
 function updateConfig() {
@@ -742,6 +790,19 @@ $(document).ready(function(){
         $('#editorContainer').css('display', 'none');
     });
 
+    // captcha
+    $("#captcha_input").keypress(function(e) {
+        if (e.which == 13) {
+            var value = $("#captcha_input").val();
+            sendCaptcha(value);
+        }
+    });
+    $("#captcha_img").click(function() {
+        sendCaptcha('');
+    });
+    $("#refreshCaptcha").click(function() {
+        sendCaptcha('');
+    });
     updateStats();
     updateConfig();
 });
@@ -796,6 +857,10 @@ $(document).ready(function(){
         <hr>
         <h4>Stats</h4>
         <div id="stats"></div>
+        <h4>Captcha</h4>
+        <input type="text" value="" id="captcha_input"> <a href="#" id="refreshCaptcha">refresh</a><br>
+        (press enter to send) <br>
+        <img id="captcha_img" src="" alt="">
       </div>
       <div id="logContainer">
         <h4>Log</h4>
