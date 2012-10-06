@@ -294,7 +294,7 @@ sub prepare($$$$)
     if ($content{board} eq 'b')
     {
         my ($took, $mm);
-        #-- if the text is empty or the text is staic, compute mm only once
+        #-- if the text is empty or the text is static, compute mm only once
         if (($cnf->{msg_data}{text} eq '' or $cnf->{msg_data}{text} !~ /#|%|@~/)
             and !$self->{static_mm})
         {

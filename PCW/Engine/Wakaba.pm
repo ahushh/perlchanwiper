@@ -293,14 +293,7 @@ sub prepare($$$$)
         $content{ $self->{fields}{post}{nofile} } = 'on';
     }
 
-    if ($task->{content})
-    {
-        $task->{content} = { %{ $task->{content} },  %content };
-    }
-    else
-    {
-        $task->{content} = \%content;
-    }
+    $task->{content} = { ($task->{content} ? %{$task->{content}} : ()), %content };
 
     return('success');
 }

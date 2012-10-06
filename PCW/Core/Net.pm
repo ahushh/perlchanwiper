@@ -59,10 +59,10 @@ sub http_get($$$)
     return $response->decoded_content, $response->headers_as_string, $status;
 }
 
-sub http_post($$$$)
+sub http_post($$$$;$)
 {
     #use Data::Dumper; say Dumper(@_); exit;
-    my ($proxy, $url, $headers, $content) = @_;
+    my ($proxy, $url, $headers, $content, $content_type) = @_;
     $content = \%{ $content };
     #-- convert the content to bytes
     for (keys %$content)
@@ -75,7 +75,7 @@ sub http_post($$$$)
     $ua->proxy([qw/http https/] => $proxy) if $proxy !~ 'no_proxy';
     my $response = $ua->post(
                              $url,
-                             'Content_Type' => 'multipart/form-data',
+                             'Content_Type' => ($content_type || 'multipart/form-data'),
                              'Content'      => $content,
                             );
 
