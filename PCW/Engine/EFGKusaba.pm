@@ -299,7 +299,7 @@ sub prepare($$$$)
             and !$self->{static_mm})
         {
             $self->{static_mm} = took { compute_mm($content{mm} . $content{message} . $content{postpassword}) } \$took;
-            $log->pretty_proxy(3, 'green', $task->{proxy}, 'PREPARE', "mm was computed: $self->{static_mm} (took $took sec.)");
+            $log->pretty_proxy(3, 'green', $task->{proxy}, 'PREPARE', "computed mm: $self->{static_mm} (took $took sec.)");
         }
         if ($self->{static_mm})
         {
@@ -308,7 +308,7 @@ sub prepare($$$$)
         else
         {
             $mm = took { compute_mm($content{mm} . $content{message} . $content{postpassword}) } \$took;
-            $log->pretty_proxy(3, 'green', $task->{proxy}, 'PREPARE', "mm was computed: $mm (took $took sec.)");
+            $log->pretty_proxy(3, 'green', $task->{proxy}, 'PREPARE', "computed mm: $mm (took $took sec.)");
         }
         #-- Add mm to post headers
         my $h = $task->{headers};
