@@ -19,14 +19,13 @@ our $msg = {
     #-------------------------------------------------------------------------------------------------------
     # text => "[code]#boundary#[/code]]",
     # text => "bump\n%date%",
-    text => '@~fortune psalms bible~@',
+      text => '@~fortune psalms bible~@',
     # text => '%unixtime%',
     # text => ">>#post#\n>>#post#\n",
     # text => '#delirium#',
     # text => '#post#',
-    # text => 'A fire goeth before him, and burneth up his enemies round about.',
     # text => "bump %date%\n@~fortune psalms bible~@",
-    # after => sub { $_=shift; s/--|\d+:\d+//g; s/\n/ /g; $_  },
+    after => sub { $_=shift; s/--|\d+:\d+//g; s/\n/ /g; $_  },
     #-------------------------------------------------------------------------------------------------------
     #-- #post# config
     post  => {
@@ -105,8 +104,8 @@ my $img_altering = {
     # %dest%      — на путь конечного файла
     #-- randnum mode
     #-- Дописывать в конец файла случайные цифры
-    #mode        => 'randnums',
-    #number_nums => 50,                   #-- количество дописываемых чисел
+    # mode        => 'randnums',
+    # number_nums => 50,                   #-- количество дописываемых чисел
     #-------------------------------------------------------------------------------------------------------
     #-- randbytes mode
     #-- Дописывать в конец файла случайные байты
@@ -139,8 +138,8 @@ our $img = {
     #-- single mode
     #-- Постить один указанный файл
     mode     => 'single',
-    #path     => "extra/void.gif",    #-- путь к файлу
-    path     => "extra/desu.gif",    #-- путь к файлу
+    path     => "extra/void.gif",    #-- путь к файлу
+    # path     => "extra/desu.gif",    #-- путь к файлу
     #-- captcha mode
     #-- Постить изображение капчи
     # mode => 'captcha',
@@ -224,10 +223,10 @@ our $captcha_decode = {
     # mode => 'none',
     #-- tesseract OCR
     #-- Необходим convert (пакет ImageMagick) и сам tesseract
-      #mode   => 'tesseract',
-      #after  => sub { my $_=shift; s/\s+//g; $_ }, #-- функция для дополнительно обработки разгаданного текста
-    # lang   => 'eng',            #-- eng, rus, etc.
-      #config => 'englishletters', #-- название конфига для tesseract. см. README
+    # mode   => 'tesseract',
+    # after  => sub { my $_=shift; s/\s+//g; $_ }, #-- функция для дополнительно обработки разгаданного текста
+    # lang   => 'rus',            #-- eng, rus, etc.
+    # config => 'englishletters', #-- название конфига для tesseract. см. README
     # config => 'ruletters',
     # psm    => undef,            #-- только для версии 3.01, см. tesseract --help
 };

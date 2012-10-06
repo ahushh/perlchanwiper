@@ -399,6 +399,13 @@ sub _init_base_watchers($)
         AnyEvent->timer(after => 0.5, interval => 2, cb =>
                         sub
                         {
+                            my @post_coro     = grep { $_->desc eq 'post'    } Coro::State::list;
+                            #-- Масс постинг включен и во время него капчу скачивать не надо
+                            if ($self->{conf}{send}{mode} > 0 and @post_coro and
+                                $self->{conf}{send}{wait_for_all} == 2)
+                            {
+                                return;
+                            }
                             my @get_coro      = grep { $_->desc eq 'get'     } Coro::State::list;
                             my $thrs_available = $self->{conf}{max_cap_thrs} - scalar @get_coro;
                             $self->wipe_get($queue->{get}->get)
@@ -411,6 +418,12 @@ sub _init_base_watchers($)
         AnyEvent->timer(after => 2, interval => 2, cb =>
                         sub
                         {
+                            my @post_coro     = grep { $_->desc eq 'post'    } Coro::State::list;
+                            if ($self->{conf}{send}{mode} > 0 and @post_coro and
+                                $self->{conf}{send}{wait_for_all} >= 1)
+                            {
+                                return;
+                            }
                             my @prepare_coro  = grep { $_->desc eq 'prepare' } Coro::State::list;
                             my $thrs_available = -1;
                             #-- Max post threads limit
@@ -441,7 +454,7 @@ sub _init_base_watchers($)
                                 my $n = $self->{conf}{max_pst_thrs} - scalar @post_coro;
                                 $thrs_available = $n > 0 ? $n : 0;
                             }
-                            if ($self->{conf}{salvo})
+                            if ($self->{conf}{send}{mode} == 1)
                             {
                                 if (
                                     !@get_coro     && $queue->{get}->size     == 0 && 
@@ -454,7 +467,7 @@ sub _init_base_watchers($)
                                         while $queue->{post}->size && $thrs_available--;
                                 }
                             }
-                            elsif ($self->{conf}{salvoX})
+                            elsif ($self->{conf}{send}{mode} == 2)
                             {
                                 if (!@post_coro && $queue->{post}->size >= $self->{conf}{max_pst_thrs})
                                 {
