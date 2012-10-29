@@ -4,8 +4,8 @@ use Pod::Usage;
 
 my $OS      = $ARGV[0];
 my $sudo    = 'sudo ' if $ENV{USER} ne 'root';
-system 'aptitude'; #-- check if aptitude is installed
-my $deb_cmd = ($? ? 'apt-get' : 'aptitude' ) . ' install';
+system 'apt-get'; #-- check if apt-get is installed
+my $deb_cmd = ($? ? 'aptitude' : 'apt-get' ) . ' install';
 
 my @base = qw/
 YAML
@@ -132,7 +132,7 @@ for (@parts)
         system "$cmd @mod";
         if ($?)
         {
-            print "\n'$cmd @mod' exit abnormally with code $? \nContinue? [y/n] ";
+            print "\n'$cmd @mod' exited abnormally with code $? \nContinue? [y/n] ";
             yesno( sub {}, sub { exit; } );
         }
     }
