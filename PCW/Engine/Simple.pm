@@ -143,9 +143,9 @@ sub is_thread_on_page($%)
     my $task = { proxy => $config{proxy} };
     my $cnf  = { page  => $config{page}, board => $config{board} };
 
-    $log->msg(2, "Looking for $config{thread} thread on $config{page} page...");
+    $log->msg('DATA_SEEK', "Looking for $config{thread} thread on $config{page} page...");
     my ($page, undef, $status) = $self->get_page($task, $cnf);
-    $log->msg(2, "Page $config{page} downloaded: $status");
+    $log->msg('DATA_DOWNLOADED', "Page $config{page} downloaded: $status");
     my %threads = $self->get_all_threads($page);
 
     return grep { $_ == $config{thread} } keys(%threads);
@@ -262,26 +262,26 @@ sub _check_post_result($$$$$)
 
     for my $type (keys %{ $self->{response}{post} })
     {
-        my $color;
+        my ($color, $loglvl);
         given ($type)
         {
-            when (/critical_error|banned|net_error/) { $color = 'red'    }
-            when (/flood|post_error|wrong_captcha/)  { $color = 'yellow' }
-            when (/success/)                         { $color = 'green'  }
+            when (/critical_error|banned|net_error/) { $color = 'red'   ; $loglvl = 'ENGN_POST_ERR' }
+            when (/flood|post_error|wrong_captcha/)  { $color = 'yellow'; $loglvl = 'ENGN_POST_ERR' }
+            when (/success/)                         { $color = 'green' ; $loglvl = 'ENGN_POST'     }
         }
 
         for (@{ $self->{response}{post}{$type} })
         {
             if ($response =~ /$_/ || $code =~ /$_/)
             {
-                $log->pretty_proxy(1, $color, $task->{proxy}, 'POST',
+                $log->pretty_proxy($loglvl, $color, $task->{proxy}, 'POST',
                             sprintf("[%s](%d){%s}", uc($type), $code, ($self->{verbose} ? html2text($response) : $_)));
                 return($type);
             }
         }
     }
 
-    $log->pretty_proxy(1, 'yellow', $task->{proxy}, 'POST',
+    $log->pretty_proxy('ENGN_POST_ERR', 'yellow', $task->{proxy}, 'POST',
         sprintf("[%s](%d){%s}", 'UNKNOWN', $code, ($self->{verbose} ? html2text($response) : 'unknown error')));
     return('unknown');
 }
@@ -292,11 +292,11 @@ sub post($$$$)
     my ($self, $task, $cnf) = @_;
 
     #-- POSTING
-    my ($code, $response) =
-        http_post($task->{proxy}  , $self->_get_post_url(%{ $cnf->{post_cnf} }),
-                  $task->{headers}, $task->{content});
+    my $response =
+        http_post(proxy   => $task->{proxy}  , url     => $self->_get_post_url(%{ $cnf->{post_cnf} }),
+                  headers => $task->{headers}, content => $task->{content});
 
-    return $self->_check_post_result($response, $code, $task, $cnf);
+    return $self->_check_post_result($response->{content}, $response->{code}, $task, $cnf);
 }
 
 #------------------------------------------------------------------------------------------------
@@ -310,24 +310,24 @@ sub _check_delete_result($$$$$)
 
     for my $type (keys %{ $self->{response}{delete} })
     {
-        my $color;
+        my ($color, $loglvl);
         given ($type)
         {
-            when (/error|wrong_password/) { $color = 'red'    }
-            when (/success/)              { $color = 'green'  }
+            when (/error|wrong_password/) { $color = 'red'  ; $loglvl = 'ENGN_DELETE_ERR' }
+            when (/success/)              { $color = 'green'; $loglvl = 'ENGN_DELETE'     }
         }
 
         for (@{ $self->{response}{delete}{$type} })
         {
             if ($response =~ /$_/ || $code =~ /$_/)
             {
-                $log->pretty_proxy(1, $color, $task->{proxy}, "DELETE $task->{delete}",
+                $log->pretty_proxy($loglvl, $color, $task->{proxy}, "DELETE $task->{delete}",
                             sprintf("[%s](%d){%s}", uc($type), $code, ($self->{verbose} ? html2text($response) : $_)));
                 return($type);
             }
         }
     }
-    $log->pretty_proxy(1, 'yellow', $task->{proxy}, "DELETE $task->{delete}",
+    $log->pretty_proxy('ENGN_DELETE_ERR', 'yellow', $task->{proxy}, "DELETE $task->{delete}",
         sprintf("[%s](%d){%s}", 'UNKNOWN', $code, ($self->{verbose} ? html2text($response) : 'unknown error')));
     return('unknown');
 }
@@ -345,9 +345,10 @@ sub delete($$$$)
     my %content = %{ merge_hashes($self->_get_delete_content(%{ $task }), $self->{fields}{delete}) };
 
     #-- Send request
-    my ($code, $response) = http_post($task->{proxy}, $self->_get_delete_url(%{ $task }), $headers, \%content);
+    my $response = http_post(proxy   => $task->{proxy}, url     => $self->_get_delete_url(%{ $task }),
+                             headers => $headers      , content => \%content);
 
-    return $self->_check_delete_result($response, $code, $task, $cnf); 
+    return $self->_check_delete_result($response->{content}, $response->{code}, $task, $cnf);
 }
 
 #------------------------------------------------------------------------------------------------
@@ -361,24 +362,24 @@ sub _check_ban_result($$$$$)
 
     for my $type (keys %{ $self->{response}{post} })
     {
-        my $color;
+        my ($color, $loglvl);
         given ($type)
         {
-            when (/banned|critical_error|net_error/) { $color = 'red'   }
-            default                                  { $color = 'green' }
+            when (/banned|critical_error|net_error/) { $color = 'red'  ; $loglvl = 'ENGN_CHECK_ERR' }
+            default                                  { $color = 'green'; $loglvl = 'ENGN_CHECK'     }
         }
         for (@{ $self->{response}{post}{$type} })
         {
             if ($response =~ /$_/ || $code =~ /$_/)
             {
-                $log->pretty_proxy(1, $color, $task->{proxy}, 'CHECK',
+                $log->pretty_proxy($loglvl, $color, $task->{proxy}, 'CHECK',
                             sprintf("[%s](%d){%s}", uc($type), $code, ($self->{verbose} ? html2text($response) : $_)));
                 return($type);
             }
         }
     }
 
-    $log->pretty_proxy(1, 'yellow', $task->{proxy}, 'CHECK',
+    $log->pretty_proxy('ENGN_CHECK_ERR', 'yellow', $task->{proxy}, 'CHECK',
         sprintf("[%s](%d){%s}", 'UNKNOWN', $code, ($self->{verbose} ? html2text($response) : 'unknown error')));
 
     return('unknown');
@@ -417,11 +418,11 @@ sub ban_check($$$)
     $task->{content} = \%content;
 
     #-- POSTING
-    my ($code, $response) =
-        http_post($task->{proxy},   $self->_get_post_url(%{ $task->{post_cnf} }),
-                  $task->{headers}, $task->{content});
+    my $response =
+        http_post(proxy   => $task->{proxy}  , url     => $self->_get_post_url(%{ $task->{post_cnf} }),
+                  headers => $task->{headers}, content => $task->{content});
 
-    return $self->_check_ban_result($response, $code, $task, $cnf);
+    return $self->_check_ban_result($response->{content}, $response->{code}, $task, $cnf);
 
 }
 
@@ -436,10 +437,10 @@ sub get_page($$$)
     my $headers = HTTP::Headers->new(%{ $self->_get_default_headers() });
     $headers->user_agent(rand_set(set => $self->{agents}));
     #-- Send request
-    my ($response, $response_headers, $status_line) =
-        http_get($task->{proxy}, $self->_get_page_url(%$cnf), $headers);
+    my $response =
+        http_get(proxy => $task->{proxy}, url => $self->_get_page_url(%$cnf), headers => $headers);
 
-    return $response, $response_headers, $status_line;
+    return $response->{content}, $response->{headers}, $response->{status};
 }
 
 # $self, $task, $cnf -> $response, $response, $headers, $status_line
@@ -450,10 +451,10 @@ sub get_thread($$$)
     my $headers = HTTP::Headers->new(%{ $self->_get_default_headers() });
     $headers->user_agent(rand_set(set => $self->{agents}));
     #-- Send request
-    my ($response, $response_headers, $status_line) =
-        http_get($task->{proxy}, $self->_get_thread_url(%$cnf), $headers);
+    my $response = 
+        http_get(proxy => $task->{proxy}, url => $self->_get_thread_url(%$cnf), headers => $headers);
 
-    return $response, $response_headers, $status_line;
+    return $response->{content}, $response->{headers}, $response->{status};
 }
 
 1;

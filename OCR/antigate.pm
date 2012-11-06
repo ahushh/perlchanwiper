@@ -14,10 +14,12 @@ sub decode_captcha($$$)
                                                "key"      => $key,
                                                "attempts" => 15,
                                               );
+
+    #$log->msg('MODE_STATE', sprintf("balance: %f", $recognizer->balance()));
     my $id = $recognizer->upload(%$opt);
     unless (defined $id)
     {
-        $log->msg(2, "Couldn't upload a captcha ($WebService::Antigate::DOMAIN): ". $recognizer->errno, 'DECODE CAPTCHA', 'red');
+        $log->msg('OCR_ERROR', "Couldn't upload a captcha ($WebService::Antigate::DOMAIN): ". $recognizer->errno, 'DECODE CAPTCHA', 'red');
         return undef;
     }
     #-- Используем аргументы как хранилищие id и путей капч
@@ -27,7 +29,7 @@ sub decode_captcha($$$)
     my $cap_text = $recognizer->recognize($id);
     unless (defined $cap_text)
     {
-        $log->msg(2, "Error while recognizing a captcha ($WebService::Antigate::DOMAIN): ". $recognizer->errno, 'DECODE CAPTCHA', 'red');
+        $log->msg('OCR_ERROR', "Error while recognizing a captcha ($WebService::Antigate::DOMAIN): ". $recognizer->errno, 'DECODE CAPTCHA', 'red');
         return undef;
     }
     return $cap_text;
@@ -41,11 +43,11 @@ sub abuse($$$)
     my $recognizer = WebService::Antigate->new("key" => $key);
     if ($recognizer->abuse($id))
     {
-        $log->msg(3, "Abuse to $id captcha was sent successfuly ($WebService::Antigate::DOMAIN)", 'ABUSE CAPTCHA', 'green');
+        $log->msg('OCR_ABUSE_SUCCESS' , "Abuse to $id captcha was sent successfuly ($WebService::Antigate::DOMAIN)", 'ABUSE CAPTCHA', 'green');
     }
     else
     {
-        $log->msg(2, "Error while sending an abuse to $id captcha ($WebService::Antigate::DOMAIN): ". $recognizer->errno, 'ABUSE CAPTCHA', 'red');
+        $log->msg('OCR_ABUSE_ERROR', "Error while sending an abuse to $id captcha ($WebService::Antigate::DOMAIN): ". $recognizer->errno, 'ABUSE CAPTCHA', 'red');
     }
 }
 

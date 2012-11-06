@@ -79,7 +79,7 @@ sub download_vid($$$)
     if (!@vid_list or !$data->{loaded})
     {
         my $log = $engine->{log};
-        $log->msg(2, "Start fetching video ID's from $data->{type}..");
+        $log->msg('DATA_DOWNLOAD', "Start fetching video ID's from $data->{type}..");
         my $raw;
         for my $query (@{ $data->{search}})
         {
@@ -89,7 +89,7 @@ sub download_vid($$$)
                 $url =~ s/\{search\}/$query/e;
                 $url =~ s/\{page\}/$page/e;
                 $raw .= get($url);
-                $log->msg(3, "ID's were fetched from $page page and with '$query' query.");
+                $log->msg('DATA_FOUND', "ID's were fetched from $page page and with '$query' query.");
             }
         }
         for my $pattern (@{ $types{ $data->{type} } })
@@ -100,13 +100,13 @@ sub download_vid($$$)
             }
         }
         @vid_list = uniq @vid_list;
-        $log->msg(2, "Fetched ". scalar(@vid_list) ." video ID's");
+        $log->msg('DATA_DOWNLOADED', "Fetched ". scalar(@vid_list) ." video ID's");
         if (my $path = $data->{save})
         {
             open(my $fh, '>', $path);
             print $fh "@vid_list";
             close $fh;
-            $log->msg("Video ID's saved to $path");
+            $log->msg('VIDEO_SAVED', "Video ID's saved to $path");
         }
         $data->{loaded} = 1;
     }

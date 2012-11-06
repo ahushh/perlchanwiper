@@ -17,7 +17,7 @@ use HTTP::Headers;
 #------------------------------------------------------------------------------------------------
 use PCW::Core::Utils    qw/merge_hashes parse_cookies html2text save_file unrandomize took/;
 use PCW::Core::Captcha  qw/captcha_recognizer/;
-use PCW::Core::Net      qw/http_get http_post get_recaptcha/;
+use PCW::Core::Net      qw/http_get get_recaptcha/;
 use PCW::Data::Images   qw/make_pic/;
 use PCW::Data::Video    qw/make_vid/;
 use PCW::Data::Text     qw/make_text/;
@@ -112,9 +112,9 @@ sub _is_thread_on_page_catalog($%)
     my $pattern = $self->{html}{catalog_regexp};
     my $task    = { proxy => $cnf{proxy} };
     my $c_cnf   = { board => $cnf{board} };
-    $log->msg(2, "Looking for $cnf{thread} thread on the catalog...");
+    $log->msg('DATA_SEEK', "Looking for $cnf{thread} thread on the catalog...");
     my ($html, undef, $status) = $self->get_catalog($task, $c_cnf);
-    $log->msg(2, "Catalog was downloaded: $status");
+    $log->msg('DATA_DOWNLOAD', "Catalog was downloaded: $status");
 
     my (%threads, $count);
     while ($html =~ /$pattern/sg)
@@ -238,27 +238,27 @@ sub get($$$$)
     #-- A simple captcha
     if (my $captcha_url = $self->_get_captcha_url(%{ $task->{post_cnf} }))
     {
-        my ($response_headers, $status_line);
         my $cap_headers = HTTP::Headers->new(%{ $self->_get_captcha_headers(%{ $task->{post_cnf} }) });
-        ($captcha_img, $response_headers, $status_line) = http_get($task->{proxy}, $captcha_url, $cap_headers);
+        my $response    = http_get(proxy => $task->{proxy}, url => $captcha_url, headers => $cap_headers);
+        $captcha_img    = $response->{content};
 
         #-- Check result
-        if ($status_line !~ /200/ or !$captcha_img or $captcha_img !~ /GIF|PNG|JFIF|JPEG|JPEH|JPG/i)
+        if ($response->{status} !~ /200/ or !$captcha_img or $captcha_img !~ /GIF|PNG|JFIF|JPEG|JPEH|JPG/i)
         {
-            $log->pretty_proxy(1, 'red', $task->{proxy}, 'GET', sprintf "[ERROR]{%s}", html2text($status_line));
+            $log->pretty_proxy('ENGN_GET_ERR_CAP', 'red', $task->{proxy}, 'GET', sprintf "[ERROR]{%s}", html2text($response->{status}));
             return('banned');
         }
         else
         {
-            $log->pretty_proxy(1, 'green', $task->{proxy}, 'GET', "[SUCCESS]{$status_line}");
+            $log->pretty_proxy('ENGN_GET_CAP', 'green', $task->{proxy}, 'GET', "[SUCCESS]{$response->{status}}");
         }
         #-- Obtaining cookies
         if ($self->{cookies})
         {
-            my $saved_cookies = parse_cookies($self->{cookies}, $response_headers);
+            my $saved_cookies = parse_cookies($self->{cookies}, $response->{headers});
             if (!$saved_cookies)
             {
-                $log->pretty_proxy(1, 'red', $task->{proxy}, 'GET', '[ERROR]{no cookies}');
+                $log->pretty_proxy('ENGN_GET_ERR_CAP', 'red', $task->{proxy}, 'GET', '[ERROR]{no cookies}');
                 return('banned');
             }
             else
@@ -274,20 +274,16 @@ sub get($$$$)
         ($captcha_img, @fields) = get_recaptcha($task->{proxy}, $self->{recaptcha_key});
         unless ($captcha_img)
         {
-            $log->pretty_proxy(1, 'red', $task->{proxy}, 'GET', '[ERROR]{something wrong with recaptcha obtaining}');
+            $log->pretty_proxy('ENGN_GET_ERR_CAP', 'red', $task->{proxy}, 'GET', '[ERROR]{something wrong with recaptcha obtaining}');
             return('banned');
         }
-        $log->pretty_proxy(1, 'green', $task->{proxy}, 'GET', '[SUCCESS]{ok..recaptcha obtaining went well}');
+        $log->pretty_proxy('ENGN_GET_CAP', 'green', $task->{proxy}, 'GET', '[SUCCESS]{ok..recaptcha obtaining went well}');
         $task->{content} = { @fields };
     }
-    if ($captcha_img)
-    {
-        my $path_to_captcha = save_file($captcha_img, $self->{captcha_extension});
-        $task->{path_to_captcha} = $path_to_captcha;
-    }
+    my $path_to_captcha = save_file($captcha_img, $self->{captcha_extension});
+    $task->{path_to_captcha} = $path_to_captcha;
 
     $task->{headers} = $post_headers;
-
     return('success');
 }
 
@@ -317,16 +313,16 @@ sub prepare($$$$)
         unless (defined $captcha_text)
         {
             #-- an error has occured while recognizing captcha
-            $log->pretty_proxy(2, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned undef (took $took sec.)");
+            $log->pretty_proxy('ENGN_PRP_ERR_CAP', 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned undef (took $took sec.)");
             return('error');
         }
         unless ($captcha_text or $captcha_text =~ s/\s//gr)
         {
-            $log->pretty_proxy(2, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned an empty string (took $took sec.)");
+            $log->pretty_proxy('ENGN_PRP_ERR_CAP', 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned an empty string (took $took sec.)");
             return('no_text');
         }
 
-        $log->pretty_proxy(2, 'green', $task->{proxy}, 'PREPARE', "solved captcha: $captcha_text (took $took sec.)");
+        $log->pretty_proxy('ENGN_PRP_CAP', 'green', $task->{proxy}, 'PREPARE', "solved captcha: $captcha_text (took $took sec.)");
         $content{ $self->{fields}{post}{captcha} } = $captcha_text;
         $task->{captcha_text}                      = $captcha_text;
     }
@@ -425,10 +421,10 @@ sub get_catalog($$$)
     my $headers = HTTP::Headers->new(%{ $self->_get_default_headers() });
     $headers->user_agent(rand_set(set => $self->{agents}));
     #-- Send request
-    my ($response, $response_headers, $status_line) =
-        http_get($task->{proxy}, $self->_get_catalog_url(%$cnf), $headers);
+    my $response =
+        http_get(proxy => $task->{proxy}, url => $self->_get_catalog_url(%$cnf), headers => $headers);
 
-    return $response, $response_headers, $status_line;
+    return $response->{content}, $response->{headers}, $response->{status};
 }
 
 1;

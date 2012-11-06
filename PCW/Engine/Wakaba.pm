@@ -193,19 +193,19 @@ sub get($$$$)
     #-- A simple captcha
     if (my $captcha_url = $self->_get_captcha_url(%{ $task->{post_cnf} }))
     {
-        my ($response_headers, $status_line);
         my $cap_headers = HTTP::Headers->new(%{ $self->_get_captcha_headers(%{ $task->{post_cnf} }) });
-        ($captcha_img, $response_headers, $status_line) = http_get($task->{proxy}, $captcha_url, $cap_headers);
+        my $response    = http_get(proxy => $task->{proxy}, url => $captcha_url, headers => $cap_headers);
+        $captcha_img    = $response->{content};
 
         #-- Check result
-        if ($status_line !~ /200/ or !$captcha_img or $captcha_img !~ /GIF|PNG|JFIF|JPEG|JPEH|JPG/i)
+        if ($response->{status} !~ /200/ or !$captcha_img or $captcha_img !~ /GIF|PNG|JFIF|JPEG|JPEH|JPG/i)
         {
-            $log->pretty_proxy(1, 'red', $task->{proxy}, 'GET', sprintf "[ERROR]{%s}", html2text($status_line));
+            $log->pretty_proxy('ENGN_GET_CAP', 'red', $task->{proxy}, 'GET', sprintf "[ERROR]{%s}", html2text($response->{status}));
             return('banned');
         }
         else
         {
-            $log->pretty_proxy(1, 'green', $task->{proxy}, 'GET', "[SUCCESS]{$status_line}");
+            $log->pretty_proxy('ENGN_GET_ERR_CAP', 'green', $task->{proxy}, 'GET', "[SUCCESS]{$response->{status}}");
         }
     }
     #-- The recaptcha
@@ -215,17 +215,15 @@ sub get($$$$)
         ($captcha_img, @fields) = get_recaptcha($task->{proxy}, $self->{recaptcha_key});
         unless ($captcha_img)
         {
-            $log->pretty_proxy(1, 'red', $task->{proxy}, 'GET', '[ERROR]{something wrong with recaptcha obtaining}');
+            $log->pretty_proxy('ENGN_GET_ERR_CAP', 'red', $task->{proxy}, 'GET', '[ERROR]{something wrong with recaptcha obtaining}');
             return('banned');
         }
-        $log->pretty_proxy(1, 'green', $task->{proxy}, 'GET', '[SUCCESS]{ok..recaptcha obtaining went well}');
+        $log->pretty_proxy('ENGN_GET_CAP', 'green', $task->{proxy}, 'GET', '[SUCCESS]{ok..recaptcha obtaining went well}');
         $task->{content} = { @fields };
     }
-    if ($captcha_img)
-    {
-        my $path_to_captcha = save_file($captcha_img, $self->{captcha_extension});
-        $task->{path_to_captcha} = $path_to_captcha;
-    }
+
+    my $path_to_captcha = save_file($captcha_img, $self->{captcha_extension});
+    $task->{path_to_captcha} = $path_to_captcha;
 
     my $headers = HTTP::Headers->new(%{ $self->_get_post_headers(%{ $task->{post_cnf} }) });
     $headers->user_agent(rand_set(set => $self->{agents}));
@@ -260,16 +258,16 @@ sub prepare($$$$)
         unless (defined $captcha_text)
         {
             #-- an error has occured while recognizing captcha
-            $log->pretty_proxy(2, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned undef (took $took sec.)");
+            $log->pretty_proxy('ENGN_PRP_ERR_CAP', 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned undef (took $took sec.)");
             return('error');
         }
         unless ($captcha_text or $captcha_text =~ s/\s//gr)
         {
-            $log->pretty_proxy(2, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned an empty string (took $took sec.)");
+            $log->pretty_proxy('ENGN_PRP_ERR_CAP', 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned an empty string (took $took sec.)");
             return('no_text');
         }
 
-        $log->pretty_proxy(2, 'green', $task->{proxy}, 'PREPARE', "solved captcha: $captcha_text (took $took sec.)");
+        $log->pretty_proxy('ENGN_PRP_CAP', 'green', $task->{proxy}, 'PREPARE', "solved captcha: $captcha_text (took $took sec.)");
         $content{ $self->{fields}{post}{captcha} } = $captcha_text;
         $task->{captcha_text}                      = $captcha_text;
     }

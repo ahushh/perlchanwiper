@@ -25,12 +25,12 @@ use Storable;
 #-----------------------------------------------------------------------------
 our %mode_config;
 our $chan_config;
+our $log_settings;
 
 my @proxies;
 my @agents;
 my $engine;
 my $logging;
-# my $log_settings;
 
 #-----------------------------------------------------------------------------
 # Config
@@ -66,10 +66,9 @@ sub load_cnf()
 
 sub load_configs()
 {
-    our ($img, $msg, $vid, $captcha_decode);#, $log_settings);
-    our %mode_config;
-    do $cnf{common_config};
-    do $cnf{mode_config};  #-- load %mode_config
+    our ($img, $msg, $vid, $captcha_decode);
+    do $cnf{common_config} or die; #-- load $img, $msg, $vid, $captcha_decode, $log_settings
+    do $cnf{mode_config}   or die; #-- load %mode_config
 
     $mode_config{img_data} = $img;
     $mode_config{msg_data} = $msg;
@@ -126,8 +125,8 @@ sub load_logging()
 {
     $logging = PCW::Core::Log->new(file     => $cnf{logfile},
                                    level    => $cnf{loglevel},
-                                   colored  => !$cnf{lognocolor});
-                                   # settings => $log_settings );
+                                   colored  => !$cnf{lognocolor},
+                                   settings => $log_settings );
 }
 
 sub set_logging($)
@@ -230,6 +229,12 @@ get '/stop'  => sub {
     $pcw->stop;
     # очищаем капчи
     $pcw->{conf}{captcha_decode}{web} = undef;
+    $self->render(text => 'ok');
+};
+
+get '/wipe/send_posts' => sub {
+    my $self = shift;
+    $pcw->send_posts();
     $self->render(text => 'ok');
 };
 
@@ -545,7 +550,7 @@ __DATA__
   </html>
 
 @@ index.html.ep
-% our $VERSION = '0.2.2-97';
+% our $VERSION = '2.3';
 %= javascript 'http://code.jquery.com/jquery-1.7.2.min.js'
 %= javascript begin
 var cnf = {
@@ -709,6 +714,9 @@ $(document).ready(function(){
         }
     });
 
+    $("#sendPosts").click(function() {
+        $.get('/wipe/send_posts');
+    });
     // logging
     var logging = new EventSource('/log/read');
     logging.addEventListener('log', function(event) {
@@ -764,6 +772,11 @@ $(document).ready(function(){
                 $.get('/countproxies', function(data) {
                     $('#proxy_count').html(data);
                 });
+            }
+            if ($('#mode').html() == 'Wipe') {
+                $('#sendPosts').css('display', 'inline');
+            } else {
+                $('#sendPosts').css('display', 'none');
             }
             setTimeout( function() { elem.html(oldHtml) }, 1000 );
         });
@@ -821,7 +834,7 @@ $(document).ready(function(){
         <%= link_to logout => begin %>
         logout
         <% end %>
-      <% } %>
+      <% } %> <span style='display:inline' id='sendPosts'> | <a href="#">send posts</a></span>
       <hr>
       <div id="summary">
         <h4>Configure</h4>

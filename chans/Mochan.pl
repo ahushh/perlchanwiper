@@ -1,6 +1,6 @@
 use utf8;
 #-- Сюда вписать доменное имя
-use constant HOST => '2ch.so';
+use constant HOST => '2ch.hk';
 
 our $chan_config =
 {

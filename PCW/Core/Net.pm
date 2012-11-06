@@ -45,24 +45,35 @@ sub get_recaptcha($$)
     return $response->decoded_content, 'recaptcha_challenge_field', $1;
 }
 
-sub http_get($$$)
+sub http_get(%)
 {
-    my ($proxy, $url, $headers) = @_;
+    my %p  = @_;
     my $ua = LWP::UserAgent->new();
-    $ua->default_headers($headers) if $headers;
-    $ua->proxy([qw/http https/] => $proxy) if $proxy !~ 'no_proxy';
+    $ua->default_headers($p{headers}) if $p{headers};
+    $ua->proxy([qw/http https/] => $p{proxy}) if $p{proxy} !~ 'no_proxy';
     $ua->cookie_jar( {} );
-    my $response = $ua->get($url);
+    my $response = $ua->get($p{url});
 
     my $status = $response->status_line;
     utf8::decode($status);
-    return $response->decoded_content, $response->headers_as_string, $status;
+    return { code     => $response->code,
+             content  => $response->decoded_content,
+             headers  => $response->headers_as_string,
+             status   => $status,
+             response => $response
+           };
 }
 
-sub http_post($$$$;$)
+sub http_post(%)
 {
     #use Data::Dumper; say Dumper(@_); exit;
-    my ($proxy, $url, $headers, $content, $content_type) = @_;
+    my %p            = @_;
+    my $proxy        = $p{proxy};
+    my $url          = $p{url};
+    my $headers      = $p{headers};
+    my $content      = $p{content};
+    my $content_type = $p{content_type} || 'multipart/form-data';
+
     $content = \%{ $content };
     #-- convert the content to bytes
     for (keys %$content)
@@ -75,13 +86,19 @@ sub http_post($$$$;$)
     $ua->proxy([qw/http https/] => $proxy) if $proxy !~ 'no_proxy';
     my $response = $ua->post(
                              $url,
-                             'Content_Type' => ($content_type || 'multipart/form-data'),
+                             'Content_Type' => $content_type,
                              'Content'      => $content,
                             );
 
     my $status = $response->status_line;
     utf8::decode($status);
-    return $response->code, $response->decoded_content, $status;
+    return { code     => $response->code,
+             content  => $response->decoded_content,
+             headers  => $response->headers_as_string,
+             status   => $status,
+             response => $response
+           };
+
 }
 
 1;

@@ -19,7 +19,7 @@ use Time::HiRes;
 # Importing internal PCW packages
 #------------------------------------------------------------------------------------------------
 use PCW::Core::Net   qw/http_get/;
-use PCW::Core::Utils qw/with_coro_timeout/;
+use PCW::Core::Utils qw/with_coro_timeout get_posts_ids/;
 
 #------------------------------------------------------------------------------------------------
 # Local variables
@@ -82,7 +82,7 @@ sub init($)
 {
     my $self = shift;
     my $log  = $self->{log};
-    $log->msg(1, "Initialization... ");
+    $log->msg('MODE_STATE', "Initialization... ");
     $self->_base_init();
     $self->_init_base_watchers();
     $self->_run_custom_watchers($watchers, $queue);
@@ -106,16 +106,16 @@ sub start($)
     my $self = shift;
     my $log  = $self->{log};
     return unless $self->{is_running};
-    $log->msg(1, "Starting delete mode...");
+    $log->msg('MODE_STATE', "Starting delete mode...");
     async {
         #-------------------------------------------------------------------
         my $proxy = shift @{ $self->{proxies} };
-        $log->msg(4, "Used proxy: $proxy");
+        $log->msg('DEL_SHOW_PROXY', "Used proxy: $proxy");
         my @deletion_posts = @{ $self->{conf}{ids} };
         if ($self->{conf}{find})
         {
             @deletion_posts =  ( @deletion_posts,
-                                 $self->get_posts_by_regexp($proxy, $self->{conf}{find}) );
+                                 get_posts_ids($self->{engine}, $proxy, $self->{conf}{find}) );
         }
         for my $postid (@deletion_posts)
         {
@@ -139,7 +139,7 @@ sub stop($)
 {
     my $self = shift;
     my $log  = $self->{log};
-    $log->msg(1, "Stopping delete mode...");
+    $log->msg('MODE_STATE', "Stopping delete mode...");
     $_->cancel for (grep {$_->desc =~ /custom-watcher|delete/ } Coro::State::list);
     for ( (keys(%$watchers), keys(%$queue)) )
     {
@@ -172,7 +172,7 @@ sub _init_base_watchers($)
                                 my $now = Time::HiRes::time;
                                 if ($coro->{timeout_at} && $now > $coro->{timeout_at})
                                 {
-                                    $log->pretty_proxy(1, 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
+                                    $log->pretty_proxy('MODE_TIMEOUT', 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
                                     $coro->cancel('timeout', $coro->{task}, $self);
                                 }
                             }
