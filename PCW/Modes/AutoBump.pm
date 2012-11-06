@@ -17,7 +17,7 @@ use Time::HiRes;
 #------------------------------------------------------------------------------------------------
 # Importing internal PCW packages
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Utils   qw/with_coro_timeout/;
+use PCW::Core::Utils   qw/with_coro_timeout get_posts_ids/;
 use PCW::Core::Captcha qw/captcha_report_bad/;
 
 #------------------------------------------------------------------------------------------------
@@ -38,10 +38,10 @@ my $run_cleanup = unblock_sub
 {
     my ($self, $task) = @_;
     my $log = $self->{log};
-    $log->pretty_proxy(2, "green", $task->{proxy}, $task->{thread}, "Start deleting posts...");
-    my @deletion_posts = $self->get_posts_by_regexp($task->{proxy}, $self->{conf}{silent}{find});
+    $log->pretty_proxy('MODE_CB', "green", $task->{proxy}, $task->{thread}, "Start deleting posts...");
+    my @deletion_posts = get_posts_ids($self->{engine}, $task->{proxy}, $self->{conf}{silent}{find});
 
-    $log->msg(4, "run_cleanup(): \@deletion_posts: @deletion_posts");
+    $log->msg('MODE_CB', "run_cleanup(): \@deletion_posts: @deletion_posts");
 
     for my $postid (@deletion_posts)
     {
@@ -60,7 +60,7 @@ my $cb_bump_thread = unblock_sub
 {
     my ($msg, $task, $self) = @_;
     my $log = $self->{log};
-    $log->msg(4, "cb_bump_thread(): message: $msg");
+    $log->msg('MODE_CB', "cb_bump_thread(): message: $msg");
     #-- Delete temporary files
     unlink($task->{path_to_captcha})
         if !$self->{conf}{save_captcha} && $task->{path_to_captcha} && -e $task->{path_to_captcha};
@@ -74,9 +74,9 @@ my $cb_bump_thread = unblock_sub
 
         my $now = Time::HiRes::time;
         $run_at = $now + $self->{conf}{interval};
-        $log->pretty_proxy(2, "green", $task->{proxy}, "No. ". $task->{thread}, "sleep $self->{conf}{interval} seconds...");
+        $log->pretty_proxy('MODE_SLEEP', "green", $task->{proxy}, "No. ". $task->{thread}, "sleep $self->{conf}{interval} seconds...");
 
-        $log->msg(4, "run_cleanup(): tried to start");
+        $log->msg('MODE_CB', "run_cleanup(): tried to start");
         &$run_cleanup($self, $task) if ($self->{conf}{silent});
     }
     elsif ($msg =~ /wrong_captcha|no_text|error/)
@@ -89,7 +89,7 @@ my $cb_bump_thread = unblock_sub
         $self->{stats}{bump}{wait}++;
         my $now = Time::HiRes::time;
         $run_at = $now + $self->{conf}{interval};
-        $log->pretty_proxy(2, "green", $task->{proxy}, "No. ". $task->{thread}, "sleep $self->{conf}{interval} seconds...");
+        $log->pretty_proxy('MODE_SLEEP', "green", $task->{proxy}, "No. ". $task->{thread}, "sleep $self->{conf}{interval} seconds...");
     }
     else
     {
@@ -107,7 +107,7 @@ sub is_need_to_bump($$)
     my %check_cnf = ( proxy => $task->{proxy}, board => $self->{conf}{post_cnf}{board}, thread => $task->{thread} );
     if ($self->{conf}{bump_if}{on_pages})
     {
-        $log->pretty_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "Checking whether thread needs to be bumped...");
+        $log->pretty_proxy('AB_CHECKING', "green", $task->{proxy}, "No. ". $task->{thread}, "Checking whether thread needs to be bumped...");
         my @pages = @{ $self->{conf}{bump_if}{on_pages} };
         for my $page (@pages)
         {
@@ -115,16 +115,16 @@ sub is_need_to_bump($$)
             my $is_it = $engine->is_thread_on_page(%check_cnf);
             if ($is_it)
             {
-                $log->pretty_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "Thread needs to be bumped!");
+                $log->pretty_proxy('AB_NEEDS_BUMP', "green", $task->{proxy}, "No. ". $task->{thread}, "Thread needs to be bumped!");
                 return 1;
             }
         }
-        $log->pretty_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "Thread doesn't need to be bumped");
+        $log->pretty_proxy('AB_NEEDS_NO_BUMP', "green", $task->{proxy}, "No. ". $task->{thread}, "Thread doesn't need to be bumped");
         return undef;
     }
     elsif ($self->{conf}{bump_if}{not_on_pages})
     {
-        $log->pretty_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "Checking whether thread needs to be bumped...");
+        $log->pretty_proxy('AB_CHECKING', "green", $task->{proxy}, "No. ". $task->{thread}, "Checking whether thread needs to be bumped...");
         my @pages = @{ $self->{conf}{bump_if}{not_on_pages} };
         for my $page (@pages)
         {
@@ -132,11 +132,11 @@ sub is_need_to_bump($$)
             my $is_it = $engine->is_thread_on_page(%check_cnf);
             if ($is_it)
             {
-                $log->pretty_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "Thread doesn't need to be bumped");
+                $log->pretty_proxy('AB_NEEDS_BUMP', "green", $task->{proxy}, "No. ". $task->{thread}, "Thread doesn't need to be bumped");
                 return undef;
             }
         }
-        $log->pretty_proxy(1, "green", $task->{proxy}, "No. ". $task->{thread}, "Thread needs to be bumped!");
+        $log->pretty_proxy('AB_NEEDS_NO_BUMP', "green", $task->{proxy}, "No. ". $task->{thread}, "Thread needs to be bumped!");
         return 1;
     }
 }
@@ -174,7 +174,7 @@ sub bump_thread($$)
 my $cb_delete_post = unblock_sub
 {
     my ($msg, $task, $self) = @_;
-    $self->{log}->msg(4, "cb_delete_post(): message: $msg");
+    $self->{log}->msg('MODE_CB', "cb_delete_post(): message: $msg");
     $self->{stats}{delete}{total}++;
     given ($msg)
     {
@@ -219,7 +219,7 @@ sub init($)
 {
     my $self = shift;
     my $log  = $self->{log};
-    $log->msg(1, "Initialization... ");
+    $log->msg('MODE_STATE', "Initialization... ");
     $self->_base_init();
     $self->_run_custom_watchers($watchers, $queue);
     $self->_init_base_watchers();
@@ -244,8 +244,11 @@ sub start($)
     my $self = shift;
     my $log  = $self->{log};
     return unless $self->{is_running};
-    $log->msg(1, "Starting autobump mode...");
-    Carp::croak('Hey, what thread are you going to bump?') unless $self->{conf}{post_cnf}{thread};
+    unless ($self->{conf}{post_cnf}{thread})
+    {
+        $log->msg('ERROR', 'What thread are you going to bump?', '', 'red');
+        $self->stop();
+    }
     async {
         my $proxy = shift @{ $self->{proxies} };
         $queue->{bump}->put({ proxy => $proxy, thread => $self->{conf}{post_cnf}{thread} });
@@ -261,7 +264,7 @@ sub stop($)
 {
     my $self = shift;
     my $log  = $self->{log};
-    $log->msg(1, "Stopping autobump mode...");
+    $log->msg('MODE_STATE', "Stopping autobump mode...");
     $_->cancel for (grep {$_->desc =~ /custom-watcher|bump|delete/ } Coro::State::list);
     for ( (keys(%$watchers), keys(%$queue)) )
     {
@@ -300,7 +303,7 @@ sub _init_base_watchers($)
                                 my $now = Time::HiRes::time;
                                 if ($coro->{timeout_at} && $now > $coro->{timeout_at})
                                 {
-                                    $log->pretty_proxy(1, 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
+                                    $log->pretty_proxy('MODE_TIMEOUT', 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
                                     $coro->cancel('timeout', $coro->{task}, $self);
                                 }
                             }

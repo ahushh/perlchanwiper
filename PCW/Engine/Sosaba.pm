@@ -183,16 +183,16 @@ sub prepare($$$$)
         unless (defined $captcha_text)
         {
             #-- an error has occured while recognizing captcha
-            $log->pretty_proxy(2, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned undef (took $took sec.)");
+            $log->pretty_proxy('ENGN_PRP_ERR_CAP', 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned undef (took $took sec.)");
             return('error');
         }
         unless ($captcha_text or $captcha_text =~ s/\s//gr)
         {
-            $log->pretty_proxy(2, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned an empty string (took $took sec.)");
+            $log->pretty_proxy('ENGN_PRP_ERR_CAP', 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned an empty string (took $took sec.)");
             return('no_text');
         }
 
-        $log->pretty_proxy(2, 'green', $task->{proxy}, 'PREPARE', "solved captcha: $captcha_text (took $took sec.)");
+        $log->pretty_proxy('ENGN_PRP_CAP', 'green', $task->{proxy}, 'PREPARE', "solved captcha: $captcha_text (took $took sec.)");
         $content{ $self->{fields}{post}{captcha} } = $captcha_text;
         $task->{captcha_text}                      = $captcha_text;
     }

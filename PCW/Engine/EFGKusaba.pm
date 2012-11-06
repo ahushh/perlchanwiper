@@ -236,7 +236,7 @@ sub compute_mm($)
     close($mm);
     return $result;
 }
- 
+
 sub prepare($$$$)
 {
     my ($self, $task, $cnf) = @_;
@@ -251,16 +251,16 @@ sub prepare($$$$)
         unless (defined $captcha_text)
         {
             #-- an error has occured while recognizing captcha
-            $log->pretty_proxy(2, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned undef (took $took sec.)");
+            $log->pretty_proxy('ENGN_PRP_ERR_CAP', 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned undef (took $took sec.)");
             return('error');
         }
         unless ($captcha_text or $captcha_text =~ s/\s//gr)
         {
-            $log->pretty_proxy(2, 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned an empty string (took $took sec.)");
+            $log->pretty_proxy('ENGN_PRP_ERR_CAP', 'red', $task->{proxy}, 'PREPARE', "captcha recognizer returned an empty string (took $took sec.)");
             return('no_text');
         }
 
-        $log->pretty_proxy(2, 'green', $task->{proxy}, 'PREPARE', "solved captcha: $captcha_text (took $took sec.)");
+        $log->pretty_proxy('ENGN_PRP_CAP', 'green', $task->{proxy}, 'PREPARE', "solved captcha: $captcha_text (took $took sec.)");
         $content{ $self->{fields}{post}{captcha} } = $captcha_text;
         $task->{captcha_text}                      = $captcha_text;
     }
@@ -273,7 +273,7 @@ sub prepare($$$$)
         $content{ $self->{fields}{post}{msg} } = $text;
     }
     #-- Image and video
-    if ($cnf->{vid_data}{mode} ne 'no')
+    if ($cnf->{vid_data}{mode} and $cnf->{vid_data}{mode} ne 'no')
     {
         my $video_id = make_vid( $self, $task, $cnf->{vid_data} );
         $content{ $self->{fields}{post}{video}      } = $video_id;
@@ -299,7 +299,7 @@ sub prepare($$$$)
             and !$self->{static_mm})
         {
             $self->{static_mm} = took { compute_mm($content{mm} . $content{message} . $content{postpassword}) } \$took;
-            $log->pretty_proxy(3, 'green', $task->{proxy}, 'PREPARE', "computed mm: $self->{static_mm} (took $took sec.)");
+            $log->pretty_proxy('ENGN_EFG_MM', 'green', $task->{proxy}, 'PREPARE', "computed mm: $self->{static_mm} (took $took sec.)");
         }
         if ($self->{static_mm})
         {
@@ -308,7 +308,7 @@ sub prepare($$$$)
         else
         {
             $mm = took { compute_mm($content{mm} . $content{message} . $content{postpassword}) } \$took;
-            $log->pretty_proxy(3, 'green', $task->{proxy}, 'PREPARE', "computed mm: $mm (took $took sec.)");
+            $log->pretty_proxy('ENGN_EFG_MM', 'green', $task->{proxy}, 'PREPARE', "computed mm: $mm (took $took sec.)");
         }
         #-- Add mm to post headers
         my $h = $task->{headers};

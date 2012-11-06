@@ -19,6 +19,8 @@ our @EXPORT_OK = qw/
     shellquote
     readfile
     curry
+    get_posts_ids
+    get_posts_bodies
 /;
 
 #------------------------------------------------------------------------------------------------
@@ -234,5 +236,213 @@ sub curry($@)
     my ($code, @argv) = (shift, @_);
     return sub { &$code(@argv, @_) };
 }
+
+#------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------
+sub get_page($$$$)
+{
+    my ($engine, $get_task, $cnf, $page) = @_;
+    my $log          = $engine->{log};
+    my %local_cnf    = %{ $cnf };
+    $local_cnf{page} = $page;
+
+    #-- Get the page
+    my $took;
+    $log->msg('DATA_DOWNLOAD', "Downloading $page page...");
+    my ($html, undef, $status) = took { $engine->get_page($get_task, \%local_cnf) } \$took;
+    $log->msg('DATA_DOWNLOADED', "Page $page downloaded: $status (took $took sec.)");
+
+    my %t    = $engine->get_all_threads($html);
+    $log->msg('DATA_FOUND', sprintf "%d threads were found on $page page", scalar keys %t);
+    return %t;
+}
+
+sub get_thread($$$$)
+{
+    my ($engine, $get_task, $cnf, $thread) = @_;
+    my $log            = $engine->{log};
+    my %local_cnf      = %{ $cnf };
+    $local_cnf{thread} = $thread;
+
+    #-- Get the thread
+    my $took;
+    $log->msg('DATA_DOWNLOAD', "Downloading $thread thread...");
+    my ($html, undef, $status) = took { $engine->get_thread($get_task, \%local_cnf) } \$took;
+    $log->msg('DATA_DOWNLOADED', "Thread $thread downloaded: $status (took $took sec.)");
+
+    my %r    = $engine->get_all_replies($html);
+    $log->msg('DATA_FOUND', sprintf "%d replies were found in $thread thread", scalar keys %r);
+    return %r;
+}
+
+sub get_posts_bodies($$$)
+{
+    my ($engine, $proxy, $cnf) =  @_;
+    my $log    = $engine->{log};
+
+    my $get_task = {
+        proxy    => $proxy,
+    };
+
+    #-- Search thread on the pages
+    my %threads     = ();
+    if ($cnf->{threads})
+    {
+        for my $page (@{ $cnf->{threads}{pages} })
+        {
+            %threads = (%threads, get_page($engine, $get_task, $cnf, $page) );
+        }
+        $log->msg('DATA_FOUND', sprintf "Total %d threads were found", scalar keys %threads);
+        #-- Filter by regexp
+        if (my $pattern = $cnf->{threads}{regexp})
+        {
+            %threads = map { ($_, $threads{$_}) if $threads{$_} =~ /$pattern/sg } keys(%threads);
+            $log->msg('DATA_MATCHED', sprintf "%d thread(s) matched the pattern", scalar keys(%threads));
+        }
+    }
+    if ($cnf->{threads}{number} > 0)
+    {
+        my %t = ();
+        for (1..$cnf->{threads}{number})
+        {
+            my @k = keys %threads;
+            last if $_ > scalar(@k);
+            my $k = ${ rand_set( set => \@k ) };
+            %t    = (%t, $k, $threads{$k});
+        }
+        %threads = %t;
+    }
+    #-- Search posts in the threads
+    my %replies     = ();
+    if ($cnf->{replies})
+    {
+        for my $thread ( $cnf->{replies}{threads} eq 'found' ? keys(%threads) : @{ $cnf->{replies}{threads} } )
+        {
+           %replies = (%replies, get_thread($engine, $get_task, $cnf, $thread));
+        }
+        #-- Filter by regexp
+        if (my $pattern = $cnf->{replies}{regexp})
+        {
+            %replies = map { ($_, $replies{$_}) if $replies{$_} =~ /$pattern/sg } keys(%replies);
+            $log->msg('DATA_MATCHED', sprintf "%d replies matched the pattern", scalar keys(%replies));
+        }
+    }
+    $log->msg('DATA_FOUND_ALL', sprintf "Total %d post(s) were found", scalar keys(%replies));
+    return %replies;
+}
+
+sub get_posts_ids($$$)
+{
+    my ($engine, $proxy, $cnf) =  @_;
+    my $log    = $engine->{log};
+
+    my $get_task = {
+        proxy    => $proxy,
+    };
+
+    #-- Search thread on the pages
+    my %threads     = ();
+    my @threads     = (); #-- only ID's
+    my @thr_in_text = ();
+    if ($cnf->{threads})
+    {
+        for my $page (@{ $cnf->{threads}{pages} })
+        {
+            %threads = (%threads, get_page($engine, $get_task, $cnf, $page) );
+        }
+        $log->msg('DATA_FOUND', sprintf "Total %d threads were found", scalar keys %threads);
+        #-- Filter by regexp
+        if (my $pattern = $cnf->{threads}{regexp})
+        {
+            @threads = grep { $threads{$_} =~ /$pattern/sg } keys(%threads);
+            $log->msg('DATA_MATCHED', sprintf "%d thread(s) matched the pattern", scalar @threads);
+        }
+        else
+        {
+            @threads = keys(%threads);
+        }
+        #-- Find a thread's ID in the text of thread 
+        if ($cnf->{threads}{in_text})
+        {
+            my $pattern = $cnf->{threads}{in_text};
+            for (@threads)
+            {
+                while ($threads{$_} =~ /$pattern/sg)
+                {
+                    push @thr_in_text, $+{post};
+                }
+            }
+            $log->msg('DATA_FOUND', sprintf "%d posts(s) found in text of threads", scalar @thr_in_text);
+        }
+    }
+    #-- Search posts in the threads
+    my %replies     = ();
+    my @replies     = ();
+    my @rep_in_text = ();
+    if ($cnf->{replies})
+    {
+        for my $thread ( $cnf->{replies}{threads} eq 'found' ? @threads : @{ $cnf->{replies}{threads} } )
+        {
+            %replies = (%replies, get_thread($engine, $get_task, $cnf, $thread));
+        }
+        $log->msg('DATA_FOUND', sprintf "Total %d replies were found", scalar keys %replies);
+        #-- Filter by regexp
+        if (my $pattern = $cnf->{replies}{regexp})
+        {
+            @replies = grep { $replies{$_} =~ /$pattern/sg } keys(%replies);
+            $log->msg('DATA_MATCHED', sprintf "%d replies matched the pattern", scalar @replies);
+        }
+        else
+        {
+            @replies = keys(%replies);
+        }
+        #-- Find a thread's ID in the text of reply 
+        if ($cnf->{replies}{in_text})
+        {
+            my $pattern = $cnf->{replies}{in_text};
+            for (@replies)
+            {
+                while ($replies{$_} =~ /$pattern/sg)
+                {
+                    push @rep_in_text, $+{post};
+                }
+            }
+            $log->msg('DATA_FOUND', sprintf "%d posts(s) found in text of replies", scalar @rep_in_text);
+        }
+    }
+    my @posts = ( @rep_in_text, @thr_in_text,
+                ( $cnf->{replies}{include}  ? @replies : () ),
+                ( $cnf->{threads}{include}  ? @threads : () ) );
+
+    $log->msg('DATA_FOUND_ALL', sprintf "Total %d post(s) were found", scalar @posts);
+    return undef unless @posts;
+
+    given ($cnf->{take})
+    {
+        when ('random')
+        {
+            my $r = ${ rand_set(set => \@posts) };
+            $log->msg('DATA_TAKE_IDS', "Take a random ID: $r");
+            return $r;
+        }
+        when ('last')
+        {
+            my @last;
+            my @p = sort {$a <=> $b} @posts;
+            push @last, pop(@p);
+            $log->msg('DATA_TAKE_IDS', "Take the last ID: @last");
+            return @last;
+        }
+        when ('all')
+        {
+            return @posts;
+        }
+        default
+        {
+            return @posts;
+        }
+    }
+}
+
 
 1;

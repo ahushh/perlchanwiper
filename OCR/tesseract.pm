@@ -61,7 +61,7 @@ sub decode_captcha($$$)
     };
     if ($@)
     {
-        $log->msg(1, $@, 'DECODE CAPTCHA', 'red');
+        $log->msg('OCR_ERROR', $@, 'DECODE CAPTCHA', 'red');
         return undef;
     }
     return &$after($text);

@@ -1,20 +1,53 @@
 use v5.12;
 use utf8;
 #------------------------------------------------------------------------------------------------------------
-# LOGGING SETTINGS
+# LOGGING LEVELS
 #------------------------------------------------------------------------------------------------------------
-# our $log_settings = {
-#     OCR_ERROR          => 2,
-#     OCR_ABUSE_SUCCESS  => 3,
-#     OCR_ABUSE_ERROR    => 2,
-#     DATA_TEXT_SEEK     => 3,
-#     DATA_TEXT_DOWNLOAD => 3,
-#     WIPE_STRIKE      => 1,
-#     WIPE_GET         => 2,
-#     TIEMOUT          => 1,
-#     MODE_STARTSTOP   => 1,
-#     MODE_CB          => 4,
-# };
+our $log_settings = {
+    #-- OCR
+    OCR_ERROR          => 2,
+    OCR_ABUSE_SUCCESS  => 3,
+    OCR_ABUSE_ERROR    => 2,
+    #-- DATA
+    DATA_SEEK          => 3, #-- поиск тредов/постов/...
+    DATA_DOWNLOAD      => 3, #-- начало загрузки ...
+    DATA_DOWNLOADED    => 3, #-- конец загрузки
+    DATA_MATCHED       => 3, #-- сколько совпало по регэкспу постов/тредов
+    DATA_FOUND         => 3, #-- сколько тредов/постов/найденно
+    DATA_FOUND_ALL     => 2, #-- сколько найденно всего
+    DATA_TAKE_IDS      => 3, #-- какой ID треда взят и сколько
+    DATA_VIDEO_SAVED   => 2, #-- куда сохранены видео
+    #-- MODES IN GENERAL
+    MODE_TIEMOUT       => 2,
+    MODE_STATE         => 1, #-- start/stop/init
+    MODE_CB            => 4, #-- только дебаг
+    MODE_SLEEP         => 3,
+    #-- AUTOBUMP
+    AB_NEEDS_BUMP      => 1,
+    AB_NEEDS_NO_BUMP   => 1,
+    AB_CHECKING        => 1,
+    #-- DELETE
+    DEL_SHOW_PROXY     => 1,
+    #-- PROXY CHECKER
+    PC_SAVE_PROXIES    => 1,
+    #-- WIPE
+    WIPE_STRIKE        => 1,
+    #-- ENGINES
+    ENGN_GET_CAP       => 1, #-- успешное получение капчи
+    ENGN_GET_ERR_CAP   => 2, #-- ошибка ...
+    ENGN_PRP_CAP       => 3, #-- успешное распознование капчи
+    ENGN_PRP_ERR_CAP   => 2, #-- ошибка ...
+    ENGN_POST          => 1, #-- успешно отправлен пост
+    ENGN_POST_ERR      => 1, #-- ошибка при отправке
+    ENGN_DELETE        => 1, #-- успешно удален пост
+    ENGN_DELETE_ERR    => 1, #-- не удален
+    ENGN_CHECK         => 1, #-- хорошая прокси
+    ENGN_CHECK_ERR     => 1, #-- плохая прокси
+    #-- EFG's KUSABA
+    ENGN_EFG_MM        => 4, #-- вывод вычисленного mm
+    #-- всякие важные ошибки
+    ERROR              => 1,
+};
 #------------------------------------------------------------------------------------------------------------
 # MESSSAGE SETTINGS
 #------------------------------------------------------------------------------------------------------------
@@ -35,26 +68,40 @@ our $msg = {
     # text => "[code]#boundary#[/code]]",
     # text => "bump\n%date%",
       text => '@~fortune psalms bible~@',
+    # text => "#post#\nhttp://2ch.hk",
     # text => '%unixtime%',
     # text => ">>#post#\n>>#post#\n",
     # text => '#delirium#',
-    # text => '#post#',
     # text => "bump %date%\n@~fortune psalms bible~@",
     # after => sub { $_=shift; s/--|\d+:\d+//g; s/\n/ /g; $_  },
     #-------------------------------------------------------------------------------------------------------
     #-- #post# config
     post  => {
-        board  => 'b',          #-- если не указано — текущая борда
-        thread => 0,           #-- из какого треда брать номера постов; если 0 - текущий вайпаемый тред
-        # thread => "$ENV{HOME}/1.html", #-- также можно указать путь до html-файла
-        update => 100,           #-- интервал обновления списка постов; 0 - отключить
+        board  => 'b',         #-- если не указано — текущая борда
+        update => 100,         #-- интервал обновления списка постов; 0 - отключить
+        # posts => "$ENV{HOME}/1.html", #-- также можно указать путь до html-файла
+        proxy  => 'no_proxy',  #-- если не указано - текущай прокси, с которой идет постинг
+        posts => {             # конфиг функции, ищущей посты
+                    board     => 'b',   #-- доска, на которой искать треды
+                    threads => {
+                                # regexp  => '',      #-- фильтровать по регэкспу
+                                pages   => [0],    #-- на каких страницах искать треды, из которых будут взяты посты
+                                number  => 3, #-- кол-во случайных тредов, из которых будут взяты посты
+                                              #-- 0 - все треды, но лучше не использовать из-за возможных тормозов
+                               },
+                    replies => {
+                        threads => 'found', #-- искать в уже найденных тредах (см. выше)
+                        # threads => [1199],  #-- задать номер тредов вручную
+                        regexp  => '',      #-- филтровать по регэкспу
+                    },
+                 },
         # take   => sub {        #-- функция, которая извлекает нужные данные из поста. в данном случае - ID поста
         #     use Data::Random     qw/rand_set/;
         #     my ($engine, $task, $data, $replies) = @_;
         #     my @ids = keys %$replies;
         #     return ( @ids ? ${ rand_set(set => \@ids) } : '' );
         # },
-        take   => sub { #-- текст постов
+        take   => sub { #-- извлекает текст постов
             use HTML::Entities;
             use Data::Random     qw/rand_set/;
             my $html2text = sub
@@ -129,12 +176,12 @@ my $img_altering = {
     #-------------------------------------------------------------------------------------------------------
     #-- convert mode
     #-- необходима программа convert
-    # mode        => 'convert',
+    #mode        => 'convert',
     # convert     => 'convert',  #-- путь до программы; если не указано, определяется автоматически
     # Строка аргументов. Рисует текст на картинке:
     # args        => '-fill green -pointsize 30 -draw "text 50,50 \'текст на картинке\'" %source% %dest%',
     # Ресайз картинки от 10 до 200% от исходного размера
-    # args        => '-resize %10rand200%% %source% %dest%',
+    #args        => '-resize %10rand105%% %source% %dest%',
     # Добавление в headers изображения случайной последовательности цифр
     # args        => '-set comment %%10rand100000%digits% %source% %dest%',
 };
@@ -152,9 +199,9 @@ our $img = {
     #-------------------------------------------------------------------------------------------------------
     #-- single mode
     #-- Постить один указанный файл
-    mode     => 'single',
-    # path     => "extra/void.gif",    #-- путь к файлу
-    path     => "extra/desu.gif",    #-- путь к файлу
+     mode     => 'single',
+     path     => "extra/void.gif",    #-- путь к файлу
+    # path     => "extra/desu.gif",    #-- путь к файлу
     #-- captcha mode
     #-- Постить изображение капчи
     # mode => 'captcha',
@@ -162,8 +209,9 @@ our $img = {
     #-- dir mode
     #-- Постить файлы из каталогов
     # mode        => 'dir',
-    # order       => 'random',               #-- random - перемешать файлы; normal - брать по порядку
+    # order       => 'normal',               #-- random - перемешать файлы; normal - брать по порядку
     # path        => ["c:\\users\\user\\Desktop\\1"], #-- пути к файлу
+    # path        => ['~/download/ELENA/2'],
     # regexp      => '',                   #-- фильтровать имена файлов (вместе с расширением) по регэкспам
     # recursively => 1,                    #-- искать файлы и в подпапках
     # types       => ['jpg', 'jpeg', 'gif', 'png'],    #-- резрешенные к загрузки типы файлов
@@ -238,7 +286,7 @@ our $captcha_decode = {
     #-- Ручной ввод капчи через GUI.
     #-- Необходим Gtk2
     # mode   => 'guihand',
-    #-- просто заглушка
+    #-- просто заглушка, всегда возвращаюая текст "none"
     # mode => 'none',
     #-- tesseract OCR
     #-- Необходим convert (пакет ImageMagick) и сам tesseract

@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '0.2.2-97';
+our $VERSION = '2.3';
 
 use v5.12;
 use utf8;
@@ -29,6 +29,7 @@ use PCW::Core::Log;
 #-----------------------------------------------------------------------------
 our %mode_config;
 our $chan_config;
+our $log_settings;
 
 my @proxies; #-- list of proxies
 my @agents;  #-- list of user-agents
@@ -165,8 +166,8 @@ sub show_info()
 sub load_configs()
 {
     our ($img, $msg, $vid, $captcha_decode);
-    require $cnf{common_config}; #-- load $img, $msg, $vid, $captcha_decode
-    require $cnf{mode_config}  ; #-- load %mode_config
+    require $cnf{common_config} || die; #-- load $img, $msg, $vid, $captcha_decode
+    require $cnf{mode_config}   || die; #-- load %mode_config
 
     $mode_config{img_data} = $img;
     $mode_config{msg_data} = $msg;
@@ -193,7 +194,7 @@ sub load_chan()
 
 sub load_logging()
 {
-    $logging = PCW::Core::Log->new( file => $cnf{logfile}, level => $cnf{loglevel}, colored => !$cnf{lognocolor} );
+    $logging = PCW::Core::Log->new( file => $cnf{logfile}, level => $cnf{loglevel}, colored => !$cnf{lognocolor}, settings => $log_settings );
 }
 
 sub load_engine()

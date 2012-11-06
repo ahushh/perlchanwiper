@@ -12,7 +12,7 @@ our @EXPORT_OK = qw/make_text/;
 #------------------------------------------------------------------------------------------------
 use List::Util       qw/shuffle/;
 use Data::Random     qw/rand_set/;
-use PCW::Core::Utils qw/random took readfile/;
+use PCW::Core::Utils qw/random took readfile get_posts_bodies/;
 
 use Coro;
 my $lock = Coro::Semaphore->new;
@@ -52,39 +52,36 @@ sub post_msg($$$)
 {
     my ($engine, $task, $data) = @_;
     my $log = $engine->{log};
-    state %replies;
+    state %posts;
     state $time = time;
 
-    my $thread = $data->{thread} || $task->{post_cnf}{thread};
-    my $board  = $data->{board}  || $task->{post_cnf}{board};
+    my $config = $data->{posts} || $task->{post_cnf}{thread};
+    my $board  = $data->{board} || $task->{post_cnf}{board};
     $lock->down;
-    if (!$replies{$thread} or ($data->{update} && (time() - $time) >= $data->{update}))
+    if (!%posts or ($data->{update} && (time() - $time) >= $data->{update}))
     {
-        my $get_task = { proxy  => 'no_proxy' };
-        my $cnf      = { thread => $thread, board => $board };
+        my $get_task = { proxy  => ($data->{proxy} || $task->{proxy}) };
+        my $cnf      = { thread => $config, board => $board };
         my $c = async {
             my ($html, $status, $took);
-            $log->msg(3, "Looking for posts on $cnf->{thread} thread...");
             if (-e $data->{thread}) #-- read html form a file on disk
             {
-                $status = $data->{thread};
-                $html   = readfile($data->{thread});
-                $took   = 0;
+                $status   = $data->{thread};
+                $html     = readfile($data->{thread});
+                $took     = 0;
+                %posts = $engine->get_all_posts($html);
+                $log->msg('DATA_FOUND', scalar(keys %posts) ." posts were found in $cnf->{thread} thread: $status (took $took sec.)");
             }
-            else#-- download the thread
+            else
             {
-                $log->msg(3, "Downloading $cnf->{thread} thread...");
-                ($html, undef, $status) = took { $engine->get_thread($get_task, $cnf) } \$took;
+                %posts = get_posts_bodies($engine, 'no_proxy', $data->{posts});
             }
-            my %r = $engine->get_all_replies($html);
-            $replies{$thread} = \%r;
-            $log->msg(2, scalar(keys %{$replies{$thread}} ) ." posts were found in $cnf->{thread} thread: $status (took $took sec.)");
         };
         $c->join();
     }
     $lock->up;
     my $take = $data->{take};
-    my $c = async { &$take($engine, $task, $data, $replies{$thread}) };
+    my $c = async { &$take($engine, $task, $data, \%posts) };
     return $c->join();
 }
 

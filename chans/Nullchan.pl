@@ -1,5 +1,5 @@
 use utf8;
-use constant HOST => '0chan.ru';
+use constant HOST => '0chan.hk';
 
 our $chan_config =
 {

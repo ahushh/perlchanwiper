@@ -40,7 +40,7 @@ sub decode_captcha($$$)
     eval { $text = cap($file_path) };
     if ($@)
     {
-        $log->msg(1, $@, 'DECODE CAPTCHA', 'red') if $@;
+        $log->msg('OCR_ERROR', $@, 'DECODE CAPTCHA', 'red') if $@;
         return undef;
     }
     return $text;

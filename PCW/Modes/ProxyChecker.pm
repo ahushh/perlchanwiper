@@ -78,7 +78,7 @@ sub init($)
 {
     my $self = shift;
     my $log  = $self->{log};
-    $log->msg(1, "Initialization... ");
+    $log->msg('MODE_STATE', "Initialization... ");
     $self->_base_init();
     $self->_init_base_watchers();
     $self->_run_custom_watchers($watchers, $queue);
@@ -103,7 +103,7 @@ sub start($)
     my $self = shift;
     my $log  = $self->{log};
     return unless $self->{is_running};
-    $log->msg(1, "Starting proxy checker mode...");
+    $log->msg('MODE_STATE', "Starting proxy checker mode...");
     async {
         $queue->{main}->put({ proxy => $_ }) for (@{ $self->{proxies} });
         while ($self->{is_running})
@@ -118,7 +118,7 @@ sub stop($)
 {
     my $self = shift;
     my $log  = $self->{log};
-    $log->msg(1, "Stopping proxy checker mode...");
+    $log->msg('MODE_STATE', "Stopping proxy checker mode...");
     $_->cancel for (grep {$_->desc =~ /custom-watcher|check/ } Coro::State::list);
     $watchers      = {};
     $queue->{main} = undef;
@@ -131,7 +131,7 @@ sub stop($)
         open my $fh, '>', $self->{conf}{save};
         print $fh "@g";
         close $fh;
-        $log->msg(1, "Saving good proxies to $self->{conf}{save}");
+        $log->msg('PC_SAVE_PROXIES', "Saving good proxies to $self->{conf}{save}");
     }
     $self->{is_running} = 0;
 }
@@ -160,7 +160,7 @@ sub _init_base_watchers($)
                                 my $now = Time::HiRes::time;
                                 if ($coro->{timeout_at} && $now > $coro->{timeout_at})
                                 {
-                                    $log->pretty_proxy(1, 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
+                                    $log->pretty_proxy('MODE_TIMEOUT', 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
                                     $coro->cancel('timeout', $coro->{task}, $self);
                                 }
                             }

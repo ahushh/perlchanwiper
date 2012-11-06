@@ -57,7 +57,7 @@ my $cb_wipe_get = unblock_sub
         when ('success')
         {
             $self->{failed_proxy}{ $task->{proxy} } = 0;
-            $log->pretty_proxy(4, 'green', $task->{proxy}, 'GET CB', "$msg: push into the PREPARE queue");
+            $log->pretty_proxy('MODE_CB', 'green', $task->{proxy}, 'GET CB', "$msg: push into the PREPARE queue");
             $queue->{prepare}->put($task);
         }
         default
@@ -66,12 +66,12 @@ my $cb_wipe_get = unblock_sub
             if ($self->{failed_proxy}{ $task->{proxy} } < $self->{conf}{get_attempts})
             {
                 my $new_task = {proxy => $task->{proxy} };
-                $log->pretty_proxy(4, 'red', $task->{proxy}, 'GET CB', "$msg: push into the GET queue");
+                $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'GET CB', "$msg: push into the GET queue");
                 $queue->{get}->put($new_task);
             }
             else
             {
-                $log->pretty_proxy(4, 'red', $task->{proxy}, 'GET CB', "$msg: reached the error limit; threw away the proxy");
+                $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'GET CB', "$msg: reached the error limit; threw away the proxy");
             }
         }
     }
@@ -90,7 +90,7 @@ sub wipe_get($$)
         if ($task->{run_at})
         {
             my $now = Time::HiRes::time;
-            $log->pretty_proxy(2, 'green', $task->{proxy}, 'GET',
+            $log->pretty_proxy('MODE_SLEEP', 'green', $task->{proxy}, 'GET',
                                sprintf("sleep %d...", $self->{conf}{flood_limit}));
             Coro::Timer::sleep( int($task->{run_at} - $now) );
         }
@@ -122,7 +122,7 @@ my $cb_wipe_prepare = unblock_sub
         when ('success')
         {
             $queue->{post}->put($task);
-            $log->pretty_proxy(4, 'green', $task->{proxy}, 'PREPARE CB', "$msg: push into the POST queue");
+            $log->pretty_proxy('MODE_CB', 'green', $task->{proxy}, 'PREPARE CB', "$msg: push into the POST queue");
             $self->{failed_proxy}{ $task->{proxy} } = 0;
         }
         when ('no_text')
@@ -137,12 +137,12 @@ my $cb_wipe_prepare = unblock_sub
                 if ($self->{failed_proxy}{ $task->{proxy} } < $self->{conf}{prepare_attempts})
                 {
                     my $new_task = {proxy => $task->{proxy} };
-                    $log->pretty_proxy(4, 'red', $task->{proxy}, 'PREPARE CB', "$msg: push into the GET queue");
+                    $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'PREPARE CB', "$msg: push into the GET queue");
                     $queue->{get}->put($new_task);
                 }
                 else
                 {
-                    $log->pretty_proxy(4, 'red', $task->{proxy}, 'PREPARE CB', "$msg: reached the error limit; threw away the proxy");
+                    $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'PREPARE CB', "$msg: reached the error limit; threw away the proxy");
                 }
             }
         }
@@ -197,7 +197,7 @@ my $cb_wipe_post = unblock_sub
                 my ($name, $path, $suffix) = fileparse($task->{path_to_captcha}, 'png', 'jpeg', 'jpg', 'gif');
                 my $dest = File::Spec->catfile($self->{conf}{save_captcha}, $task->{captcha_text} ."--". time .".$suffix");
                 move $task->{path_to_captcha}, $dest;
-                $log->msg(4, "move $task->{path_to_captcha} to $dest");
+                $log->msg('MODE_CB', "move $task->{path_to_captcha} to $dest");
             }
             $self->{stats}{posted}++;
 
@@ -215,7 +215,7 @@ my $cb_wipe_post = unblock_sub
             captcha_report_bad($self->{log}, $self->{conf}{captcha_decode}, $task->{path_to_captcha});
             if ($self->{conf}{wcap_retry})
             {
-                $log->pretty_proxy(4, 'yellow', $task->{proxy}, 'POST CB', "$msg: push into the GET queue");
+                $log->pretty_proxy('MODE_CB', 'yellow', $task->{proxy}, 'POST CB', "$msg: push into the GET queue");
                 $new_task->{proxy} = $task->{proxy};
                 $queue->{get}->put($new_task);
                 return;
@@ -223,8 +223,8 @@ my $cb_wipe_post = unblock_sub
         }
         when ('critical_error')
         {
-            $log->msg(1, "Critical chan error has occured!", '', 'red');
-            $log->pretty_proxy(4, 'red', $task->{proxy}, 'POST CB', "$msg: push into the POST queue");
+            $log->msg("ERROR", "WTF?! A critical chan error has occured!", '', 'red');
+            $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'POST CB', "$msg: push into the POST queue");
             $queue->{get}->put($new_task);
         }
         when ('flood')
@@ -255,13 +255,13 @@ my $cb_wipe_post = unblock_sub
     {
         if ($self->{failed_proxy}{ $task->{proxy} } < $self->{conf}{post_attempts})
         {
-            $log->pretty_proxy(4, 'red', $task->{proxy}, 'POST CB', "$msg: push into the GET queue");
+            $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'POST CB', "$msg: push into the GET queue");
             $new_task->{proxy} = $task->{proxy};
             $queue->{get}->put($new_task);
         }
         else
         {
-            $log->pretty_proxy(4, 'red', $task->{proxy}, 'POST CB', "$msg: reached the error limit; threw away the proxy");
+            $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'POST CB', "$msg: reached the error limit; threw away the proxy");
         }
 
     }
@@ -287,13 +287,31 @@ sub wipe_post($$$)
 }
 
 #------------------------------------------------------------------------------------------------
+# Web UI
+#------------------------------------------------------------------------------------------------
+sub send_posts($)
+{
+    my $self  = shift;
+    my $log  = $self->{log};
+    my @post_coro = grep { $_->desc eq 'post'    } Coro::State::list;
+    my $thrs_available = -1;
+    if ($self->{conf}{max_pst_thrs})
+    {
+        my $n = $self->{conf}{max_pst_thrs} - scalar @post_coro;
+        $thrs_available = $n > 0 ? $n : 0;
+    }
+    $log->msg('WIPE_STRIKE', "#~~~ ". scalar($queue->{post}->size) ." ready rounds. Strike! ~~~#");
+    $self->wipe_post($queue->{post}->get)
+        while $queue->{post}->size && $thrs_available--;
+}
+#------------------------------------------------------------------------------------------------
 #---------------------------------------  MAIN WIPE  --------------------------------------------
 #------------------------------------------------------------------------------------------------
 sub init($)
 {
     my $self = shift;
     my $log  = $self->{log};
-    $log->msg(1, "Initialization... ");
+    $log->msg('MODE_STATE', "Initialization... ");
     $self->_base_init();
     $self->_init_base_watchers();
     $self->_run_custom_watchers($watchers, $queue);
@@ -318,7 +336,7 @@ sub start($)
     my $self = shift;
     my $log  = $self->{log};
     return unless $self->{is_running};
-    $log->msg(1, "Starting wipe mode...");
+    $log->msg('MODE_STATE', "Starting wipe mode...");
     async {
         $queue->{get}->put({ proxy => $_ }) for (@{ $self->{proxies} });
         while ($self->{is_running})
@@ -333,7 +351,7 @@ sub stop($)
 {
     my $self = shift;
     my $log  = $self->{log};
-    $log->msg(1, "Stopping wipe mode...");
+    $log->msg('MODE_STATE', "Stopping wipe mode...");
     $_->cancel for (grep {$_->desc =~ /custom-watcher|get|prepare|post|sleeping/ } Coro::State::list);
     for ( (keys(%$watchers), keys(%$queue)) )
     {
@@ -373,7 +391,7 @@ sub _init_base_watchers($)
                                 my $now = Time::HiRes::time;
                                 if ($coro->{timeout_at} && $now > $coro->{timeout_at})
                                 {
-                                    $log->pretty_proxy(1, 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
+                                    $log->pretty_proxy('MODE_TIMEOUT', 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
                                     $coro->cancel('timeout', $coro->{task}, $self);
                                 }
                             }
@@ -406,7 +424,7 @@ sub _init_base_watchers($)
                             {
                                 return;
                             }
-                            my @get_coro      = grep { $_->desc eq 'get'     } Coro::State::list;
+                            my @get_coro       = grep { $_->desc eq 'get'     } Coro::State::list;
                             my $thrs_available = $self->{conf}{max_cap_thrs} - scalar @get_coro;
                             $self->wipe_get($queue->{get}->get)
                                 while $queue->{get}->size && $thrs_available--;
@@ -424,7 +442,7 @@ sub _init_base_watchers($)
                             {
                                 return;
                             }
-                            my @prepare_coro  = grep { $_->desc eq 'prepare' } Coro::State::list;
+                            my @prepare_coro   = grep { $_->desc eq 'prepare' } Coro::State::list;
                             my $thrs_available = -1;
                             #-- Max post threads limit
                             if ($self->{conf}{max_prp_thrs})
@@ -454,27 +472,34 @@ sub _init_base_watchers($)
                                 my $n = $self->{conf}{max_pst_thrs} - scalar @post_coro;
                                 $thrs_available = $n > 0 ? $n : 0;
                             }
-                            if ($self->{conf}{send}{mode} == 1)
+                            if ($self->{conf}{send}{mode} == 1 or $self->{conf}{send}{mode} == 3)
                             {
                                 if (
-                                    !@get_coro     && $queue->{get}->size     == 0 && 
+                                    !@get_coro     && $queue->{get}->size     == 0 &&
                                     !@prepare_coro && $queue->{prepare}->size == 0 &&
                                     !@post_coro    && $queue->{post}->size
                                    )
                                 {
-                                    $log->msg(1, "#~~~ ". scalar($queue->{post}->size) ." charges are ready. Strike! ~~~#");
+                                    $log->msg('WIPE_STRIKE', "#~~~ ". scalar($queue->{post}->size) ." ready rounds. Strike! ~~~#");
                                     $self->wipe_post($queue->{post}->get)
                                         while $queue->{post}->size && $thrs_available--;
+                                    $self->{conf}{send}{mode} = 0 if $self->{conf}{send}{mode} == 3;
                                 }
                             }
-                            elsif ($self->{conf}{send}{mode} == 2)
+                            elsif ($self->{conf}{send}{mode} == 2 or $self->{conf}{send}{mode} == 4)
                             {
-                                if (!@post_coro && $queue->{post}->size >= $self->{conf}{max_pst_thrs})
+                                if (!@post_coro && $queue->{post}->size >= $self->{conf}{send}{caps_accum})
                                 {
-                                    $log->msg(1, "#~~~ ". scalar($queue->{post}->size) ." charges are ready. Strike! ~~~#");
+                                    $log->msg('WIPE_STRIKE', "#~~~ ". scalar($queue->{post}->size) ." ready rounds. Strike! ~~~#");
                                     $self->wipe_post($queue->{post}->get)
                                         while $queue->{post}->size && $thrs_available--;
+                                    $self->{conf}{send}{mode} = 0 if $self->{conf}{send}{mode} == 4;
                                 }
+                            }
+                            elsif ($self->{conf}{send}{mode} == 5)
+                            {
+                                #-- ничего не делаем - ждем ручного подтверждения
+                                undef;
                             }
                             else
                             {

@@ -1,0 +1,31 @@
+#!/usr/bin/perl
+use v5.12;
+use List::MoreUtils qw/uniq/;
+
+die "Usage: $0 [input] [output]"
+    if @ARGV != 2;
+
+my ($input, $output) = @ARGV;
+my (@raw_proxies, $raw_proxies);
+
+open my $fh, "<", $input;
+{
+    local $/ = undef;
+    $raw_proxies = <$fh>;
+    close $fh;
+}
+
+push @raw_proxies, $1
+    while $raw_proxies =~ /((http|socks4?:\/\/)?      #-- protocol
+                               ((\w|\d)+:(\w|\d)+@)?     #-- user login and password
+                               (\d+\.\d+\.\d+.\d+\:\d+)| #-- e.g., 192.168.1.1:80
+                               ((\w|\d|\.)+\.\w+:\d+)    #-- e.g., my.awesome.proxy.com:80
+                           )/gsx;
+
+@raw_proxies = uniq @raw_proxies;
+
+
+open $fh, ">", $output;
+print $fh "$_\n"
+    for @raw_proxies;
+close $fh;

@@ -25,7 +25,7 @@ sub new($%)
     my $level      = delete $args{level};
     my $file       = delete $args{file};
     my $colored    = delete $args{colored};
-    # my $settings   = delete $args{settings};
+    my $settings   = delete $args{settings};
 
     my @k = keys %args;
     Carp::croak("These options aren't defined: @k") if %args;
@@ -40,14 +40,14 @@ sub new($%)
     $self->{level}    = $level;
     $self->{file}     = $fh || *STDOUT;
     $self->{colored}  = $colored;
-    # $self->{settings} = $settings;
+    $self->{settings} = $settings;
     bless $self, $class;
 
 }
 sub msg($$;$$$)
 {
     my ($self, $l, $msg, $type, $color) = @_;
-    return 0 if $self->{level} < $l;
+    return 0 if $self->{level} < $self->{settings}{$l};
     my $fh    = $self->{file};
 
     print  $fh strftime("[%H:%M:%S]", localtime(time));
@@ -59,7 +59,7 @@ sub msg($$;$$$)
 sub pretty_proxy($$$$$$)
 {
     my ($self, $l, $color, $proxy, $type, $msg) = @_;
-    return 0 if $self->{level} < $l;
+    return 0 if $self->{level} < $self->{settings}{$l};
     my $fh    = $self->{file};
 
     $self->msg($l, undef, $type); #-- print time and the type
