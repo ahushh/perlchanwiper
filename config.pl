@@ -67,7 +67,7 @@ our $msg = {
     #-------------------------------------------------------------------------------------------------------
     # text => "[code]#boundary#[/code]]",
     # text => "bump\n%date%",
-      text => '@~fortune psalms bible~@',
+    # text => '@~fortune~@',
     # text => "#post#\nhttp://2ch.hk",
     # text => '%unixtime%',
     # text => ">>#post#\n>>#post#\n",
@@ -199,8 +199,8 @@ our $img = {
     #-------------------------------------------------------------------------------------------------------
     #-- single mode
     #-- Постить один указанный файл
-     mode     => 'single',
-     path     => "extra/void.gif",    #-- путь к файлу
+    mode     => 'single',
+    path     => "extra/void.gif",    #-- путь к файлу
     # path     => "extra/desu.gif",    #-- путь к файлу
     #-- captcha mode
     #-- Постить изображение капчи
@@ -209,9 +209,9 @@ our $img = {
     #-- dir mode
     #-- Постить файлы из каталогов
     # mode        => 'dir',
-    # order       => 'normal',               #-- random - перемешать файлы; normal - брать по порядку
+    # order       => 'random',               #-- random - перемешать файлы; normal - брать по порядку
     # path        => ["c:\\users\\user\\Desktop\\1"], #-- пути к файлу
-    # path        => ['~/download/ELENA/2'],
+    # path        => ['~/pics'],
     # regexp      => '',                   #-- фильтровать имена файлов (вместе с расширением) по регэкспам
     # recursively => 1,                    #-- искать файлы и в подпапках
     # types       => ['jpg', 'jpeg', 'gif', 'png'],    #-- резрешенные к загрузки типы файлов
@@ -225,7 +225,7 @@ our $img = {
     # },
     #-------------------------------------------------------------------------------------------------------
     #-- common options
-    max_size => 500,                   #-- ограничение на размер файла в кб. 0 для отключения
+    max_size => 300,                   #-- ограничение на размер файла в кб. 0 для отключения
     altering => $img_altering           #-- обход запрета на повтор картинок
 };
 
@@ -264,17 +264,25 @@ our $vid = {
 our $captcha_decode = {
     #-------------------------------------------------------------------------------------------------------
     #-- antigate mode
-    # mode   => 'antigate',
-    # key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
-    # opt    => {is_russian => 1},  #-- см. документацию к модулю WebService::Antigate
+    mode   => 'antigate',
+    key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
+    opt    => {
+               is_russian =>   1,
+               phrase     =>   0,  #-- 1 if captcha text have 2-4 words
+               regsense   =>   0,  #-- 1 if that captcha text is case sensitive
+               numeric    =>   0,  #-- 1 if that captcha text contains only digits, 2 if captcha text have no digits
+               calc       =>   0,  #-- 1 if that digits on the captcha should be summed up
+               min_len    =>   7,  #-- minimum length of the captcha text (0..20)
+               max_len    =>   7,  #-- maximum length of the captcha text (0..20), 0 - no limits
+              },
     #-------------------------------------------------------------------------------------------------------
     #-- captchabot mode
     # mode   => 'captchabot',
     # key    => '',
-    # opt    => {},  #-- см. документацию к модулю WebService::Antigate
+    # opt    => {},  #-- аналогично антигейту
     #-------------------------------------------------------------------------------------------------------
     #-- web mode
-    #-- Ввод капчи вручную через веб-гуй
+    #-- Ввод капчи вручную через веб-морду
     mode   => 'web',
     #-------------------------------------------------------------------------------------------------------
     #-- hand mode

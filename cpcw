@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '2.3';
+our $VERSION = '2.3.1';
 
 use v5.12;
 use utf8;
@@ -136,6 +136,56 @@ sub check_user_error()
 
     Carp::croak("Useragents list '$cnf{useragents}' does not exist")
         unless($cnf{useragents} && -e $cnf{useragents});
+}
+
+sub check_image_config()
+{
+    my $img_mode = $mode_config{img_data}{mode} . '_img';
+    return if $img_mode =~ /no_img/;
+    eval {
+        use PCW::Data::Images qw/make_pic/;
+        make_pic($engine, {task => 1}, $mode_config{img_data});
+    };
+    if ($@)
+    {
+        Carp::croak sprintf "Image mode '%s' doesn't exist!\n", $img_mode;
+    }
+
+    Carp::croak "Image path not defined!" unless $mode_config{img_data}{path};
+
+    if ($mode_config{img_data}{max_size})
+    {
+        Carp::croak "The file size greaten then max size allowed!"
+                if int((-s $mode_config{img_data}{path})/1024) > $mode_config{img_data}{max_size};
+    }
+    if ($mode_config{img_data}{mode} eq 'dir' and !$mode_config{img_data}{types} || !(@{ $mode_config{img_data}{types} }))
+    {
+        Carp::croak "Allowed file types not specified!"
+    }
+    Carp::croak sprintf("Image altering method '%s' doesn't exist", $mode_config{img_data}{altering}{mode})
+            if $mode_config{img_data}{altering}{mode} !~ /randnums|randbytes|convert/;
+}
+
+sub check_video_config()
+{
+    my $vid_mode = $mode_config{vid_data}{mode} . '_vid';
+    return if $vid_mode =~ /no_vid/;
+    eval {
+        use PCW::Data::Video qw/make_vid/;
+        make_vid($engine, {task => 1}, $mode_config{vid_data});
+    };
+    if ($@)
+    {
+        Carp::croak sprintf "Video mode '%s' doesn't exist!\n", $mode_config{vid_mode}{mode};
+    }
+}
+
+sub check_captcha_config()
+{
+    my $captcha_mode      = $mode_config{captcha_decode}{mode};
+    my $captcha_mode_path = File::Spec->catfile($Bin, 'OCR', "$captcha_mode.pm");
+    Carp::croak("Captcha decode method '$captcha_mode' does not exist at $captcha_mode_path")
+        unless (-e $captcha_mode_path);
 }
 
 #-----------------------------------------------------------------------------
@@ -291,6 +341,9 @@ sub load_all()
     check_chan_config();
     load_logging();
     load_engine();
+    check_captcha_config();
+    check_image_config();
+    check_video_config();
     return load_mode();
 }
 

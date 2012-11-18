@@ -42,7 +42,8 @@ sub make_vid($$$)
 #------------------------------------------------------------------------------------------------
 sub file_vid($$$)
 {
-    my (undef, undef, $data) = @_;
+    my (undef, $task, $data) = @_;
+    return if defined $task->{test};
 
     state @vid_list;
 
@@ -72,7 +73,8 @@ sub file_vid($$$)
 
 sub download_vid($$$)
 {
-    my ($engine, undef, $data) = @_;
+    my ($engine, $task, $data) = @_;
+    return if defined $task->{test};
     state @vid_list;
 
     $lock->down;
@@ -119,14 +121,10 @@ sub download_vid($$$)
     {
         $video = ${ rand_set(set => \@vid_list) };
     }
-    elsif ($data->{order} eq 'normal')
+    else
     {
         $i = 0 if ($i >= scalar @vid_list);
         $video = $vid_list[$i++];
-    }
-    else
-    {
-        Carp::croak("Order is not specified. Check your general config.");
     }
     return $video;
 }

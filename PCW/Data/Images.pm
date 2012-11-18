@@ -46,7 +46,8 @@ sub captcha_img($$$)
 
 sub rand_img($$$)
 {
-    my (undef, undef, $data) = @_;
+    my (undef, $task, $data) = @_;
+    return if defined $task->{test};
     my ($fh, $filename) = tempfile(UNLINK => 1, SUFFIX => ".png");
     my %opt = %{ $data->{args} } if $data->{args};
     print $fh rand_image(%opt);
@@ -56,14 +57,10 @@ sub rand_img($$$)
 
 sub single_img($)
 {
-    my (undef, undef, $data) = @_;
-    Carp::croak "Image file is not set!"
-            unless my $path_to_img = $data->{path};
-    if ($data->{max_size})
-    {
-        Carp::croak "The file size greaten then max size allowed!"
-                if int((-s $path_to_img)/1024) > $data->{max_size};
-    }
+    my (undef, $task, $data) = @_;
+    return if defined $task->{test};
+    my $path_to_img = $data->{path};
+
     return img_altering($path_to_img, $data->{altering})
         if $data->{altering};
     return $path_to_img;
@@ -71,19 +68,15 @@ sub single_img($)
 
 sub dir_img($)
 {
-    my (undef, undef, $data) = @_;
+    my (undef, $task, $data) = @_;
+    return if defined $task->{test};
     my $dirs = $data->{path};
 
     state @img_list;
     $lock->down;
     if (!@img_list or !$data->{loaded})
     {
-        my @types;
-        if (!$data->{types} or !(@types = @{ $data->{types} }))
-        {
-            Carp::croak "Allowed types are not specified!"
-        }
-
+        my @types = @{ $data->{types} };
         if ($data->{recursively})
         {
             my @t = map { "*.$_" } @types;
@@ -97,8 +90,7 @@ sub dir_img($)
                 for (@$dirs);
         }
 
-        Carp::croak "These directories are empty: @$dirs !"
-                unless @img_list;
+        return undef unless @img_list;
         @img_list = grep { int((-s $_)/1024) <= $data->{max_size} } @img_list
             if $data->{max_size};
         @img_list = grep { basename($_) =~ /$data->{regexp}/ } @img_list
@@ -113,14 +105,10 @@ sub dir_img($)
     {
         $path_to_img = ${ rand_set(set => \@img_list) };
     }
-    elsif ($data->{order} eq 'normal')
+    else
     {
         $i = 0 if ($i >= scalar @img_list);
         $path_to_img = $img_list[$i++];
-    }
-    else
-    {
-        Carp::croak("Order is not specified. Check your general config.");
     }
     return img_altering($path_to_img, $data->{altering})
         if $data->{altering};
@@ -177,7 +165,6 @@ sub img_altering($)
         }
         default
         {
-            warn "Image altering method '$mode' doesn't exist. Check your config! Skipping altering...";
             close $fh;
             return $full_name;
         }
