@@ -2,7 +2,6 @@ package PCW::Data::Text;
 
 use v5.12;
 use utf8;
-use Carp;
 use autodie;
 
 use Exporter 'import';
@@ -51,6 +50,7 @@ sub make_text($$$)
 sub post_msg($$$)
 {
     my ($engine, $task, $data) = @_;
+    return if defined $task->{test};
     my $log = $engine->{log};
     state %posts;
     state $time = time;
@@ -87,7 +87,8 @@ sub post_msg($$$)
 
 sub boundary_msg($$$)
 {
-    my (undef, undef, $data) = @_;
+    my (undef, $task, $data) = @_;
+    return if defined $task->{test};
     my $boundary = $data->{boundary} || '----';
     state @text;
     state $i = 0;
@@ -105,21 +106,18 @@ sub boundary_msg($$$)
     {
         $msg = ${ rand_set(set => \@text) };
     }
-    elsif ($data->{order} eq 'normal')
+    else
     {
         $i = 0 if ($i >= scalar @text);
         $msg = $text[$i++];
-    }
-    else
-    {
-        Carp::croak("Order is not specified. Check your general config.");
     }
     return $msg;
 }
 
 sub string_msg($$$)
 {
-    my (undef, undef, $data) = @_;
+    my (undef, $task, $data) = @_;
+    return if defined $task->{test};
     state @text;
     state $i = 0;
     $i = 0 if ($i >= scalar @text);
@@ -140,21 +138,18 @@ sub string_msg($$$)
         $i = 0 if ($i >= scalar @text);
         $msg .= $text[$i++] while $num_str--;
     }
-    elsif ($data->{order} eq 'random')
+    else
     {
         my $j = random(0, scalar(@text) - $num_str);
         $msg .= $text[$j++] while $num_str--;
-    }
-    else
-    {
-        Carp::croak("Order is not specified. Check your general config.");
     }
     return $msg;
 }
 
 sub delirium_msg($$$)
 {
-    my (undef, undef, $cnf) = @_;
+    my (undef, $task, $cnf) = @_;
+    return if defined $task->{test};
     my $min_len_w = $cnf->{min_len_w} || 3;
     my $max_len_w = $cnf->{max_len_w} || 7;
     my $min_w     = $cnf->{min_w}     || 1;

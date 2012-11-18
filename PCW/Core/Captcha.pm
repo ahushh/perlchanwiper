@@ -19,11 +19,6 @@ sub captcha_recognizer($$$)
     my $mode      = $captcha_decode->{mode};
     my $mode_path = File::Spec->catfile($Bin, 'OCR', "$mode.pm");
 
-    Carp::croak("Captcha decode method is not defined.") unless $mode_path;
-
-    Carp::croak("Captcha decode method '$mode' does not exist at $mode_path")
-        unless (-e $mode_path);
-
     require File::Spec->catfile($Bin, 'OCR', "$mode.pm");
     my $captcha = decode_captcha($log, $captcha_decode, $file_path);
     utf8::decode($captcha);

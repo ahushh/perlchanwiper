@@ -6,6 +6,7 @@ use utf8;
 use autodie;
 use Carp;
 use lib 'lib';
+use FindBin qw/$Bin/;
 binmode(STDOUT, ":utf8");
 
 my $PASSWORD = 'desu';
@@ -32,6 +33,7 @@ my @agents;
 my $engine;
 my $logging;
 
+our $error;
 #-----------------------------------------------------------------------------
 # Config
 #-----------------------------------------------------------------------------
@@ -51,6 +53,84 @@ my %cnf = (
     lognocolor => 0,
 );
 
+#-----------------------------------------------------------------------------
+# Config
+#-----------------------------------------------------------------------------
+sub check_image_config()
+{
+    my $img_mode = $mode_config{img_data}{mode} . '_img';
+    my $result   = 0;
+    return 0 if $img_mode =~ /no_img/;
+    eval {
+        use PCW::Data::Images qw/make_pic/;
+        make_pic($engine, {test => 1}, $mode_config{img_data});
+    };
+    if ($@)
+    {
+        say "img_mode: $img_mode" if $DEBUG;
+        $logging->msg('ERROR', sprintf("Image mode '%s' doesn't exist!", $img_mode), 'ERROR', 'red');
+        $result = 1;
+    }
+
+    unless ($mode_config{img_data}{path})
+    {
+        $logging->msg('ERROR', "Image path not defined!", "ERROR", 'red');
+        $result = 1;
+    }
+
+    if ($mode_config{img_data}{max_size})
+    {
+        if (int((-s $mode_config{img_data}{path})/1024) > $mode_config{img_data}{max_size})
+        {
+            $logging->msg('ERROR', "The file size greaten then max size allowed!", 'ERROR', 'red');
+            $result = 1;
+        }
+    }
+    if ($mode_config{img_data}{mode} eq 'dir' and !$mode_config{img_data}{types} || !(@{ $mode_config{img_data}{types} }))
+    {
+        $logging->msg('ERROR', "Allowed file types not specified!", "ERROR", 'red');
+        $result = 1;
+    }
+    if ($mode_config{img_data}{altering}{mode} !~ /randnums|randbytes|convert/ )
+    {
+        $logging->msg('ERROR', sprintf("Image altering method '%s' doesn't exist", $mode_config{img_data}{altering}{mode}), 'ERROR', 'red');
+        $result = 1;
+    }
+    return $result;
+}
+
+sub check_video_config()
+{
+    my $vid_mode = $mode_config{vid_data}{mode} . '_vid';
+    return 0 if $vid_mode =~ /no_vid/;
+    eval {
+        use PCW::Data::Video qw/make_vid/;
+        make_vid($engine, {test => 1}, $mode_config{vid_data});
+    };
+    if ($@)
+    {
+        $logging->msg('ERROR', sprintf("Video mode '%s' doesn't exist!", $mode_config{vid_mode}{mode}), 'ERROR', 'red');
+        return 1;
+    }
+    return 0;
+}
+
+sub check_captcha_config()
+{
+    my $captcha_mode      = $mode_config{captcha_decode}{mode};
+    my $captcha_mode_path = File::Spec->catfile($Bin, 'OCR', "$captcha_mode.pm");
+    unless (-e $captcha_mode_path)
+    {
+        $logging->msg('ERROR', "Captcha decode method '$captcha_mode' does not exist at $captcha_mode_path", "ERROR", 'red');
+        return 1;
+    }
+    return 0;
+}
+
+sub check_configs()
+{
+    $error = check_image_config() || check_video_config() || check_captcha_config();
+}
 #-----------------------------------------------------------------------------
 # Load
 #-----------------------------------------------------------------------------
@@ -80,6 +160,7 @@ sub set_configs($)
 {
     my $pcw = shift;
     load_configs();
+    check_configs();
     $pcw->{conf} = \%mode_config;
 }
 #-----------------------------------------------------------------------------
@@ -179,6 +260,7 @@ sub load_all()
     load_chan();         #-- load $chan_config
     load_logging();
     load_engine();
+    check_configs();
     say 'loaded' if $DEBUG;
     return load_mode();
 }
@@ -219,8 +301,16 @@ get '/logout' => sub {
 
 get '/start'  => sub {
     my $self = shift;
-    $pcw->init;
-    $pcw->start;
+    say $error if $DEBUG;
+    if ($error)
+    {
+        $logging->msg('ERROR', "Can't start! Check your configs!", "ERROR", "red");
+    }
+    else
+    {
+        $pcw->init;
+        $pcw->start;
+    }
     $self->render(text => 'ok');
 };
 
@@ -550,7 +640,7 @@ __DATA__
   </html>
 
 @@ index.html.ep
-% our $VERSION = '2.3';
+% our $VERSION = '2.3.1';
 %= javascript 'http://code.jquery.com/jquery-1.7.2.min.js'
 %= javascript begin
 var cnf = {
@@ -806,10 +896,22 @@ $(document).ready(function(){
     // captcha
     $("#captcha_input").keypress(function(e) {
         if (e.which == 13) {
-            var value = $("#captcha_input").val();
+            var value = $(this).val();
             sendCaptcha(value);
+        } else {
+            var len = $(this).val().length;
+            $("#charNum").html(len);
         }
     });
+    $("#captcha_input").keyup(function(e) {
+        var len = $(this).val().length;
+        $("#charNum").html(len);
+    });
+    $("#captcha_input").keydown(function(e) {
+        var len = $(this).val().length;
+        $("#charNum").html(len);
+    });
+
     $("#captcha_img").click(function() {
         sendCaptcha('');
     });
@@ -871,7 +973,7 @@ $(document).ready(function(){
         <h4>Stats</h4>
         <div id="stats"></div>
         <h4>Captcha</h4>
-        <input type="text" value="" id="captcha_input"> <a href="#" id="refreshCaptcha">refresh</a><br>
+        <input type="text" value="" id="captcha_input"> <a href="#" id="refreshCaptcha">refresh</a> <span id="charNum">0</span> <br>
         (press enter to send) <br>
         <img id="captcha_img" src="" alt="">
       </div>

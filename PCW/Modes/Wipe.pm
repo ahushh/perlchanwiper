@@ -63,15 +63,17 @@ my $cb_wipe_get = unblock_sub
         default
         {
             $self->{failed_proxy}{ $task->{proxy} }++;
-            if ($self->{failed_proxy}{ $task->{proxy} } < $self->{conf}{get_attempts})
+            my $errors = $self->{failed_proxy}{ $task->{proxy} };
+            my $limit  = $self->{conf}{get_attempts};
+            if ($errors < $limit)
             {
                 my $new_task = {proxy => $task->{proxy} };
-                $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'GET CB', "$msg: push into the GET queue");
+                $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'GET CB', "$msg: push into the GET queue ($errors/$limit)");
                 $queue->{get}->put($new_task);
             }
             else
             {
-                $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'GET CB', "$msg: reached the error limit; threw away the proxy");
+                $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'GET CB', "$msg: reached the error limit; threw away this proxy ($errors/$limit)");
             }
         }
     }
@@ -134,15 +136,18 @@ my $cb_wipe_prepare = unblock_sub
             $self->{failed_proxy}{ $task->{proxy} }++;
             if ($self->{conf}{wcap_retry} || $self->{conf}{loop})
             {
-                if ($self->{failed_proxy}{ $task->{proxy} } < $self->{conf}{prepare_attempts})
+                my $errors = $self->{failed_proxy}{ $task->{proxy} };
+                my $limit  = $self->{conf}{prepare_attempts};
+                if ($errors < $limit)
                 {
                     my $new_task = {proxy => $task->{proxy} };
-                    $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'PREPARE CB', "$msg: push into the GET queue");
+                    $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'PREPARE CB', "$msg: push into the GET queue ($errors/$limit)");
                     $queue->{get}->put($new_task);
                 }
                 else
                 {
-                    $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'PREPARE CB', "$msg: reached the error limit; threw away the proxy");
+                    $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'PREPARE CB',
+                                       "$msg: reached the error limit; threw away this proxy ($errors/$limit)");
                 }
             }
         }
@@ -176,12 +181,6 @@ my $cb_wipe_post = unblock_sub
     my ($msg, $task, $self) = @_;
     return unless @_;
     my $log = $self->{log};
-
-    #-- Delete temporary files
-    unlink($task->{path_to_captcha})
-        if !$self->{conf}{save_captcha} && $task->{path_to_captcha} && -e $task->{path_to_captcha};
-    unlink($task->{file_path})
-        if $self->{conf}{img_data}{altering} && $task->{file_path} && -e $task->{file_path};
 
     $self->{stats}{total}++;
     my $new_task = {};
@@ -226,6 +225,7 @@ my $cb_wipe_post = unblock_sub
             $log->msg("ERROR", "WTF?! A critical chan error has occured!", '', 'red');
             $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'POST CB', "$msg: push into the POST queue");
             $queue->{get}->put($new_task);
+            return;
         }
         when ('flood')
         {
@@ -242,32 +242,35 @@ my $cb_wipe_post = unblock_sub
         }
     }
 
-    if ($msg =~ /net_error|timeout/)
+    if ($msg =~ /net_error|timeout|unknown/)
     {
         $self->{failed_proxy}{ $task->{proxy} }++;
+        my $errors = $self->{failed_proxy}{ $task->{proxy} };
+        my $limit  = $self->{conf}{post_attempts};
+        if ($errors < $limit)
+        {
+            $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'POST CB', "$msg: try to send a post again ($errors/$limit)");
+            #-- TODO: игнорируется max_pst_thrs, а не должно
+            $self->wipe_post($task);
+            return;
+        }
+        else
+        {
+            $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'POST CB', "$msg: reached the error limit; threw away this proxy ($errors/$limit)");
+        }
     }
     else
     {
         $self->{failed_proxy}{ $task->{proxy} } = 0;
     }
-
-    if ($self->{conf}{loop} && $msg ne 'banned')
-    {
-        if ($self->{failed_proxy}{ $task->{proxy} } < $self->{conf}{post_attempts})
-        {
-            $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'POST CB', "$msg: push into the GET queue");
-            $new_task->{proxy} = $task->{proxy};
-            $queue->{get}->put($new_task);
-        }
-        else
-        {
-            $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'POST CB', "$msg: reached the error limit; threw away the proxy");
-        }
-
-    }
+    #-- Delete temporary files
+    unlink($task->{path_to_captcha})
+        if !$self->{conf}{save_captcha} && $task->{path_to_captcha} && -e $task->{path_to_captcha};
+    unlink($task->{file_path})
+        if $self->{conf}{img_data}{altering} && $task->{file_path} && -e $task->{file_path};
 };
 
-sub wipe_post($$$)
+sub wipe_post($$)
 {
     my ($self, $task) = @_;
     my $engine = $self->{engine};
