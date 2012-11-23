@@ -61,6 +61,31 @@ sub check_image_config()
     my $img_mode = $mode_config{img_data}{mode} . '_img';
     my $result   = 0;
     return 0 if $img_mode =~ /no_img/;
+    unless ($mode_config{img_data}{path})
+    {
+        $logging->msg('ERROR', "Image path not defined!", "ERROR", 'red');
+        $result = 1;
+    }
+    if (ref($mode_config{img_data}{path}) eq 'ARRAY')
+    {
+        for (@{ $mode_config{img_data}{path} })
+        {
+            unless (-e $_)
+            {
+                $logging->msg('ERROR', "'$_' don't exist!", "ERROR", 'red');
+                $result = 1;
+            }
+        }
+    }
+    else
+    {
+        unless (-e $mode_config{img_data}{path})
+        {
+            $logging->msg('ERROR', $mode_config{img_data}{path} . " doesn't exist!", "ERROR", 'red');
+            $result = 1;
+        }
+    }
+
     eval {
         use PCW::Data::Images qw/make_pic/;
         make_pic($engine, {test => 1}, $mode_config{img_data});
@@ -69,12 +94,6 @@ sub check_image_config()
     {
         say "img_mode: $img_mode" if $DEBUG;
         $logging->msg('ERROR', sprintf("Image mode '%s' doesn't exist!", $img_mode), 'ERROR', 'red');
-        $result = 1;
-    }
-
-    unless ($mode_config{img_data}{path})
-    {
-        $logging->msg('ERROR', "Image path not defined!", "ERROR", 'red');
         $result = 1;
     }
 
@@ -640,7 +659,7 @@ __DATA__
   </html>
 
 @@ index.html.ep
-% our $VERSION = '2.3.1';
+% our $VERSION = '2.3.2';
 %= javascript 'http://code.jquery.com/jquery-1.7.2.min.js'
 %= javascript begin
 var cnf = {

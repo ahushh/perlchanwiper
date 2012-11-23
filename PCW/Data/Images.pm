@@ -77,24 +77,14 @@ sub dir_img($)
     if (!@img_list or !$data->{loaded})
     {
         my @types = @{ $data->{types} };
-        if ($data->{recursively})
-        {
-            my @t = map { "*.$_" } @types;
-            @img_list = File::Find::Rule->file()->name(@t)->in(@$dirs);
-        }
-        else
-        {
-            #-- make a glob string
-            my $s = reduce { "$a,$b" } @types;
-            @img_list = (@img_list, glob "$_/*.{$s}")
-                for (@$dirs);
-        }
-
+        my $rule =  File::Find::Rule->new;
+        $rule->size("<=". $data->{max_size}) if $data->{max_size};
+        $rule->name(map { "*.$_" } @types);
+        $rule->maxdepth(1) unless $data->{recursively};
+        @img_list = $rule->file()->in(@$dirs);
+       
+        @img_list = grep { basename($_) =~ /$data->{regexp}/ } @img_list if $data->{regexp};
         return undef unless @img_list;
-        @img_list = grep { int((-s $_)/1024) <= $data->{max_size} } @img_list
-            if $data->{max_size};
-        @img_list = grep { basename($_) =~ /$data->{regexp}/ } @img_list
-            if $data->{regexp};
         $data->{loaded} = 1;
     }
     $lock->up;
@@ -147,6 +137,7 @@ sub img_altering($)
             my $digits = join '', map {int rand 10} &$interpolate($conf->{number_nums});
             print $fh $img;
             print $fh $digits;
+            print $fh $conf->{sign} if $conf->{sign};
             close $fh;
         }
         when ('randbytes')
@@ -154,6 +145,7 @@ sub img_altering($)
             my $img = readfile($full_name);
             print $fh $img;
             print $fh reduce { $a . chr(int(rand() * 256)) } ('', 1..&$interpolate($conf->{number_bytes}));
+            print $fh $conf->{sign} if $conf->{sign};
             close $fh;
         }
         when ('convert')
@@ -162,11 +154,12 @@ sub img_altering($)
             my $convert = $conf->{convert} || which('convert');
             my $args    = &$interpolate($conf->{args});
             system("$convert $args");
-        }
-        default
-        {
-            close $fh;
-            return $full_name;
+            if ($conf->{sign})
+            {
+                open my $fh1, '>>', $filename;
+                print $fh $conf->{sign};
+                close $fh;
+            }
         }
     }
     return $filename;

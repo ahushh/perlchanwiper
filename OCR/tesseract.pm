@@ -50,7 +50,6 @@ sub _get_ocr($;%)
 sub decode_captcha($$$)
 {
     my ($log, $captcha_decode, $file_path) = @_;
-    my $after = $captcha_decode->{after} || sub { $_[0] };
     my $text;
     eval {
         $text = _get_ocr($file_path,
@@ -64,7 +63,7 @@ sub decode_captcha($$$)
         $log->msg('OCR_ERROR', $@, 'DECODE CAPTCHA', 'red');
         return undef;
     }
-    return &$after($text);
+    return $text;
 }
 
 sub abuse($$$) { }
