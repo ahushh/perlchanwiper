@@ -57,7 +57,7 @@ my $cb_wipe_get = unblock_sub
         when ('success')
         {
             $self->{failed_proxy}{ $task->{proxy} } = 0;
-            $log->pretty_proxy('MODE_CB', 'green', $task->{proxy}, 'GET CB', "$msg: push into the PREPARE queue");
+            $log->pretty_proxy('GET_CB', 'green', $task->{proxy}, 'GET CB', "$msg: push into the PREPARE queue");
             $queue->{prepare}->put($task);
         }
         default
@@ -68,12 +68,12 @@ my $cb_wipe_get = unblock_sub
             if ($errors < $limit)
             {
                 my $new_task = {proxy => $task->{proxy} };
-                $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'GET CB', "$msg: push into the GET queue ($errors/$limit)");
+                $log->pretty_proxy('GET_CB', 'red', $task->{proxy}, 'GET CB', "$msg: push into the GET queue ($errors/$limit)");
                 $queue->{get}->put($new_task);
             }
             else
             {
-                $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'GET CB', "$msg: reached the error limit; threw away this proxy ($errors/$limit)");
+                $log->pretty_proxy('GET_CB', 'red', $task->{proxy}, 'GET CB', "$msg: reached the error limit; threw away this proxy ($errors/$limit)");
             }
         }
     }
@@ -124,7 +124,7 @@ my $cb_wipe_prepare = unblock_sub
         when ('success')
         {
             $queue->{post}->put($task);
-            $log->pretty_proxy('MODE_CB', 'green', $task->{proxy}, 'PREPARE CB', "$msg: push into the POST queue");
+            $log->pretty_proxy('PREP_CB', 'green', $task->{proxy}, 'PREPARE CB', "$msg: push into the POST queue");
             $self->{failed_proxy}{ $task->{proxy} } = 0;
         }
         when ('no_text')
@@ -141,12 +141,12 @@ my $cb_wipe_prepare = unblock_sub
                 if ($errors < $limit)
                 {
                     my $new_task = {proxy => $task->{proxy} };
-                    $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'PREPARE CB', "$msg: push into the GET queue ($errors/$limit)");
+                    $log->pretty_proxy('PREP_CB', 'red', $task->{proxy}, 'PREPARE CB', "$msg: push into the GET queue ($errors/$limit)");
                     $queue->{get}->put($new_task);
                 }
                 else
                 {
-                    $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'PREPARE CB',
+                    $log->pretty_proxy('PREP_CB', 'red', $task->{proxy}, 'PREPARE CB',
                                        "$msg: reached the error limit; threw away this proxy ($errors/$limit)");
                 }
             }
@@ -196,7 +196,7 @@ my $cb_wipe_post = unblock_sub
                 my ($name, $path, $suffix) = fileparse($task->{path_to_captcha}, 'png', 'jpeg', 'jpg', 'gif');
                 my $dest = File::Spec->catfile($self->{conf}{save_captcha}, $task->{captcha_text} ."--". time .".$suffix");
                 move $task->{path_to_captcha}, $dest;
-                $log->msg('MODE_CB', "move $task->{path_to_captcha} to $dest");
+                $log->msg('POST_CB', "move $task->{path_to_captcha} to $dest");
             }
             $self->{stats}{posted}++;
 
@@ -214,7 +214,7 @@ my $cb_wipe_post = unblock_sub
             captcha_report_bad($self->{log}, $self->{conf}{captcha_decode}, $task->{path_to_captcha});
             if ($self->{conf}{wcap_retry})
             {
-                $log->pretty_proxy('MODE_CB', 'yellow', $task->{proxy}, 'POST CB', "$msg: push into the GET queue");
+                $log->pretty_proxy('POST_CB', 'yellow', $task->{proxy}, 'POST CB', "$msg: push into the GET queue");
                 $new_task->{proxy} = $task->{proxy};
                 $queue->{get}->put($new_task);
                 return;
@@ -223,7 +223,7 @@ my $cb_wipe_post = unblock_sub
         when ('critical_error')
         {
             $log->msg("ERROR", "WTF?! A critical chan error has occured!", '', 'red');
-            $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'POST CB', "$msg: push into the POST queue");
+            $log->pretty_proxy('POST_CB', 'red', $task->{proxy}, 'POST CB', "$msg: push into the POST queue");
             $queue->{get}->put($new_task);
             return;
         }
@@ -249,14 +249,14 @@ my $cb_wipe_post = unblock_sub
         my $limit  = $self->{conf}{post_attempts};
         if ($errors < $limit)
         {
-            $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'POST CB', "$msg: try to send a post again ($errors/$limit)");
+            $log->pretty_proxy('POST_CB', 'red', $task->{proxy}, 'POST CB', "$msg: try to send a post again ($errors/$limit)");
             #-- TODO: игнорируется max_pst_thrs, а не должно
             $self->wipe_post($task);
             return;
         }
         else
         {
-            $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'POST CB', "$msg: reached the error limit; threw away this proxy ($errors/$limit)");
+            $log->pretty_proxy('POST_CB', 'red', $task->{proxy}, 'POST CB', "$msg: reached the error limit; threw away this proxy ($errors/$limit)");
         }
     }
     else
@@ -295,7 +295,12 @@ sub wipe_post($$)
 sub send_posts($)
 {
     my $self  = shift;
-    my $log  = $self->{log};
+    my $log   = $self->{log};
+    unless ($self->{is_running})
+    {
+        $log->msg('ERROR', "Not running!", 'ERROR', 'red');
+        return;
+    }
     my @post_coro = grep { $_->desc eq 'post'    } Coro::State::list;
     my $thrs_available = -1;
     if ($self->{conf}{max_pst_thrs})

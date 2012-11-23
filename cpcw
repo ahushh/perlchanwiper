@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '2.3.1';
+our $VERSION = '2.3.2';
 
 use v5.12;
 use utf8;
@@ -19,6 +19,7 @@ use AnyEvent;
 use Coro::Timer;
 use Getopt::Long qw/:config bundling/;
 use POSIX        qw/strftime/;
+use List::Util   qw/reduce/;
 use File::Basename;
 #-----------------------------------------------------------------------------
 use PCW::Core::Utils qw/get_proxylist readfile/;
@@ -142,16 +143,28 @@ sub check_image_config()
 {
     my $img_mode = $mode_config{img_data}{mode} . '_img';
     return if $img_mode =~ /no_img/;
+    Carp::croak "Image path not defined!" unless $mode_config{img_data}{path};
+    if (ref($mode_config{img_data}{path}) eq 'ARRAY')
+    {
+        for (@{ $mode_config{img_data}{path} })
+        {
+            Carp::croak "'$_' don't exist!" unless (-e $_);
+        }
+    }
+    else
+    {
+        Carp::croak $mode_config{img_data}{path} . " doesn't exist!"
+            unless (-e $mode_config{img_data}{path});
+    }
+
     eval {
         use PCW::Data::Images qw/make_pic/;
-        make_pic($engine, {task => 1}, $mode_config{img_data});
+        make_pic($engine, {test => 1}, $mode_config{img_data});
     };
     if ($@)
     {
-        Carp::croak sprintf "Image mode '%s' doesn't exist!\n", $img_mode;
+        Carp::croak sprintf "Image mode '%s' doesn't exist!", $img_mode;
     }
-
-    Carp::croak "Image path not defined!" unless $mode_config{img_data}{path};
 
     if ($mode_config{img_data}{max_size})
     {
@@ -176,7 +189,7 @@ sub check_video_config()
     };
     if ($@)
     {
-        Carp::croak sprintf "Video mode '%s' doesn't exist!\n", $mode_config{vid_mode}{mode};
+        Carp::croak sprintf "Video mode '%s' doesn't exist!", $mode_config{vid_mode}{mode};
     }
 }
 

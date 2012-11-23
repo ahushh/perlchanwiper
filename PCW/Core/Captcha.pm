@@ -17,10 +17,12 @@ sub captcha_recognizer($$$)
 {
     my ($log, $captcha_decode, $file_path) = @_;
     my $mode      = $captcha_decode->{mode};
+    my $after     = $captcha_decode->{after} || sub { $_[0] };
     my $mode_path = File::Spec->catfile($Bin, 'OCR', "$mode.pm");
 
     require File::Spec->catfile($Bin, 'OCR', "$mode.pm");
     my $captcha = decode_captcha($log, $captcha_decode, $file_path);
+    $captcha = &$after($captcha);
     utf8::decode($captcha);
     return $captcha;
 }

@@ -14,7 +14,7 @@ sub decode_captcha($$$)
         $text = $captcha_decode->{web}{answers}{$file_path};
         # use Data::Dumper;
         # print Dumper($captcha_decode->{web});
-        Coro::Timer::sleep 1;
+        Coro::Timer::sleep(1);
     }
     delete $captcha_decode->{web}{answers}{$file_path};
     return $text;
