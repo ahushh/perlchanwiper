@@ -145,7 +145,7 @@ sub is_thread_on_page($%)
 
     $log->msg('DATA_SEEK', "Looking for $config{thread} thread on $config{page} page...");
     my ($page, undef, $status) = $self->get_page($task, $cnf);
-    $log->msg('DATA_DOWNLOADED', "Page $config{page} downloaded: $status");
+    $log->msg('DATA_LOADED', "Page $config{page} downloaded: $status");
     my %threads = $self->get_all_threads($page);
 
     return grep { $_ == $config{thread} } keys(%threads);

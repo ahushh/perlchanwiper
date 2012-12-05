@@ -248,9 +248,9 @@ sub get_page($$$$)
 
     #-- Get the page
     my $took;
-    $log->msg('DATA_DOWNLOAD', "Downloading $page page...");
+    $log->msg('DATA_LOADING', "Downloading $page page...");
     my ($html, undef, $status) = took { $engine->get_page($get_task, \%local_cnf) } \$took;
-    $log->msg('DATA_DOWNLOADED', "Page $page downloaded: $status (took $took sec.)");
+    $log->msg('DATA_LOADED', "Page $page downloaded: $status (took $took sec.)");
 
     my %t    = $engine->get_all_threads($html);
     $log->msg('DATA_FOUND', sprintf "%d threads were found on $page page", scalar keys %t);
@@ -266,9 +266,9 @@ sub get_thread($$$$)
 
     #-- Get the thread
     my $took;
-    $log->msg('DATA_DOWNLOAD', "Downloading $thread thread...");
+    $log->msg('DATA_LOADING', "Downloading $thread thread...");
     my ($html, undef, $status) = took { $engine->get_thread($get_task, \%local_cnf) } \$took;
-    $log->msg('DATA_DOWNLOADED', "Thread $thread downloaded: $status (took $took sec.)");
+    $log->msg('DATA_LOADED', "Thread $thread downloaded: $status (took $took sec.)");
 
     my %r    = $engine->get_all_replies($html);
     $log->msg('DATA_FOUND', sprintf "%d replies were found in $thread thread", scalar keys %r);

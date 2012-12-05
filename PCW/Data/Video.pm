@@ -81,7 +81,7 @@ sub download_vid($$$)
     if (!@vid_list or !$data->{loaded})
     {
         my $log = $engine->{log};
-        $log->msg('DATA_DOWNLOAD', "Start fetching video ID's from $data->{type}..");
+        $log->msg('DATA_LOADING', "Start fetching video ID's from $data->{type}..");
         my $raw;
         for my $query (@{ $data->{search}})
         {
@@ -102,7 +102,7 @@ sub download_vid($$$)
             }
         }
         @vid_list = uniq @vid_list;
-        $log->msg('DATA_DOWNLOADED', "Fetched ". scalar(@vid_list) ." video ID's");
+        $log->msg('DATA_LOADED', "Fetched ". scalar(@vid_list) ." video ID's");
         if (my $path = $data->{save})
         {
             open(my $fh, '>', $path);
