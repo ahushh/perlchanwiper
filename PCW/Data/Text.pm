@@ -87,8 +87,9 @@ sub post_msg($$$)
 
 sub boundary_msg($$$)
 {
-    my (undef, $task, $data) = @_;
+    my ($engine, $task, $data) = @_;
     return if defined $task->{test};
+    my $log      = $engine->{log};
     my $boundary = $data->{boundary} || '----';
     state @text;
     state $i = 0;
@@ -97,6 +98,7 @@ sub boundary_msg($$$)
     if (!@text or !$data->{loaded})
     {
         @text = split /$boundary/, readfile($data->{path}, 'utf8');
+        $log->msg('DATA_LOADED', "loaded with ". scalar(@text) ." pieces of text.");
         $data->{loaded} = 1;
     }
     $lock->up;
@@ -116,8 +118,9 @@ sub boundary_msg($$$)
 
 sub string_msg($$$)
 {
-    my (undef, $task, $data) = @_;
+    my ($engine, $task, $data) = @_;
     return if defined $task->{test};
+    my $log      = $engine->{log};
     state @text;
     state $i = 0;
     $i = 0 if ($i >= scalar @text);
@@ -126,6 +129,7 @@ sub string_msg($$$)
     if (!@text or $data->{loaded})
     {
         @text = readfile($data->{path}, 'utf8');
+        $log->msg('DATA_LOADED', "loaded with ". scalar(@text) ." strings of text.");
         $data->{loaded} = 1;
     }
     $lock->up;

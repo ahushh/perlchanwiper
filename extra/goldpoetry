@@ -1,0 +1,63 @@
+#!/usr/bin/perl
+ 
+$|=1;
+use v5.12;
+no warnings;
+use LWP::Simple;
+
+my %authors = (
+'Жуковский' => 'jukovsky', 
+'Батюшков' => 'batushkov',
+'Пушкин' => 'pushkin',
+'Крылов' => 'krilov',
+'Лермонтов' => 'lermontov',
+'Тютчев' => 'tutchev',
+'Некрасов' => 'nekrasov',
+'Фет' => 'fet',
+'Бальмонт' => 'balmont',
+'Брюсов' => 'brusov',
+'Блок' => 'blok',
+'Хлебников' => 'hlebnikov',
+'Мандельштам' => 'mandelshtam',
+'Есенин' => 'esenin',
+'Маяковский' => 'mayakovsky',
+'Ахматова' => 'ahmatova',
+'Цветаева' => 'cvetaeva', 
+'Пастернак' => 'pasternak', 
+'Твардовский' => 'tvardovskiy', 
+'Симонов' => 'simonov', 
+'Высоцкий' => 'visotskiy', 
+'Окуджава' => 'okudjava', 
+'Омар' => 'omar', 
+);
+
+unless (@ARGV)
+{
+    local $" = ', ';
+    say "Скрипт для выкачивания стихов с goldpoetry.ru";
+    say "Работает в один поток.";
+    say;
+    say "Использование: $0 [автор] > [в какой файл сохранять]";
+    say;
+    my @a = keys %authors;
+    say "Список авторов: @a.";
+    say;
+    say "Стихи разделяются строкой `----`";
+    exit;
+}
+
+my $author   = $authors{$ARGV[0]} || die 'Нет такого автора';
+my $url      = "http://goldpoetry.ru/$author/index.php?p=";
+my $boundary = "----";
+
+my $cont;
+my $i = 1;
+while ($cont = LWP::Simple::get($url . ++$i))
+{
+    $cont =~ /<div class="poem">.+?<\/table>(.+?)<br \/>.+?<\/div>/sg;
+    my $text = $1;
+    last unless $text =~ s/\s//gr;
+    print $text;
+    print "\n$boundary\n";
+    say STDERR "$i загужено.";
+}

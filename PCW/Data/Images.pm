@@ -68,9 +68,10 @@ sub single_img($)
 
 sub dir_img($)
 {
-    my (undef, $task, $data) = @_;
+    my ($engine, $task, $data) = @_;
     return if defined $task->{test};
     my $dirs = $data->{path};
+    my $log  = $engine->{log};
 
     state @img_list;
     $lock->down;
@@ -84,6 +85,7 @@ sub dir_img($)
         @img_list = $rule->file()->in(@$dirs);
        
         @img_list = grep { basename($_) =~ /$data->{regexp}/ } @img_list if $data->{regexp};
+        $log->msg('DATA_LOADED', scalar(@img_list)." images loaded.");
         return undef unless @img_list;
         $data->{loaded} = 1;
     }

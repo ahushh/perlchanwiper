@@ -114,7 +114,7 @@ sub _is_thread_on_page_catalog($%)
     my $c_cnf   = { board => $cnf{board} };
     $log->msg('DATA_SEEK', "Looking for $cnf{thread} thread on the catalog...");
     my ($html, undef, $status) = $self->get_catalog($task, $c_cnf);
-    $log->msg('DATA_DOWNLOAD', "Catalog was downloaded: $status");
+    $log->msg('DATA_LOADING', "Catalog was downloaded: $status");
 
     my (%threads, $count);
     while ($html =~ /$pattern/sg)
@@ -350,7 +350,7 @@ sub prepare($$$$)
         $content{ $self->{fields}{post}{video_type} } = $cnf->{vid_data}{type} || 'youtube';
         $content{ $self->{fields}{post}{video} }      = '';
     }
-    elsif (!$cnf->{task}{thread}) #-- New thread
+    elsif (!$cnf->{task}{thread} && $self->{fields}{post}{nofile}) #-- New thread
     {
         $content{ $self->{fields}{post}{nofile} } = 'on';
     }
