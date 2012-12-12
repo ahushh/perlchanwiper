@@ -276,6 +276,11 @@ sub _check_post_result($$$$$)
             {
                 $log->pretty_proxy($loglvl, $color, $task->{proxy}, 'POST',
                             sprintf("[%s](%d){%s}", uc($type), $code, ($self->{verbose} ? html2text($response) : $_)));
+                #if ($response =~ /detect/i)
+                #{
+                    #use Data::Dumper;
+                    #$log->pretty_proxy('ERROR', 'red', $task->{proxy}, 'DEBUG', Dumper($task->{content}));
+                #}
                 return($type);
             }
         }

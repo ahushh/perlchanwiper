@@ -26,6 +26,7 @@ sub interpolate($$)
     $text =~ s/%date%/scalar(localtime(time));/eg;
     $text =~ s/%(\d+)rand(\d+)%/random($1, $2);/eg;
     $text =~ s/@~(.+)~@/`$1`;/eg;
+    $text =~ s/\r//g;
 
     return $text;
 }
@@ -39,6 +40,7 @@ sub make_text($$$)
     $text =~ s/#boundary#/boundary_msg($engine, $task, $conf->{boundary});/eg;
     $text =~ s/#string#/string_msg($engine, $task, $conf->{string});/eg;
     $text =~ s/#post#/post_msg($engine, $task, $conf->{post});/eg;
+    $text = substr($text, 0, $conf->{maxlen}) if $conf->{maxlen};
 
     my $after = $conf->{after} || sub { $_[0] };
     return &$after(interpolate($text, $task));
@@ -113,6 +115,7 @@ sub boundary_msg($$$)
         $i = 0 if ($i >= scalar @text);
         $msg = $text[$i++];
     }
+    $msg = substr($msg, 0, $data->{maxlen}) if $data->{maxlen};
     return $msg;
 }
 
@@ -147,6 +150,7 @@ sub string_msg($$$)
         my $j = random(0, scalar(@text) - $num_str);
         $msg .= $text[$j++] while $num_str--;
     }
+    $msg = substr($msg, 0, $data->{maxlen}) if $data->{maxlen};
     return $msg;
 }
 
@@ -209,6 +213,7 @@ sub delirium_msg($$$)
         my @dict = @{ $m{$_} };
         while ($template =~ s/$_/$dict[rand(scalar @dict)]/) {};
     }
+    $template = substr($template, 0, $cnf->{maxlen}) if $cnf->{maxlen};
     return $template;
 }
 

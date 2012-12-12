@@ -251,6 +251,7 @@ my $cb_wipe_post = unblock_sub
         {
             $log->pretty_proxy('POST_CB', 'red', $task->{proxy}, 'POST CB', "$msg: try to send a post again ($errors/$limit)");
             #-- TODO: игнорируется max_pst_thrs, а не должно
+            Coro::Timer::sleep 1;
             $self->wipe_post($task);
             return;
         }
@@ -262,6 +263,12 @@ my $cb_wipe_post = unblock_sub
     else
     {
         $self->{failed_proxy}{ $task->{proxy} } = 0;
+        if ($self->{conf}{loop})
+        {
+            $log->pretty_proxy('POST_CB', 'green', $task->{proxy}, 'POST CB', "$msg: push into the GET queue");
+            $new_task->{proxy} = $task->{proxy};
+            $queue->{get}->put($new_task);
+        }
     }
     #-- Delete temporary files
     unlink($task->{path_to_captcha})
