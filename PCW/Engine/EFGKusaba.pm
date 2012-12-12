@@ -9,47 +9,10 @@ use base 'PCW::Engine::Kusaba';
 #------------------------------------------------------------------------------------------------
 # Importing utility packages
 #------------------------------------------------------------------------------------------------
+use File::Temp   qw/tempfile/;
 use Data::Random qw/rand_set/;
 use FindBin      qw/$Bin/;
 use HTTP::Headers;
-
-#------------------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------------------
-use JE;
-our $js = JE->new;
-$js->eval('
-function mm(a)
-{
-    var l = a.length,
-        h = 2 ^ l,
-        i = 0,
-        k, m = 1540483477,
-        ff = 255,
-        ffff = 65535;
-    while (l >= 4) {
-        k = ((a.charCodeAt(i) & ff)) | ((a.charCodeAt(++i) & ff) << 8) | ((a.charCodeAt(++i) & ff) << 16) | ((a.charCodeAt(++i) & ff) << 24);
-        k = (((k & ffff) * m) + ((((k >>> 16) * m) & ffff) << 16));
-        k ^= k >>> 24;
-        k = (((k & ffff) * m) + ((((k >>> 16) * m) & ffff) << 16));
-        h = (((h & ffff) * m) + ((((h >>> 16) * m) & ffff) << 16)) ^ k;
-        l -= 4;
-        ++i
-    }
-    switch (l) {
-        case 3:
-            h ^= (a.charCodeAt(i + 2) & ff) << 16;
-        case 2:
-            h ^= (a.charCodeAt(i + 1) & ff) << 8;
-        case 1:
-            h ^= (a.charCodeAt(i) & ff);
-            h = (((h & ffff) * m) + ((((h >>> 16) * m) & ffff) << 16))
-    }
-    h ^= h >>> 13;
-    h = (((h & ffff) * m) + ((((h >>> 16) * m) & ffff) << 16));
-    h ^= h >>> 15;
-    var c = h >>> 0;
-    return c;
-}');
 
 #------------------------------------------------------------------------------------------------
 # Import internal PCW packages
@@ -222,19 +185,16 @@ sub _get_post_content($$%)
 #-- Helper function
 sub compute_mm($)
 {
-    my $s = shift;
-    #-- there are non-ascii characters or OS is not linux
-    if ( grep { ord($_) > 127 } split //, $s or $^O !~ /linux/)
-    {
-        utf8::encode($s);
-        return $js->method(mm => $s); #-- so sloooow
-    }
-    #-- ascii only
-    open my $mm, '-|', "$Bin/lib/mm", $s
-        or Carp::croak "Could not find $Bin/lib/mm: $!";
-    my $result = <$mm>;
-    close($mm);
-    return $result;
+    no warnings;
+    my $s  = shift;
+    my ($fh, $file) = tempfile(SUFFIX=>"--pcw.txt");
+    print $fh $s;
+    close $fh;
+    my $mm_cmd='var Utf8={encode:function(c){c=c.replace(/\r\n/g,"\n");var f="";for(var g=0;g<c.length;g++){var h=c.charCodeAt(g);if(h<128){f+=String.fromCharCode(h)}else{if((h>127)&&(h<2048)){f+=String.fromCharCode((h>>6)|192);f+=String.fromCharCode((h&63)|128)}else{f+=String.fromCharCode((h>>12)|224);f+=String.fromCharCode(((h>>6)&63)|128);f+=String.fromCharCode((h&63)|128)}}}return f},decode:function(f){var c="";var h=0;var g=c1=c2=0;while(h<f.length){g=f.charCodeAt(h);if(g<128){c+=String.fromCharCode(g);h++}else{if((g>191)&&(g<224)){c2=f.charCodeAt(h+1);c+=String.fromCharCode(((g&31)<<6)|(c2&63));h+=2}else{c2=f.charCodeAt(h+1);c3=f.charCodeAt(h+2);c+=String.fromCharCode(((g&15)<<12)|((c2&63)<<6)|(c3&63));h+=3}}}return c}};function mm(a){a=Utf8.encode(a);var m=a.length,i=2^m,k=0,l,q=1540483477,r=255,h=65535;while(m>=4){l=((a.charCodeAt(k)&r))|((a.charCodeAt(++k)&r)<<8)|((a.charCodeAt(++k)&r)<<16)|((a.charCodeAt(++k)&r)<<24);l=(((l&h)*q)+((((l>>>16)*q)&h)<<16));l^=l>>>24;l=(((l&h)*q)+((((l>>>16)*q)&h)<<16));i=(((i&h)*q)+((((i>>>16)*q)&h)<<16))^l;m-=4;++k}switch(m){case 3:i^=(a.charCodeAt(k+2)&r)<<16;case 2:i^=(a.charCodeAt(k+1)&r)<<8;case 1:i^=(a.charCodeAt(k)&r);i=(((i&h)*q)+((((i>>>16)*q)&h)<<16))}i^=i>>>13;i=(((i&h)*q)+((((i>>>16)*q)&h)<<16));i^=i>>>15;var c=i>>>0;return c};'. "print(mm(read(\"$file\")))";
+    my $mm = sprintf "$Bin/lib/v8 -e '%s'", $mm_cmd;
+    my $result =`$mm`;
+    unlink $file;
+    return($result+0);
 }
 
 sub prepare($$$$)
