@@ -3,26 +3,26 @@ use utf8;
 use Carp;
 use Coro;
 
-sub decode_captcha($$$)
+sub decode_captcha($$$$)
 {
-    my ($log, $captcha_decode, $file_path) = @_;
-    push @{ $captcha_decode->{web}{request} }, $file_path;
+    my ($ocr, $log, $captcha_decode, $file_path) = @_;
+    push @{ $ocr->{web}{request} }, $file_path;
 
-    use Data::Dumper;
+    #use Data::Dumper;
     #print "before:\n";
-    #print Dumper($captcha_decode->{web});
+    #print Dumper($ocr->{web});
     my $text = undef;
     while ( not defined $text )
     {
-        $text = $captcha_decode->{web}{answers}{$file_path};
+        $text = $ocr->{web}{answers}{$file_path};
         Coro::Timer::sleep(1);
     }
     #print "after:\n";
-    #print Dumper($captcha_decode->{web});
-    delete $captcha_decode->{web}{answers}{$file_path};
+    #print Dumper($ocr->{web});
+    delete $ocr->{web}{answers}{$file_path};
     return $text;
 }
 
-sub abuse($$$) {}
+sub abuse($$$$) {}
 
 1;

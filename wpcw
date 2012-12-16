@@ -63,8 +63,11 @@ sub check_image_config()
     return 0 if $img_mode =~ /no_img/;
     unless ($mode_config{img_data}{path})
     {
-        $logging->msg('ERROR', "Image path not defined!", "ERROR", 'red');
-        $result = 1;
+        if ($mode_config{img_data}{captcha} || $mode_config{img_data}{rand})
+        {
+            $logging->msg('ERROR', "Image path not defined!", "ERROR", 'red');
+            $result = 1;
+        }
     }
     if (ref($mode_config{img_data}{path}) eq 'ARRAY')
     {
@@ -337,7 +340,7 @@ get '/stop'  => sub {
     my $self = shift;
     $pcw->stop;
     # очищаем капчи
-    $pcw->{conf}{captcha_decode}{web} = undef;
+    $pcw->{engine}{ocr}{web} = {};
     $self->render(text => 'ok');
 };
 
@@ -410,14 +413,14 @@ get '/stats' => [ format => ['json'] ] => sub {
     $self->render_json($pcw->{stats} || {});
 };
 
-get '/status' => sub {
+get '/status' => [ format => ['json']] => sub {
     my $self = shift;
     $self->render_json($pcw->{is_running} ? 'stop' : 'start');
 };
 
 get '/countproxies' => sub {
     my $self = shift;
-    $self->render( text => scalar(@proxies) );
+    $self->render_json(scalar(@proxies));
 };
 
 #-----------------------------------------------------------------------------
@@ -487,7 +490,7 @@ get '/log/read' => sub {
 #-----------------------------------------------------------------------------
 get '/captcha/get' => sub {
     my $self = shift;
-    my $path = shift @{ $pcw->{conf}{captcha_decode}{web}{request} };
+    my $path = shift @{ $pcw->{engine}{ocr}{web}{request} };
     return unless $path;
     $self->cookie('captcha_path' => $path);
     my $content = readfile($path);
@@ -501,7 +504,7 @@ post '/captcha/send' => sub {
     my $text = $self->param('text');
     if ($path)
     {
-        $pcw->{conf}{captcha_decode}{web}{answers}{$path} = $text;
+        $pcw->{engine}{ocr}{web}{answers}{$path} = $text;
         $self->cookie('captcha_path' => '');
     }
     $self->render(text => 'ok');
@@ -580,9 +583,11 @@ get '/get/:var' => [ format => ['json'] ] => sub {
 get '/main.css' => 'main';
 get '/login.css' => 'login';
 #-----------------------------------------------------------------------------
+app->mode('production') unless $DEBUG;
 app->start;
 
 __DATA__
+@@ status.json.ep
 @@ stats.json.ep
 @@ get.json.ep
 @@ config/get.json.ep
@@ -837,7 +842,7 @@ $(document).ready(function(){
 
     // status
     setInterval(function() {
-        $.get('/status', function(data) {
+        $.getJSON('/status.json', function(data) {
             $('#status').html(data);
         });
     }, 10000);
@@ -847,7 +852,7 @@ $(document).ready(function(){
         } else {
             $.get('/stop');
         }
-        $.get('/status', function(data) {
+        $.getJSON('/status.json', function(data) {
             $('#status').html(data);
         });
     });

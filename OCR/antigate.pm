@@ -3,9 +3,9 @@ use utf8;
 use Carp;
 use WebService::Antigate;
 
-sub decode_captcha($$$)
+sub decode_captcha($$$$)
 {
-    my ($log, $captcha_decode, $file_path) = @_;
+    my ($ocr, $log, $captcha_decode, $file_path) = @_;
     my $opt = $captcha_decode->{opt};
     my $key = $captcha_decode->{key};
     $opt->{file} = $file_path;
@@ -22,9 +22,7 @@ sub decode_captcha($$$)
         $log->msg('OCR_ERROR', "Couldn't upload a captcha ($WebService::Antigate::DOMAIN): ". $recognizer->errno, 'DECODE CAPTCHA', 'red');
         return undef;
     }
-    #-- Используем аргументы как хранилищие id и путей капч
-    #-- для дальнейшего их использования в abuse()
-    $captcha_decode->{$file_path} = $id;
+    $ocr->{antigate}{$file_path} = $id;
 
     my $cap_text = $recognizer->recognize($id);
     unless (defined $cap_text)
@@ -35,11 +33,11 @@ sub decode_captcha($$$)
     return $cap_text;
 }
 
-sub abuse($$$)
+sub abuse($$$$)
 {
-    my ($log, $captcha_decode, $file_path) = @_;
+    my ($ocr, $log, $captcha_decode, $file_path) = @_;
     my $key = $captcha_decode->{key};
-    my $id  = delete $captcha_decode->{$file_path};
+    my $id  = delete $ocr->{antigate}{$file_path};
     my $recognizer = WebService::Antigate->new("key" => $key);
     if ($recognizer->abuse($id))
     {

@@ -254,7 +254,7 @@ sub prepare($$$$)
     if ($task->{path_to_captcha})
     {
         my $took;
-        my $captcha_text = took { captcha_recognizer($log, $cnf->{captcha_decode}, $task->{path_to_captcha}) } \$took;
+        my $captcha_text = took { captcha_recognizer($self->{ocr}, $log, $cnf->{captcha_decode}, $task->{path_to_captcha}) } \$took;
         unless (defined $captcha_text)
         {
             #-- an error has occured while recognizing captcha

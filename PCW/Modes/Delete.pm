@@ -39,6 +39,7 @@ my $watchers = {};
 my $cb_delete_post = unblock_sub
 {
     my ($msg, $task, $self) = @_;
+    my $log = $self->{log};
     $self->{stats}{total}++;
     given ($msg)
     {
@@ -53,6 +54,13 @@ my $cb_delete_post = unblock_sub
         default
         {
             $self->{stats}{error}++;
+            my $errors = $self->{stats}{error};
+            my $limit  = $self->{conf}{attempts};
+            if ($limit < 0 or $errors < $limit)
+            {
+                $queue->{delete}->put($task);
+                $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'DELETE '.$task->{delete}, "$msg: try again ($errors/$limit)");
+            }
         }
     }
 };
@@ -84,8 +92,8 @@ sub init($)
     my $log  = $self->{log};
     $log->msg('MODE_STATE', "Initialization... ");
     $self->_base_init();
-    $self->_init_base_watchers();
     $self->_run_custom_watchers($watchers, $queue);
+    $self->_init_base_watchers();
     $self->_init_custom_watchers($watchers, $queue);
 }
 
@@ -114,8 +122,13 @@ sub start($)
         my @deletion_posts = @{ $self->{conf}{ids} };
         if ($self->{conf}{find})
         {
-            @deletion_posts =  ( @deletion_posts,
-                                 get_posts_ids($self->{engine}, $proxy, $self->{conf}{find}) );
+            my $c = async {
+                my $coro = $Coro::current;
+                $coro->desc('custom-watcher');
+                @deletion_posts =  ( @deletion_posts,
+                                     get_posts_ids($self->{engine}, $proxy, $self->{conf}{find}) );
+            };
+            $c->join();
         }
         for my $postid (@deletion_posts)
         {
@@ -203,8 +216,9 @@ sub _init_base_watchers($)
         AnyEvent->timer(after => 10, interval => 2, cb =>
         sub
         {
-            my @delete_coro  = grep { $_->desc eq 'delete' } Coro::State::list;
-            if (!@delete_coro && !$queue->{delete}->size)
+            my @delete_coro  = grep { $_->desc eq 'delete'         } Coro::State::list;
+            my @custom_coro  = grep { $_->desc eq 'custom-watcher' } Coro::State::list;
+            if (!@delete_coro && !@custom_coro && !$queue->{delete}->size)
             {
                 $self->stop;
             }

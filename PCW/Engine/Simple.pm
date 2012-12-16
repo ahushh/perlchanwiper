@@ -279,7 +279,11 @@ sub _check_post_result($$$$$)
                 #if ($response =~ /detect/i)
                 #{
                     #use Data::Dumper;
-                    #$log->pretty_proxy('ERROR', 'red', $task->{proxy}, 'DEBUG', Dumper($task->{content}));
+                    # ??????
+                    #utf8::decode $task->{content}{captcha};
+                    #utf8::decode $task->{content}{message};
+                    #$log->pretty_proxy('DEBUG', 'red', $task->{proxy}, 'DEBUG', Dumper($task->{content}));
+                    #say Dumper($task->{content});
                 #}
                 return($type);
             }

@@ -21,7 +21,6 @@ Data::Random
 File::Find::Rule
 LWP::Protocol::https
 LWP::Protocol::socks
-JavaScript::Engine
 File::Which
 /;
 my @webui = qw/
@@ -50,7 +49,6 @@ my %H = (
                                                            libwww-perl
                                                            liblwp-protocol-https-perl
                                                            liblwp-protocol-socks-perl
-                                                           libje-perl
                                                            libstring-shellquote-perl
                                                            libfile-which-perl
                                                            /
@@ -82,7 +80,6 @@ my %H = (
                                                             perl-libwww
                                                             perl-lwp-protocol-https
                                                             perl-lwp-protocol-socks
-                                                            perl-javascript-spidermonkey
                                                             perl-string-shellquote
                                                             perl-file-which
                                                             /
