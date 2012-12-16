@@ -57,7 +57,6 @@ my $cb_wipe_get = unblock_sub
         when ('success')
         {
             $self->{failed_proxy}{ $task->{proxy} } = 0;
-            $log->pretty_proxy('GET_CB', 'green', $task->{proxy}, 'GET CB', "$msg: push into the PREPARE queue");
             $queue->{prepare}->put($task);
         }
         default
@@ -124,12 +123,16 @@ my $cb_wipe_prepare = unblock_sub
         when ('success')
         {
             $queue->{post}->put($task);
-            $log->pretty_proxy('PREP_CB', 'green', $task->{proxy}, 'PREPARE CB', "$msg: push into the POST queue");
             $self->{failed_proxy}{ $task->{proxy} } = 0;
         }
         when ('no_text')
         {
-            captcha_report_bad($self->{log}, $self->{conf}{captcha_decode}, $task->{path_to_captcha});
+            captcha_report_bad($self->{engine}{ocr}, $self->{log}, $self->{conf}{captcha_decode}, $task->{path_to_captcha});
+            if ($self->{conf}{wcap_retry} || $self->{conf}{loop})
+            {
+                my $new_task = {proxy => $task->{proxy} };
+                $queue->{get}->put($new_task);
+            }
         }
         when (/no_text|error/)
         {
@@ -211,10 +214,10 @@ my $cb_wipe_post = unblock_sub
             $self->{stats}{wrong_captcha}++;
             $self->{stats}{OCR_accuracy} = sprintf("%d%", 100 * $self->{stats}{posted} / ($self->{stats}{wrong_captcha} + $self->{stats}{posted}))
                 if ($self->{stats}{wrong_captcha} + $self->{stats}{posted});
-            captcha_report_bad($self->{log}, $self->{conf}{captcha_decode}, $task->{path_to_captcha});
+            captcha_report_bad($self->{engine}{ocr}, $self->{log}, $self->{conf}{captcha_decode}, $task->{path_to_captcha});
             if ($self->{conf}{wcap_retry})
             {
-                $log->pretty_proxy('POST_CB', 'yellow', $task->{proxy}, 'POST CB', "$msg: push into the GET queue");
+                $log->pretty_proxy('POST_CB', 'yellow', $task->{proxy}, 'POST CB', "$msg: bad captcha, push into the GET queue");
                 $new_task->{proxy} = $task->{proxy};
                 $queue->{get}->put($new_task);
                 return;
@@ -249,11 +252,19 @@ my $cb_wipe_post = unblock_sub
         my $limit  = $self->{conf}{post_attempts};
         if ($errors < $limit)
         {
-            $log->pretty_proxy('POST_CB', 'red', $task->{proxy}, 'POST CB', "$msg: try to send a post again ($errors/$limit)");
-            #-- TODO: игнорируется max_pst_thrs, а не должно
-            Coro::Timer::sleep 1;
-            $self->wipe_post($task);
-            return;
+            if ($self->{conf}{on_spot_retrying})
+            {
+                $log->pretty_proxy('POST_CB', 'red', $task->{proxy}, 'POST CB', "$msg: try to send a post again ($errors/$limit)");
+                #-- TODO: игнорируется max_pst_thrs, а не должно
+                Coro::Timer::sleep 1;
+                $self->wipe_post($task);
+                return;
+            }
+            else
+            {
+                $queue->{post}->put($task);
+                return;
+            }
         }
         else
         {
@@ -265,7 +276,6 @@ my $cb_wipe_post = unblock_sub
         $self->{failed_proxy}{ $task->{proxy} } = 0;
         if ($self->{conf}{loop})
         {
-            $log->pretty_proxy('POST_CB', 'green', $task->{proxy}, 'POST CB', "$msg: push into the GET queue");
             $new_task->{proxy} = $task->{proxy};
             $queue->{get}->put($new_task);
         }
@@ -318,6 +328,14 @@ sub send_posts($)
     $log->msg('WIPE_STRIKE', "#~~~ ". scalar($queue->{post}->size) ." ready rounds. Strike! ~~~#");
     $self->wipe_post($queue->{post}->get)
         while $queue->{post}->size && $thrs_available--;
+}
+
+sub start_posing($)
+{
+}
+
+sub stop_posing($)
+{
 }
 #------------------------------------------------------------------------------------------------
 #---------------------------------------  MAIN WIPE  --------------------------------------------

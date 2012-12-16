@@ -143,7 +143,10 @@ sub check_image_config()
 {
     my $img_mode = $mode_config{img_data}{mode} . '_img';
     return if $img_mode =~ /no_img/;
-    Carp::croak "Image path not defined!" unless $mode_config{img_data}{path};
+    unless ($mode_config{img_data}{captcha} || $mode_config{img_data}{rand})
+    {
+        Carp::croak "Image path not defined!" unless $mode_config{img_data}{path};
+    }
     if (ref($mode_config{img_data}{path}) eq 'ARRAY')
     {
         for (@{ $mode_config{img_data}{path} })

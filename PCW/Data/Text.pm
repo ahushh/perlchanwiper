@@ -22,6 +22,7 @@ sub interpolate($$)
     my ($text, $task) = @_;
 
     $text =~ s/%captcha%/$task->{captcha_text};/eg;
+    $text =~ s/%proxy%/$task->{proxy};/eg;
     $text =~ s/%unixtime%/time;/eg;
     $text =~ s/%date%/scalar(localtime(time));/eg;
     $text =~ s/%(\d+)rand(\d+)%/random($1, $2);/eg;

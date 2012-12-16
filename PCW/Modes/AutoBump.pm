@@ -82,7 +82,7 @@ my $cb_bump_thread = unblock_sub
     elsif ($msg =~ /wrong_captcha|no_text|error/)
     {
         $self->{stats}{bump}{error}++;
-        captcha_report_bad($self->{log}, $self->{conf}{captcha_decode}, $task->{path_to_captcha});
+        captcha_report_bad($self->{engine}{ocr}, $self->{log}, $self->{conf}{captcha_decode}, $task->{path_to_captcha});
     }
     elsif ($msg eq 'wait')
     {
