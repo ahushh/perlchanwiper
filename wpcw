@@ -580,8 +580,8 @@ get '/get/:var' => [ format => ['json'] ] => sub {
     }
 };
 
-get '/main.css' => 'main';
-get '/login.css' => 'login';
+#get '/main.css' => 'main';
+#get '/login.css' => 'login';
 #-----------------------------------------------------------------------------
 app->mode('production') unless $DEBUG;
 app->start;
@@ -592,56 +592,6 @@ __DATA__
 @@ get.json.ep
 @@ config/get.json.ep
 @@ log/read.html.ep
-
-@@ main.css.ep
-  html body {
-      height: 90%;
-      background: grey;
-  }
-
-  a {
-      color: blue;
-      text-decoration: none;
-  }
-
-  a:hover {
-      text-decoration: underline;
-  }
-
-  #status {
-      color: #5cff00;
-      font-size: 17pt;
-  }
-
-  #stats {
-      min-height: 100px;
-  }
-
-  #log {
-      background-color: black;
-      overflow: auto;
-      width: 65%;
-      height: 90%;
-      overflow-x: hidden;
-      border: 1px dotted white; 
-      padding: 5px;
-  }
-
-  #editorContainer {
-      display: none;
-  }
-
-  #captcha_img {
-      padding: 5px;
-  }
-
-  #summary {
-      width: 30%;
-      height: 80%;
-      float: left;
-      padding: 5px;
-      background: url("/desu.gif") no-repeat bottom left grey;
-  }
 
 @@ login.html.ep
   <!doctype html>
@@ -951,7 +901,56 @@ $(document).ready(function(){
   <html>
     <head>
       <title>Perl Chan Wiper</title>
-      %= stylesheet '/main.css'
+  %= stylesheet begin
+  html body {
+      height: 90%;
+      background: grey;
+  }
+
+  a {
+      color: blue;
+      text-decoration: none;
+  }
+
+  a:hover {
+      text-decoration: underline;
+  }
+
+  #status {
+      color: #5cff00;
+      font-size: 17pt;
+  }
+
+  #stats {
+      min-height: 100px;
+  }
+
+  #log {
+      background-color: black;
+      overflow: auto;
+      width: 65%;
+      height: 90%;
+      overflow-x: hidden;
+      border: 1px dotted white; 
+      padding: 5px;
+  }
+
+  #editorContainer {
+      display: none;
+  }
+
+  #captcha_img {
+      padding: 5px;
+  }
+
+  #summary {
+      width: 30%;
+      height: 80%;
+      float: left;
+      padding: 5px;
+      background: url("/desu.gif") no-repeat bottom left grey;
+  }
+  % end
     </head>
     <body>
       <span style='color:red; font-size: 17pt;'>Perl Chan Wiper v<%= $VERSION %></span> — <a href="#" id="status">start</a>

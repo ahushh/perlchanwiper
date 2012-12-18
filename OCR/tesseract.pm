@@ -47,9 +47,9 @@ sub _get_ocr($;%)
     return readfile("$tif.txt") || '';
 }
 #--------------------------------------------------------------------------------------------
-sub decode_captcha($$$)
+sub decode_captcha($$$$)
 {
-    my ($log, $captcha_decode, $file_path) = @_;
+    my ($ocr, $log, $captcha_decode, $file_path) = @_;
     my $text;
     eval {
         $text = _get_ocr($file_path,
@@ -66,6 +66,6 @@ sub decode_captcha($$$)
     return $text;
 }
 
-sub abuse($$$) { }
+sub abuse($$$$) { }
 
 1;

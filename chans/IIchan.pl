@@ -1,5 +1,5 @@
 use utf8;
-use constant HOST => 'iichan.ru';
+use constant HOST => 'iichan.hk';
 
 our $chan_config =
 {
@@ -12,15 +12,17 @@ our $chan_config =
 
     response => {
         post => {
-            banned        => [403, 'CDN', 'Доступ к отправке сообщений с этого ip закрыт', 'Доступ с этого хоста запрещён.'],
+            banned        => [403, 'CDN', 'Open proxy detected.','Доступ к отправке сообщений с этого ip закрыт', 'Доступ с этого хоста запрещён.'],
             net_error     => ['Service Unavailable Connection', 502],
             post_error    => [
                               'Этот файл уже был загружен',
                               'Либо изображение слишком большое, либо его вообще не было. Ага.',
                               'Сообщения без изображений запрещены',
+                              'Строка отклонена',
                              ],
             wrong_captcha => [
                               'Введён неверный код подтверждения',
+                              'Код подтверждения не найден в базе',
                              ],
             flood         => [
                               'Ошибка: Флудить нельзя. Ваше первое сообщение уже принято',
@@ -37,6 +39,7 @@ our $chan_config =
             success        => [303],
             wrong_password => ['Неправильный пароль.', 'Неверный пароль для удаления'],
             error          => [''],
+
         },
     },
 
@@ -67,7 +70,7 @@ our $chan_config =
         post      => 'http://'. HOST .'/cgi-bin/wakaba.pl/%s/',
         delete    => 'http://'. HOST .'/cgi-bin/wakaba.pl/%s/',
         #-- Закомментировать, если капча отключена вообще или стоит recaptcha
-        captcha   => 'http://'. HOST .'/cgi-bin/captcha.pl/%s/?key=%s&dummy=%s?',
+        captcha   => 'http://'. HOST .'/cgi-bin/captcha1.pl/%s/?key=%s&dummy=%s?',
         page      => 'http://'. HOST .'/%s/%d.html',
         zero_page => 'http://'. HOST .'/%s',
         thread    => 'http://'. HOST .'/%s/res/%d.html',
