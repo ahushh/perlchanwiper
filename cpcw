@@ -151,7 +151,8 @@ sub check_image_config()
     {
         for (@{ $mode_config{img_data}{path} })
         {
-            Carp::croak "'$_' don't exist!" unless (-e $_);
+            Carp::croak "'$_' doesn't exist!" unless (-e $_);
+            Carp::croak "'$_' is empty!"      if     (-z $_);
         }
     }
     else

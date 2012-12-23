@@ -75,7 +75,12 @@ sub check_image_config()
         {
             unless (-e $_)
             {
-                $logging->msg('ERROR', "'$_' don't exist!", "ERROR", 'red');
+                $logging->msg('ERROR', "'$_' doesn't exist!", "ERROR", 'red');
+                $result = 1;
+            }
+            if (-z $_)
+            {
+                $logging->msg('ERROR', "'$_' is empty!", "ERROR", 'red');
                 $result = 1;
             }
         }
@@ -85,6 +90,11 @@ sub check_image_config()
         unless (-e $mode_config{img_data}{path})
         {
             $logging->msg('ERROR', $mode_config{img_data}{path} . " doesn't exist!", "ERROR", 'red');
+            $result = 1;
+        }
+        if (-z $_)
+        {
+            $logging->msg('ERROR', "'$_' is empty!", "ERROR", 'red');
             $result = 1;
         }
     }
@@ -330,6 +340,8 @@ get '/start'  => sub {
     }
     else
     {
+        $pcw->{engine}{ocr}{web}{request} = [];
+        $pcw->{engine}{ocr}{web}{answers} = {};
         $pcw->init;
         $pcw->start;
     }
@@ -491,7 +503,7 @@ get '/log/read' => sub {
 get '/captcha/get' => sub {
     my $self = shift;
     my $path = shift @{ $pcw->{engine}{ocr}{web}{request} };
-    return unless $path;
+    $self->render( data => 'no image') && return unless $path;
     $self->cookie('captcha_path' => $path);
     my $content = readfile($path);
     my (undef, undef, $suf) = fileparse($path, 'png', 'jpeg', 'jpg', 'gif', 'bmp');

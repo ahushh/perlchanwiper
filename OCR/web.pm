@@ -1,6 +1,5 @@
 use v5.12;
 use utf8;
-use Carp;
 use Coro;
 
 sub decode_captcha($$$$)
