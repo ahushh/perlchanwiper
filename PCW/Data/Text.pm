@@ -130,7 +130,7 @@ sub string_msg($$$)
     $i = 0 if ($i >= scalar @text);
 
     $lock->down;
-    if (!@text or $data->{loaded})
+    if (!@text or !$data->{loaded})
     {
         @text = readfile($data->{path}, 'utf8');
         $log->msg('DATA_LOADED', "loaded with ". scalar(@text) ." strings of text.");
