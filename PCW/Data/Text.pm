@@ -67,18 +67,7 @@ sub post_msg($$$)
         my $cnf      = { thread => $config, board => $board };
         my $c = async {
             my ($html, $status, $took);
-            if (-e $data->{thread}) #-- read html form a file on disk
-            {
-                $status   = $data->{thread};
-                $html     = readfile($data->{thread});
-                $took     = 0;
-                %posts = $engine->get_all_posts($html);
-                $log->msg('DATA_FOUND', scalar(keys %posts) ." posts were found in $cnf->{thread} thread: $status (took $took sec.)");
-            }
-            else
-            {
-                %posts = get_posts_bodies($engine, 'no_proxy', $data->{posts});
-            }
+            %posts = get_posts_bodies($engine, 'no_proxy', $data->{posts});
         };
         $c->join();
     }

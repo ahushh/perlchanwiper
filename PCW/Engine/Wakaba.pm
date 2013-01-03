@@ -190,7 +190,7 @@ sub get($$$$)
 
     my $captcha_img;
     $task->{post_cnf} = unrandomize( $cnf->{post_cnf} );
-    #-- A simple captcha
+    #-- A plain captcha
     if (my $captcha_url = $self->_get_captcha_url(%{ $task->{post_cnf} }))
     {
         my $cap_headers = HTTP::Headers->new(%{ $self->_get_captcha_headers(%{ $task->{post_cnf} }) });
