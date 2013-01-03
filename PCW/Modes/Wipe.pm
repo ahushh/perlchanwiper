@@ -49,6 +49,13 @@ my $queue     = {};
 my $cb_wipe_get = unblock_sub
 {
     my ($msg, $task, $self) = @_;
+
+    # DESU
+    #my $new_task = {proxy => $task->{proxy} };
+    #$queue->{get}->put($new_task);
+    #return;
+    # DESU
+    
     return unless @_;
     my $log = $self->{log};
 

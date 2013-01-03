@@ -286,7 +286,7 @@ sub get_posts_bodies($$$)
 
     #-- Search thread on the pages
     my %threads     = ();
-    if ($cnf->{threads})
+    if (defined $cnf->{threads} and defined $cnf->{threads}{pages})
     {
         for my $page (@{ $cnf->{threads}{pages} })
         {
@@ -314,7 +314,19 @@ sub get_posts_bodies($$$)
     }
     #-- Search posts in the threads
     my %replies     = ();
-    if ($cnf->{replies})
+    if (-e $cnf->{replies}{threads})
+    {
+        my $data = readfile($cnf->{replies}{threads}, 'utf8');
+        %replies = $engine->get_all_replies($data);
+        $log->msg('DATA_FOUND', sprintf "'%s' thread loaded.", $cnf->{replies}{threads} );
+        #-- Filter by regexp
+        if (my $pattern = $cnf->{replies}{regexp})
+        {
+            %replies = map { ($_, $replies{$_}) if $replies{$_} =~ /$pattern/sg } keys(%replies);
+            $log->msg('DATA_MATCHED', sprintf "%d replies matched the pattern", scalar keys(%replies));
+        }
+    }
+    else
     {
         for my $thread ( $cnf->{replies}{threads} eq 'found' ? keys(%threads) : @{ $cnf->{replies}{threads} } )
         {
@@ -443,6 +455,5 @@ sub get_posts_ids($$$)
         }
     }
 }
-
 
 1;
