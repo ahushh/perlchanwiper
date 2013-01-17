@@ -64,6 +64,7 @@ my $cb_wipe_get = unblock_sub
         when ('success')
         {
             $self->{failed_proxy}{ $task->{proxy} } = 0;
+            $task->{captcha_received_at} = Time::HiRes::time;
             $queue->{prepare}->put($task);
         }
         default
@@ -167,16 +168,24 @@ my $cb_wipe_prepare = unblock_sub
 sub wipe_prepare($$$)
 {
     my ($self, $task) = @_;
+    my $log = $self->{log};
     my $engine = $self->{engine};
     async {
         my $coro = $Coro::current;
         $coro->desc('prepare');
+        if ($self->{conf}{captcha_lifetime} != 0 and
+            $task->{captcha_received_at} + $self->{conf}{captcha_lifetime} <= Time::HiRes::time)
+        {
+            $log->pretty_proxy('PREPARE', 'yellow', $task->{proxy}, 'PREPARE', "Captcha has expired. Retrying...");
+            $queue->{get}->put($task);
+            $coro->cancel();
+        }
         $coro->{task} = $task;
         $coro->on_destroy($cb_wipe_prepare);
         my $status =
         with_coro_timeout {
             $engine->prepare($task, $self->{conf});
-        } $coro, $self->{conf}->{prepare_timeout};
+        } $coro, $self->{conf}{prepare_timeout};
         $coro->cancel($status, $task, $self);
     };
     cede;
@@ -297,10 +306,18 @@ my $cb_wipe_post = unblock_sub
 sub wipe_post($$)
 {
     my ($self, $task) = @_;
+    my $log = $self->{log};
     my $engine = $self->{engine};
     async {
         my $coro = $Coro::current;
         $coro->desc('post');
+        if ($self->{conf}{captcha_lifetime} != 0 and
+            $task->{captcha_received_at} + $self->{conf}{captcha_lifetime} <= Time::HiRes::time)
+        {
+            $log->pretty_proxy('POST', 'yellow', $task->{proxy}, 'POST', "Captcha has expired. Retrying...");
+            $queue->{get}->put($task);
+            $coro->cancel();
+        }
         $coro->{task} = $task;
         $coro->on_destroy($cb_wipe_post);
 

@@ -36,12 +36,29 @@ my @good_proxies = () ;
 my $cb_check = unblock_sub
 {
     my ($msg, $task, $self) = @_;
+    my $proxy = $task->{proxy};
+    my $log   = $self->{log};
     #-- Delete temporary files
     unlink($task->{file_path})
         if $self->{conf}{img_data}{altering} && $task->{file_path} && -e $task->{file_path};
 
     $self->{stats}{total}++;
-    if ($msg =~ /banned|critical_error|net_error|unknown|timeout/)
+    if ($msg =~ /unknown|timeout|net_error|critical_error/)
+    {
+        my $limit  = $self->{conf}{attempts};
+        my $errors = $self->{failed_proxy}{$proxy};
+        if ($errors < $limit)
+        {
+            $queue->{main}->put($task);
+            $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'CHECK', "$msg: try again ($errors/$limit)");
+        }
+        else
+        {
+            $self->{stats}{bad}++;
+            $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'CHECK', "$msg: reached the error limit; proxy is definetly bad ($errors/$limit)");
+        }
+    }
+    elsif ($msg eq 'banned')
     {
         $self->{stats}{bad}++;
     }
