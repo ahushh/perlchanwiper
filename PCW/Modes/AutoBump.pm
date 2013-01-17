@@ -197,7 +197,6 @@ sub delete_post($$)
 {
     my ($self, $task) = @_;
     my $engine = $self->{engine};
-    $self->{log}->msg(4, "delete_post();");
     async {
         my $coro = $Coro::current;
         $coro->desc('delete');

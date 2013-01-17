@@ -16,8 +16,14 @@ sub decode_captcha($$$$)
                                               );
 
     #$log->msg('MODE_STATE', sprintf("balance: %f", $recognizer->balance()));
-    my $id = $recognizer->upload(%$opt);
-    unless (defined $id)
+    my $id;
+    eval { $id = $recognizer->upload(%$opt); };
+    if ($@)
+    {
+        $log->msg('OCR_ERROR', "Couldn't upload a captcha ($WebService::Antigate::DOMAIN): ". $@, 'DECODE CAPTCHA', 'red');
+        return undef;
+    }
+    elsif (not defined $id)
     {
         $log->msg('OCR_ERROR', "Couldn't upload a captcha ($WebService::Antigate::DOMAIN): ". $recognizer->errno, 'DECODE CAPTCHA', 'red');
         return undef;
