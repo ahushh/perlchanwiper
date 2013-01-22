@@ -39,6 +39,7 @@ sub make_pic($$$)
 sub captcha_img($$$)
 {
     my (undef, $task, $data) = @_;
+    return if defined $task->{test};
     return img_altering($task->{path_to_captcha}, $data->{altering})
         if $data->{altering};
     return $task->{path_to_captcha};
