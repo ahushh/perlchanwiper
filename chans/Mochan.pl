@@ -9,7 +9,7 @@ our $chan_config =
     engine             => 'Sosaba',
     captcha_extension  => 'gif',
     #-- Ключ рекапчи
-    recaptcha_key      => '6LdOEMMSAAAAAIGhmYodlkflEb2C-xgPjyATLnxx',
+    recaptcha_key      => '',
 
     response => {
         post => {
@@ -40,18 +40,19 @@ our $chan_config =
 
     fields => {
         post => {
-            captcha    => 'recaptcha_response_field',
-            msg        => 'shampoo',
-            img        => 'file',
-            thread     => 'parent',
-            email      => 'nabiki',
-            subject    => 'kasumi',
-            name       => 'name',
-            akane      => 'akane',
-            task       => 'task',
-            submit     => 'submit',
-            video      => 'video',
-            link       => 'link',
+            captcha     => 'captcha_value',
+            captcha_key => 'captcha',
+            msg         => 'shampoo',
+            img         => 'file',
+            thread      => 'parent',
+            email       => 'nabiki',
+            subject     => 'kasumi',
+            name        => 'name',
+            akane       => 'akane',
+            task        => 'task',
+            submit      => 'submit',
+            video       => 'video',
+            link        => 'link',
             makewatermark => 'makewatermark',
         },
 
@@ -62,6 +63,7 @@ our $chan_config =
     urls => {
         post      => 'http://'. HOST .'/%s/wakaba.pl',
         delete    => 'dont give a fuck',
+        captcha   => 'http://'. HOST .'/makaba/captcha.fcgi',
         page      => 'http://'. HOST .'/%s/%d.html',
         zero_page => 'http://'. HOST .'/%s',
         thread    => 'http://'. HOST .'/%s/res/%d.html',

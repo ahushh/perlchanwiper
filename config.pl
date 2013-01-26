@@ -75,7 +75,7 @@ our $msg = {
     # text => '@~fortune~@',
     # text => "#post#\nhttp://2ch.hk",
     # text => '%unixtime%',
-     text => "#post#",
+     text => "%captcha%",
     # text => '#delirium#',
     # text => "bump %date%\n@~fortune psalms bible~@",
     after  => sub {
@@ -219,8 +219,8 @@ our $img = {
     #-------------------------------------------------------------------------------------------------------
     #-- single mode
     #-- Постить один указанный файл
-    # mode     => 'single',
-    # path     => "extra/void.gif",    #-- путь к файлу
+     mode     => 'single',
+     path     => "extra/void.gif",    #-- путь к файлу
     # path     => "$ENV{HOME}/novikov.jpg",
     # path     => "extra/desu.gif",
     #-- captcha mode
@@ -229,12 +229,12 @@ our $img = {
     #-------------------------------------------------------------------------------------------------------
     #-- dir mode
     #-- Постить файлы из каталогов
-     mode        => 'dir',
-     order       => 'random',               #-- random - перемешать файлы; normal - брать по порядку
-     path        => ["$ENV{HOME}/gin"],  #-- пути к папкам
+    # mode        => 'dir',
+    # order       => 'random',               #-- random - перемешать файлы; normal - брать по порядку
+    # path        => ["$ENV{HOME}/gin"],  #-- пути к папкам
     # regexp      => 'Shinku',                   #-- фильтровать имена файлов (вместе с расширением) по регэкспам
-     recursively => 1,                    #-- искать файлы и в подпапках
-     types       => ['jpg', 'jpeg', 'gif', 'png'],    #-- разрешенные к загрузке типы файлов
+    # recursively => 1,                    #-- искать файлы и в подпапках
+    # types       => ['jpg', 'jpeg', 'gif', 'png'],    #-- разрешенные к загрузке типы файлов
     #-------------------------------------------------------------------------------------------------------
     #-- TODO: post mode
     #-- скачивать картинки из тредов и постить их
@@ -285,18 +285,18 @@ our $captcha_decode = {
     #-------------------------------------------------------------------------------------------------------
     #-- функция для дополнительной обработки разгаданного текста капчи.
     #-- например для отклонения текста капчи с латиницей и цифрами. Также удаляет пробелы
-    after  => sub { $_=shift; s/\s+//g; /[a-zA-Z0-9]/ ? "" : $_ }, 
+    #after  => sub { $_=shift; s/\s+//g; /[a-zA-Z0-9]/ ? "" : $_ }, 
     #-- antigate mode
     mode   => 'antigate',
     key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
     opt    => {
-               is_russian =>   1,
+               is_russian =>   0,
                phrase     =>   0,  #-- 1 if captcha text have 2-4 words
                regsense   =>   0,  #-- 1 if that captcha text is case sensitive
-               numeric    =>   0,  #-- 1 if that captcha text contains only digits, 2 if captcha text have no digits
+               numeric    =>   1,  #-- 1 if that captcha text contains only digits, 2 if captcha text have no digits
                calc       =>   0,  #-- 1 if that digits on the captcha should be summed up
-               min_len    =>   7,  #-- minimum length of the captcha text (0..20)
-               max_len    =>   7,  #-- maximum length of the captcha text (0..20), 0 - no limits
+               min_len    =>   6,  #-- minimum length of the captcha text (0..20)
+               max_len    =>   6,  #-- maximum length of the captcha text (0..20), 0 - no limits
               },
     #-------------------------------------------------------------------------------------------------------
     #-- captchabot mode
@@ -306,13 +306,13 @@ our $captcha_decode = {
     #-------------------------------------------------------------------------------------------------------
     #-- web mode
     #-- Ввод капчи вручную через веб-морду
-     mode   => 'web',
+    # mode   => 'web',
     #-------------------------------------------------------------------------------------------------------
     #-- hand mode
     #-- Ручной ввод капчи.
-    # mode   => 'hand',
-    # imgv   => '/usr/bin/feh',             #-- путь до программы просмотра изображений
-    # arg    => '-d --geometry 400x300 -Z', #-- аргументы
+    #mode   => 'hand',
+    #imgv   => '/usr/bin/feh',             #-- путь до программы просмотра изображений
+    #arg    => '-d --geometry 400x300 -Z', #-- аргументы
     #-- gui hand mode
     #-- Ручной ввод капчи через GUI.
     #-- Необходим Gtk2
