@@ -19,7 +19,7 @@ use HTTP::Headers;
 #------------------------------------------------------------------------------------------------
 use PCW::Core::Utils    qw/merge_hashes parse_cookies html2text save_file unrandomize took/;
 use PCW::Core::Captcha  qw/captcha_recognizer/;
-use PCW::Core::Net      qw/http_get http_post get_recaptcha/;
+use PCW::Core::Net      qw/http_get http_post/;
 use PCW::Data::Images   qw/make_pic/;
 use PCW::Data::Video    qw/make_vid/;
 use PCW::Data::Text     qw/make_text/;
