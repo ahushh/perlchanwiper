@@ -45,6 +45,7 @@ my $cb_check = unblock_sub
     $self->{stats}{total}++;
     if ($msg =~ /unknown|timeout|net_error|critical_error/)
     {
+        $self->{failed_proxy}{$proxy}++;
         my $limit  = $self->{conf}{attempts};
         my $errors = $self->{failed_proxy}{$proxy};
         if ($errors < $limit)
@@ -55,7 +56,7 @@ my $cb_check = unblock_sub
         else
         {
             $self->{stats}{bad}++;
-            $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'CHECK', "$msg: reached the error limit; proxy is definetly bad ($errors/$limit)");
+            $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'CHECK', "$msg: reached the error limit; bad proxy ($errors/$limit)");
         }
     }
     elsif ($msg eq 'banned')
