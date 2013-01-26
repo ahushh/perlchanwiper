@@ -85,7 +85,7 @@ sub check_image_config()
             }
         }
     }
-    else
+    elsif ($mode_config{img_data}{mode} !~ /captcha|random/)
     {
         unless (-e $mode_config{img_data}{path})
         {

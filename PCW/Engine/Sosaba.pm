@@ -15,9 +15,9 @@ use HTTP::Headers;
 #------------------------------------------------------------------------------------------------
 # Import internal PCW packages
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Utils    qw/merge_hashes parse_cookies html2text save_file unrandomize took/;
+use PCW::Core::Utils    qw/merge_hashes parse_cookies html2text save_file unrandomize took get_yacaptcha/;
 use PCW::Core::Captcha  qw/captcha_recognizer/;
-use PCW::Core::Net      qw/http_get http_post get_recaptcha/;
+use PCW::Core::Net      qw/http_get http_post/;
 use PCW::Data::Images   qw/make_pic/;
 use PCW::Data::Text     qw/make_text/;
 
@@ -153,10 +153,48 @@ sub _get_post_content($%)
 #  (string)               -> path_to_captcha - путь до файла с капчой
 #  (hash)                 -> post_cnf        - post_cnf с уже выбранными случайными значениями
 #  (HTTP::Headers object) -> headers
-# sub get($$$$)
-# {
-# }
+sub get($$$$)
+{
+    my ($self, $task, $cnf) = @_;
+    my $log = $self->{log};
 
+    my $captcha_img;
+    $task->{post_cnf} = unrandomize( $cnf->{post_cnf} );
+    if (my $captcha_url = $self->_get_captcha_url(%{ $task->{post_cnf} }))
+    {
+        my $cap_headers = HTTP::Headers->new(%{ $self->_get_captcha_headers(%{ $task->{post_cnf} }) });
+        my $response    = http_get(proxy => $task->{proxy}, url => $captcha_url, headers => $cap_headers);
+        if (not defined $response or $response->{content} != /CHECK/)
+        {
+            $log->pretty_proxy('ENGN_GET_CAP', 'red', $task->{proxy}, 'GET', sprintf "[ERROR]{%s}", html2text($response->{status}));
+            return('banned');
+        }
+
+        my $key      = (split /\n/, $response->{content})[1];
+        $response    = get_yacaptcha($task->{proxy}, $key);
+        $captcha_img = $response->decoded_content;
+
+        if ($response->code != 200 or !$captcha_img or $captcha_img !~ /GIF|PNG|JFIF|JPEG|JPEH|JPG/i)
+        {
+            $log->pretty_proxy('ENGN_GET_CAP', 'red', $task->{proxy}, 'GET', sprintf "[ERROR]{%s}", $response->status_line);
+            return('banned');
+        }
+        else
+        {
+            $log->pretty_proxy('ENGN_GET_ERR_CAP', 'green', $task->{proxy}, 'GET', "[SUCCESS]{$response->{status}}");
+        }
+
+        $task->{content} = { captcha => $key };
+    }
+    my $path_to_captcha = save_file($captcha_img, $self->{captcha_extension});
+    $task->{path_to_captcha} = $path_to_captcha;
+
+    my $headers = HTTP::Headers->new(%{ $self->_get_post_headers(%{ $task->{post_cnf} }) });
+    $headers->user_agent(rand_set(set => $self->{agents}));
+    $task->{headers} = $headers;
+
+    return('success');
+}
 #------------------------------------------------------------------------------------------------
 # PREPARE
 #------------------------------------------------------------------------------------------------
