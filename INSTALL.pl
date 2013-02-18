@@ -19,10 +19,11 @@ List::Util
 Term::ANSIColor
 Data::Random
 File::Find::Rule
+File::Which
 LWP::Protocol::https
 LWP::Protocol::socks
-File::Which
 /;
+
 my @webui = qw/
 Mojolicious::Lite
 HTML::FromANSI
@@ -168,17 +169,11 @@ perl .\INSTALL.pl windows
 
 =item *
 
-Perl is need to be updated to 5.12 or above.
-
-If you really want to run this on perl 5.10, try this:
-
-    grep -rl 'v5.12' | xargs sed -i 's/v5.12/v5.10/g'
-
-But it maybe won't work properly
+Perl needs to be updated to 5.12 or above.
 
 =item *
 
-Install tesseract or tesseract-ocr (program which will be used to solve captcha) and imagemagick from repositories.
+Install tesseract or tesseract-ocr (program will be used to solve captcha) and imagemagick from repositories.
 
 Something like that
 
@@ -188,11 +183,19 @@ Something like that
 
 =item *
 
+Install v8 library from repositories.
+
+    sudo apt-get install libv8
+
+    sudo emerge v8
+
+=item *
+
 If you use debian-based distro, install libssl-dev lib (is necessary for socks-proxy, https and some other things):
 
     sudo apt-get install libssl-dev
 
-Dunno what its name is in other distros. Everything is ok without this library on gentoo.
+Don't know its name in other distros. Everything is ok without this library on gentoo.
 
 =back
 
@@ -206,15 +209,19 @@ Dunno what its name is in other distros. Everything is ok without this library o
 
     ./INSTALL.pl debian
 
-=item I<Gentoo (required g-cpan)>
+=item I<Gentoo (required g-cpan)
 
-    ./INSTALL.pl gentoo
+    Not sure if it works.
+
+    ./INSTALL.pl gentoo 
 
 =item I<Arch (via yaourt and cpan)>
 
     ./INSTALL.pl arch
 
 =item I<Everything else (via cpan)>
+
+    Probably the best choice.
 
     ./INSTALL.pl other
 
@@ -224,9 +231,11 @@ Dunno what its name is in other distros. Everything is ok without this library o
 
 =head2
 
-Checked out on Gentoo (perl v5.14.2)
+Checked out on Gentoo (perl v5.16.2)
 
 =head1 Windows
+
+=head2 DOES NOT WORK 
 
 Install these programs:
 
@@ -254,4 +263,3 @@ perl \.INSTALL.pl windows
 
 =back
 
-Almost not tested
