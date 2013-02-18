@@ -14,28 +14,29 @@ my $tmpdir    = tempdir('tesseractXXXX',  TMPDIR => 1, CLEANUP => 1);
 sub _convert2tiff($)
 {
     my $source = shift;
-    my $dest   = File::Spec->catfile($tmpdir, rand().'.tif');
-    my $cmd    = sprintf "%s %s %s %s %s %s 2>&1",
+    my $dest   = File::Spec->catfile($tmpdir, rand().'.tiff');
+    my $cmd    = sprintf "%s %s %s %s %s %s %s 2>&1",
                 shellquote($convert),
                 shellquote($source),
                 '-compress',
                 'none',
                 '+matte',
+                '-flatten',
                 shellquote($dest);
     my $err    = `$cmd`;
-    die "Error while converting a captcha to tif:$err" if $?;
+    die "Error while converting a captcha to tiff:$err" if $?;
     return $dest;
 }
 
 sub _get_ocr($;%)
 {
     my ($img, %cnf) = @_;
-    my $tif = _convert2tiff $img;
+    my $tiff = _convert2tiff $img;
     my $cmd = 
         ( sprintf '%s %s %s',
           shellquote($tesseract),
-          shellquote($tif),
-          shellquote($tif)
+          shellquote($tiff),
+          shellquote($tiff)
         ) .
         ( defined $cnf{lang}   ? " -l $cnf{lang}"        : ''       ) .
         ( defined $cnf{psm}    ? " -psm $cnf{psm}"       : ''       ) .
@@ -44,7 +45,7 @@ sub _get_ocr($;%)
 
     my $err = `$cmd`;
     die "Error while getting tesseract OCR: $err" if $?;
-    return readfile("$tif.txt") || '';
+    return readfile("$tiff.txt") || '';
 }
 #--------------------------------------------------------------------------------------------
 sub decode_captcha($$$$)

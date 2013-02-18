@@ -92,9 +92,9 @@ sub check_image_config()
             $logging->msg('ERROR', $mode_config{img_data}{path} . " doesn't exist!", "ERROR", 'red');
             $result = 1;
         }
-        if (-z $_)
+        if (-z $mode_config{img_data}{path})
         {
-            $logging->msg('ERROR', "'$_' is empty!", "ERROR", 'red');
+            $logging->msg('ERROR', "'$mode_config{img_data}{path}' is empty!", "ERROR", 'red');
             $result = 1;
         }
     }
