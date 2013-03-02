@@ -14,6 +14,7 @@ use Coro::LWP;
 use Coro::Timer;
 use Coro;
 use Time::HiRes;
+use Data::Random qw/rand_set/;
 
 #------------------------------------------------------------------------------------------------
 # Importing internal PCW packages
@@ -26,6 +27,8 @@ use PCW::Core::Utils qw/with_coro_timeout get_posts_ids/;
 #------------------------------------------------------------------------------------------------
 my $queue    = {};
 my $watchers = {};
+my @todelete = ();
+my %good_proxies = ();
 
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
@@ -60,6 +63,12 @@ my $cb_delete_post = unblock_sub
             {
                 $queue->{delete}->put($task);
                 $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'DELETE '.$task->{delete}, "$msg: try again ($errors/$limit)");
+            }
+            else
+            {
+                delete $good_proxies{ $task->{proxy} };
+                $log->pretty_proxy('MODE_CB', 'red', $task->{proxy}, 'DELETE '.$task->{delete}, "$msg: error limit, using new proxy") if $log;
+                push @todelete, $task->{id};
             }
         }
     }
@@ -117,26 +126,28 @@ sub start($)
     $log->msg('MODE_STATE', "Starting delete mode...");
     async {
         #-------------------------------------------------------------------
-        my $proxy = shift @{ $self->{proxies} };
-        $log->msg('DEL_SHOW_PROXY', "Used proxy: $proxy");
-        my @deletion_posts = @{ $self->{conf}{ids} };
+        my @proxies = @{ $self->{proxies} };
+        my @posts   = @{ $self->{conf}{ids} };
+        my $page_proxy = $self->{conf}{find}{proxy} || ${ rand_set(set => $self->{proxies}) };
         if ($self->{conf}{find})
         {
             my $c = async {
                 my $coro = $Coro::current;
                 $coro->desc('custom-watcher');
-                @deletion_posts =  ( @deletion_posts,
-                                     get_posts_ids($self->{engine}, $proxy, $self->{conf}{find}) );
+                @posts =  ( @posts,
+                            get_posts_ids($self->{engine}, $page_proxy, $self->{conf}{find}) );
             };
             $c->join();
         }
-        for my $postid (@deletion_posts)
+        %good_proxies = map { ($_, 1) } @proxies;
+        for (my ($i,$id) = 0; @posts; $id = shift @posts, $i++ )
         {
+            $i = 0 if $i > scalar @proxies;
             my $task = {
-                        proxy    => $proxy,
+                        proxy    => $proxies[$i],
                         board    => $self->{conf}{board},
                         password => $self->{conf}{password},
-                        delete   => $postid,
+                        delete   => $id,
                        };
             $queue->{delete}->put($task);
         }
@@ -197,6 +208,16 @@ sub _init_base_watchers($)
         = AnyEvent->timer(after => 0.5, interval => 2, cb =>
         sub
         {
+            while (my $id = shift @todelete and %good_proxies)
+            {
+                my $task = {
+                            proxy    => ${ rand_set(set => \@{ keys(%good_proxies) }) },
+                            board    => $self->{conf}{board},
+                            password => $self->{conf}{password},
+                            delete   => $id,
+                           };
+                $queue->{delete}->put($task);
+            }
             my @delete_coro  = grep { $_->desc eq 'delete' } Coro::State::list;
             my $thrs_available = -1;
             #-- Max delete threads limit
