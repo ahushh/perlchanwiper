@@ -9,45 +9,47 @@ our $log_settings = {
     OCR_ABUSE_SUCCESS  => 3,
     OCR_ABUSE_ERROR    => 2,
     #-- DATA
-    DATA_SEEK          => 3, #-- поиск тредов/постов/...
-    DATA_LOADING       => 3, #-- начало загрузки ...
-    DATA_LOADED        => 2, #-- конец загрузки
-    DATA_MATCHED       => 3, #-- сколько совпало по регэкспу постов/тредов
-    DATA_FOUND         => 3, #-- сколько тредов/постов/найденно
-    DATA_FOUND_ALL     => 2, #-- сколько найденно всего
-    DATA_TAKE_IDS      => 3, #-- какой ID треда взят и сколько
-    DATA_VIDEO_SAVED   => 2, #-- куда сохранены видео
+    # DATA_SEEK          => 3, #-- поиск тредов/постов/...
+    # DATA_LOADING       => 3, #-- начало загрузки ...
+    # DATA_LOADED        => 2, #-- конец загрузки
+    # DATA_MATCHED       => 3, #-- сколько совпало по регэкспу постов/тредов
+    # DATA_FOUND         => 3, #-- сколько тредов/постов/найденно
+    # DATA_FOUND_ALL     => 2, #-- сколько найденно всего
+    # DATA_TAKE_IDS      => 3, #-- какой ID треда взят и сколько
+    # DATA_VIDEO_SAVED   => 2, #-- куда сохранены видео
     #-- MODES IN GENERAL
     MODE_TIEMOUT       => 2,
     MODE_STATE         => 1, #-- start/stop/init
     MODE_CB            => 4, #-- дебаг
     MODE_SLEEP         => 3,
     #-- AUTOBUMP
-    AB_NEEDS_BUMP      => 1,
-    AB_NEEDS_NO_BUMP   => 1,
-    AB_CHECKING        => 1,
-    #-- DELETE
-    DEL_SHOW_PROXY     => 1,
+    # AB_NEEDS_BUMP      => 1,
+    # AB_NEEDS_NO_BUMP   => 1,
+    # AB_CHECKING        => 1,
+    # -- DELETE
+    # DEL_SHOW_PROXY     => 1,
     #-- PROXY CHECKER
-    PC_SAVE_PROXIES    => 1,
+    # PC_SAVE_PROXIES    => 1,
     #-- WIPE
     WIPE_STRIKE        => 1,
-    GET_CB             => 4, #-- дебаг
-    PREP_CB            => 4, #-- дебаг
-    WIPE_CB            => 2, #-- дебаг
+    GET_CAPTCHA_CB             => 4, #-- дебаг
+    PREPARE_DATA_CB            => 4, #-- дебаг
+    MAKE_POST_CB            => 2, #-- дебаг
     #-- ENGINES
-    ENGN_GET_CAP       => 3, #-- успешное получение капчи
-    ENGN_GET_ERR_CAP   => 2, #-- ошибка ...
-    ENGN_PRP_CAP       => 3, #-- успешное распознование капчи
-    ENGN_PRP_ERR_CAP   => 2, #-- ошибка ...
-    ENGN_POST          => 1, #-- успешно отправлен пост
-    ENGN_POST_ERR      => 1, #-- ошибка при отправке
+    ENGINE_GET_CAPTCHA       => 3, #-- успешное получение капчи
+    ENGINE_GET_CAPTCHA_ERROR   => 2, #-- ошибка ...
+    ENGINE_HANDLE_CAPTCHA       => 3, #-- успешное распознование капчи
+    ENGINE_HANDLE_CAPTCHA_ERROR       => 3, #-- успешное распознование капчи
+    ENGINE_PREPARE_DATA       => 3, #-- успешное распознование капчи
+    ENGINE_PREPARE_DATA_ERROR   => 2, #-- ошибка ...
+    ENGINE_MAKE_POST          => 1, #-- успешно отправлен пост
+    ENGINE_MAKE_POST_ERROR      => 1, #-- ошибка при отправке
     ENGN_DELETE        => 1, #-- успешно удален пост
-    ENGN_DELETE_ERR    => 1, #-- не удален
+    ENGN_DELETE_ERROR    => 1, #-- не удален
     ENGN_CHECK         => 1, #-- хорошая прокси
-    ENGN_CHECK_ERR     => 1, #-- плохая прокси
+    ENGN_CHECK_ERROR     => 1, #-- плохая прокси
     #-- EFG's KUSABA
-    ENGN_EFG_MM        => 3, #-- вывод вычисленного mm
+    ENGINE_EFG_MM        => 3, #-- вывод вычисленного mm
     #-- всякие важные ошибки
     ERROR              => 1,
     DEBUG              => 1,
@@ -55,7 +57,7 @@ our $log_settings = {
 #------------------------------------------------------------------------------------------------------------
 # MESSSAGE SETTINGS
 #------------------------------------------------------------------------------------------------------------
-our $msg = {
+my $message = {
     #--------------------------------------------------------------------------------------------------------
     #--- Подстановка
     #-- %unixtime%   — будет заменено текущим timestamp
@@ -65,75 +67,27 @@ our $msg = {
     #-- @~command~@  — ... на результат выполнения внешней команды 'command'
     #--- Подстановка с параметрами
     #-- #delirium#   — сгенерированный из слогов бред
-    #-- #string#     — чтение файла построчно
-    #-- #boundary#   — чтение файла блоками
+    #-- #delimeter#  — чтение файла фрагментами
     #-- #post#       — брать данные из текста скаченных постов
     #-------------------------------------------------------------------------------------------------------
-    # text => "[code]#boundary#[/code]\n#delirium#%proxy%",
-    # text => "#string#",
-    # text => "bump\n%date%",
     # text => '@~fortune~@',
-    # text => "#post#\nhttp://2ch.hk",
     # text => '%unixtime%',
-     text => "%captcha%",
-    # text => '#delirium#',
-    # text => "bump %date%\n@~fortune psalms bible~@",
-    after  => sub {
-        use PCW::Core::Utils qw/random/;
-        $_=shift;
-        s/>>\d+/'>>'.random(10400009,10401509);/egr;},
-#        random(0,10)>5 ? $_ :
-#        join "\n", map { '%%'.$_ .'%%' } grep { s/\s+//gr } split /\n/; },
+    #text => '#delirium#',
+    text => <<END
+ Помогаем Анону искать работу, он сам её не найдёт.
+
+скайпик: zaryanius
+вконташка: http://vk.com/antisemitic
+
+алсо, другие мои треды (если этот побанят):
+http://2ch.hk/pr/res/258636.html
+http://410chan.org/dev/res/8824.html
+http://0chan.hk/c/res/24704.html
+END
+,
+    # after  => sub {}
      maxlen => 7000,                    #-- обрезать текст, если превышает заданную длину
     #-------------------------------------------------------------------------------------------------------
-    #-- #post# config
-    post  => {
-        board  => 'b',         #-- если не указано — текущая борда
-        update => 1000,         #-- интервал обновления списка постов; 0 - отключить
-        proxy  => 'no_proxy',  #-- если не указано - текущая прокси, с которой идет постинг
-        posts => {             # конфиг функции, ищущей посты
-                    board     => 'b',   #-- доска, на которой искать треды
-                    threads => {
-                                # regexp  => '',      #-- фильтровать по регэкспу
-                                pages   => [0,1],    #-- на каких страницах искать треды, из которых будут взяты посты
-                                number  => 5, #-- кол-во случайных тредов, из которых будут взяты посты
-                                              #-- 0 - все треды, но лучше не использовать из-за возможных тормозов
-                               },
-                    replies => {
-                        threads => 'found', #-- искать в уже найденных тредах (см. выше)
-                        #threads => "$ENV{HOME}/wipe/rmt.htm", #-- также можно указать путь до html-файла
-                        #threads => [10387913],  #-- задать номер тредов вручную
-                        regexp  => '',      #-- фильтровать по регэкспу
-                    },
-                 },
-        # maxlen => 7900,                    #-- обрезать текст, если превышает заданную длину
-        # take   => sub {        #-- функция, которая извлекает нужные данные из поста. в данном случае - ID поста
-        #     use Data::Random     qw/rand_set/;
-        #     my ($engine, $task, $data, $replies) = @_;
-        #     my @ids = keys %$replies;
-        #     return ( @ids ? ${ rand_set(set => \@ids) } : '' );
-        # },
-        take   => sub { #-- извлекает текст постов
-            use HTML::Entities;
-            use Data::Random     qw/rand_set/;
-            my $html2text = sub
-            {
-                my $html = shift;
-                decode_entities($html);
-                $html =~ s!<style.+?>.*?</style>!!sg;
-                $html =~ s!<script.+?>.*?</script>!!sg;
-                $html =~ s/{.*?}//sg; #-- style
-                $html =~ s/<!--.*?-->//sg; #-- comments
-                $html =~ s/<.*?>//sg;      #-- tags
-                return $html;
-            };
-            my ($engine, $task, $data, $replies) = @_;
-            my $pattern = $engine->{html}{text_regexp};
-            my @texts   = grep { s/\s//gr } map { $replies->{$_} =~ /$pattern/s; &$html2text( $+{text} =~ s|<br ?/?>|\n|gr ) } keys %$replies;
-            my $s = @texts ? ${ rand_set(set => \@texts) } : '';
-            $s;
-        },
-    },
     #-- #delirium# config
     delirium => {
         #  q - предложение; w - слово; c - символ;
@@ -154,27 +108,19 @@ our $msg = {
         # maxlen    => 7900, #-- обрезать текст, если превышает заданную длину
     },
     #-------------------------------------------------------------------------------------------------------
-    #-- #boundary# config
-    boundary => {
-        boundary => "----",                  #-- разделитель блоков текста. "----" по умолчанию
+    #-- #delimeter# config
+    delimeter => {
+        delimeter => "----",                  #-- разделитель блоков текста. "----" по умолчанию
         order    => 'random',                #-- порядок считывания блоков (normal - по порядку; random - случайно)
         path     => "$ENV{HOME}/ахм",       #-- путь к файлу. Текст должен быть в кодировке utf8.
         maxlen   => 7000,                    #-- обрезать текст, если превышает заданную длину
-    },
-    #-------------------------------------------------------------------------------------------------------
-    #-- #string# config
-    string => {
-        order    => 'random',                #-- см. выше
-        num_str  => 10,                      #-- количество считываемых строк за раз
-        path     => "$ENV{HOME}/b",           #-- путь к файлу. Текст должен быть в кодировке utf8.
-        # maxlen   => 7900,                  #-- обрезать текст, если превышает заданную длину
     },
 };
 
 #------------------------------------------------------------------------------------------------------------
 # IMAGE SETTINGS
 #------------------------------------------------------------------------------------------------------------
-my $img_altering = {
+my $image_altering = {
     #-------------------------------------------------------------------------------------------------------
     # %XrandY%    — заменяется на случайное целое число в диапазоне от X до Y
     # %Xdigits%   — на X случайных цифр
@@ -206,23 +152,16 @@ my $img_altering = {
     sign => 'Piston Wipe 2.6.8',
 };
 
-our $img = {
+my $image = {
     #-------------------------------------------------------------------------------------------------------
     #-- no mode
     #-- Без изображения
-    mode     => 'no',
-    #-------------------------------------------------------------------------------------------------------
-    #-- rand mode
-    #-- Сгенерировать случайное изображение
-    # mode     => 'rand',
-    # args     => {},                    #-- см. документацию к модулю Data::Random, метод rand_image
+    mode     => undef,
     #-------------------------------------------------------------------------------------------------------
     #-- single mode
     #-- Постить один указанный файл
      mode     => 'single',
      path     => "extra/void.gif",    #-- путь к файлу
-    # path     => "$ENV{HOME}/novikov.jpg",
-    # path     => "extra/desu.gif",
     #-- captcha mode
     #-- Постить изображение капчи
     # mode => 'captcha',
@@ -246,61 +185,61 @@ our $img = {
     #-------------------------------------------------------------------------------------------------------
     #-- common options
     max_size => "51Ki",                 #-- ограничение на размер файла в кб. 0 для отключения
-    altering => $img_altering           #-- обход запрета на повтор картинок
+    altering => $image_altering           #-- обход запрета на повтор картинок
 };
 
 #------------------------------------------------------------------------------------------------------------
 # VIDEO SETTINGS. KUSABA BASED CHANS ONLY
 #------------------------------------------------------------------------------------------------------------
-our $vid = {
+my $video = {
     #-------------------------------------------------------------------------------------------------------
     #-- Видеохостинг
-    type     => 'youtube', #-- Поддерживаемые: youtube
+    # type     => 'youtube', #-- Поддерживаемые: youtube
     #-------------------------------------------------------------------------------------------------------
     #-- no mode
     #-- Без видео
-    mode     => 'no',
+    mode     => undef,
     #-------------------------------------------------------------------------------------------------------
     #-- file mode
     #-- Брать ID видео из файла
     #-- ID должны разделяться пробелами или переносами строк
     # mode     => 'file',
-    order    => 'random',        #-- см. где-то выше
-    path     => "$ENV{HOME}/youtube",
+    # order    => 'random',        #-- см. где-то выше
+    # path     => "$ENV{HOME}/youtube",
     #-------------------------------------------------------------------------------------------------------
     #-- download mode
     #-- Искать видео на соответствующем видеохостинге
     # mode     => 'download',
     # save     => "$ENV{HOME}/youtube", #-- сохранить найденные id видео в файл; id разделяются пробелом
-    order    => 'random',               #-- см. где-то выше
-    pages    => 20,                     #-- Количество страниц, с которых будут взяты видео
-    search   => ['Шопен', 'Franz Liszt', 'Wolfgang Amadeus Mozart', 'Мусоргский'],        #-- Поисковые запросы.
+    # order    => 'random',               #-- см. где-то выше
+    # pages    => 20,                     #-- Количество страниц, с которых будут взяты видео
+    # search   => ['Шопен', 'Franz Liszt', 'Wolfgang Amadeus Mozart', 'Мусоргский'],        #-- Поисковые запросы.
 };
 
 #------------------------------------------------------------------------------------------------------------
 # CAPTCHA SETTINGS
 #------------------------------------------------------------------------------------------------------------
 #-- Распознавание капчи
-our $captcha_decode = {
+my $captcha_decode = {
     #-------------------------------------------------------------------------------------------------------
     #-- функция для дополнительной обработки разгаданного текста капчи.
     #-- например для отклонения текста капчи с латиницей и цифрами. Также удаляет пробелы
     #after  => sub { $_=shift; s/\s+//g; /[a-zA-Z0-9]/ ? "" : $_ }, 
     #-- antigate mode
-    mode   => 'antigate',
-    key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
-    opt    => {
-               is_russian =>   0,
-               phrase     =>   0,  #-- 1 if captcha text have 2-4 words
-               regsense   =>   0,  #-- 1 if that captcha text is case sensitive
-               numeric    =>   1,  #-- 1 if that captcha text contains only digits, 2 if captcha text have no digits
-               calc       =>   0,  #-- 1 if that digits on the captcha should be summed up
-               min_len    =>   6,  #-- minimum length of the captcha text (0..20)
-               max_len    =>   6,  #-- maximum length of the captcha text (0..20), 0 - no limits
-              },
+    # mode   => 'Antigate',
+    # key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
+    # opt    => {
+    #            is_russian =>   0,
+    #            phrase     =>   0,  #-- 1 if captcha text have 2-4 words
+    #            regsense   =>   0,  #-- 1 if that captcha text is case sensitive
+    #            numeric    =>   1,  #-- 1 if that captcha text contains only digits, 2 if captcha text have no digits
+    #            calc       =>   0,  #-- 1 if that digits on the captcha should be summed up
+    #            min_len    =>   6,  #-- minimum length of the captcha text (0..20)
+    #            max_len    =>   6,  #-- maximum length of the captcha text (0..20), 0 - no limits
+    #           },
     #-------------------------------------------------------------------------------------------------------
     #-- captchabot mode
-    # mode   => 'captchabot',
+    # mode   => 'Captchabot',
     # key    => '',
     # opt    => {},  #-- аналогично антигейту
     #-------------------------------------------------------------------------------------------------------
@@ -310,20 +249,30 @@ our $captcha_decode = {
     #-------------------------------------------------------------------------------------------------------
     #-- hand mode
     #-- Ручной ввод капчи.
-    #mode   => 'hand',
-    #imgv   => '/usr/bin/feh',             #-- путь до программы просмотра изображений
-    #arg    => '-d --geometry 400x300 -Z', #-- аргументы
+    mode   => 'Hand',
+    imgv   => '/usr/bin/feh',             #-- путь до программы просмотра изображений
+    arg    => '-d --geometry 400x300 -Z', #-- аргументы
     #-- gui hand mode
     #-- Ручной ввод капчи через GUI.
     #-- Необходим Gtk2
-    # mode   => 'guihand',
-    #-- просто заглушка, всегда возвращающая текст "none"
-    # mode => 'none',
+    mode   => 'GUIhand',
+    #-- Stub mode
+    #-- Просто заглушка, всегда возвращающая заданный текст
+    mode => 'Stub',
+    stub => 'test captcha',
     #-- tesseract OCR
     #-- Необходим convert (пакет ImageMagick) и сам tesseract
-    # mode   => 'tesseract',
+    # mode   => 'Tesseract',
     # lang   => 'rus',            #-- eng, rus, etc.
     # config => 'englishletters', #-- название конфига для tesseract. см. README
     # config => 'ruletters',
     # psm    => undef,            #-- только для версии 3.01, см. tesseract --help
+};
+
+our $common_config = {
+    message        => $message,
+    video          => $video,
+    image          => $image,
+    captcha_decode => $captcha_decode,
+    log_settings   => $log_settings,
 };

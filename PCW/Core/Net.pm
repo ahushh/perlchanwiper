@@ -13,7 +13,7 @@ warn "LWP::Protocol::socks not installed. Skipping..." if $@;
 
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub http_get(%)
+sub http_get
 {
     my %p  = @_;
     my $ua = LWP::UserAgent->new();
@@ -32,9 +32,9 @@ sub http_get(%)
            };
 }
 
-sub http_post(%)
+sub http_post
 {
-    #use Data::Dumper; say Dumper(@_); exit;
+    # use Data::Dumper; say Dumper(@_); exit;
     my %p            = @_;
     my $proxy        = $p{proxy};
     my $url          = $p{url};

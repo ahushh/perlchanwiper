@@ -2,11 +2,31 @@ package PCW::Data::Video;
 
 use v5.12;
 use utf8;
-use Carp;
+use Carp qw/croak/;
+use Moo;
 use autodie;
 
-use Exporter 'import';
-our @EXPORT_OK = qw/make_vid/;
+has 'video_list' => (
+    is => 'rw',
+);
+
+has 'loaded' => (
+    is      => 'rw',
+    default => sub { 0 },
+);
+
+has 'hosters' => (
+    is => 'ro',
+    default => sub {
+        [ youtube => {
+              regexp => [  'watch\?v=(?<id>(\w|-)+)&?',
+                           'data-video-ids="(?<id>(\w|-)+)"',
+                        ],
+              url    => 'http://www.youtube.com/results?search_query={search}&page={page}',
+          }
+        ];
+    },
+);
 
 #------------------------------------------------------------------------------------------------
 use Data::Random     qw/rand_set/;
@@ -15,86 +35,48 @@ use LWP::Simple      qw/get/;
 use PCW::Core::Utils qw/readfile/;
 
 use Coro;
-my $lock = Coro::Semaphore->new;
-
+our $lock = Coro::Semaphore->new;
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
-#-- Regexp to parse ID's
-my %types = ( youtube => [  'watch\?v=(?<id>(\w|-)+)&?'
-                          , 'data-video-ids="(?<id>(\w|-)+)"'
-                         ],
-            );
-
-my %search_urls = ( youtube => 'http://www.youtube.com/results?search_query={search}&page={page}' );
-
-sub make_vid($$$)
+sub fetch
 {
-    my ($engine, $task, $conf) = @_;
-    my $vid_mode = $conf->{mode} . '_vid';
-    Carp::croak sprintf "Video mode '%s' doesn't exist!\n", $conf->{mode}
-            unless exists &{ $vid_mode };
-    my $get_vid = \&{ $vid_mode };
-    return &$get_vid($engine, $task, $conf);
+    my ($self, $engine, $task, $video_conf) = @_;
+    my $vid_mode = '_'. $video_conf->{mode} . '_vid';
+    croak sprintf "Video mode '%s' doesn't exist!\n", $video_conf->{mode}
+        unless exists &{ $vid_mode };
+
+    $self->load($engine,$task,$video_conf) unless $self->loaded;
+
+    my $function = \&{ $vid_mode };
+    return &$function($self, $engine, $task, $video_conf);
 }
 
-#------------------------------------------------------------------------------------------------
-# Internal functions
-#------------------------------------------------------------------------------------------------
-sub file_vid($$$)
+sub load
 {
-    my (undef, $task, $data) = @_;
-    return if defined $task->{test};
-
-    state @vid_list;
+    my ($self, $engine, $task, $video_conf) =  @_;
 
     $lock->down;
-    if (!@vid_list or !$data->{loaded})
+    if ($video_conf->{mode} =~ /file/)
     {
-        @vid_list = split /\s+/, readfile($data->{path});
-        $data->{loaded} = 1;
+        $self->video_list([ split /\s+/, readfile($video_conf->{path}) ]);
     }
-    $lock->up;
-
-    state $i = 0;
-
-    my $video;
-    if ($data->{order} eq 'random')
+    elsif ($video_conf->{mode} eq 'posts')
     {
-        $video = ${ rand_set(set => \@vid_list) };
-    }
-    elsif ($data->{order} eq 'normal')
-    {
-        $i = 0 if ($i >= scalar @vid_list);
-        $video = $vid_list[$i++];
-    }
-
-    return $video;
-}
-
-sub download_vid($$$)
-{
-    my ($engine, $task, $data) = @_;
-    return if defined $task->{test};
-    state @vid_list;
-
-    $lock->down;
-    if (!@vid_list or !$data->{loaded})
-    {
-        my $log = $engine->{log};
-        $log->msg('DATA_LOADING', "Start fetching video ID's from $data->{type}..");
+        my @vid_list;
+        $engine->log->msg('DATA_LOADING', "Start fetching video ID's from $video_conf->{type}..");
         my $raw;
-        for my $query (@{ $data->{search}})
+        for my $query (@{ $video_conf->{search}})
         {
-            for my $page (1..$data->{pages})
+            for my $page (1..$video_conf->{pages})
             {
-                my $url = $search_urls{ $data->{type} };
+                my $url = $self->hosters->{ $video_conf->{type} }->{url};
                 $url =~ s/\{search\}/$query/e;
                 $url =~ s/\{page\}/$page/e;
-                $raw .= get($url);
-                $log->msg('DATA_FOUND', "ID's were fetched from $page page and with '$query' query.");
+                $raw .= LWP::Simple::get($url);
+                $engine->log->msg('DATA_FOUND', "ID's were fetched from $page page and with '$query' query.");
             }
         }
-        for my $pattern (@{ $types{ $data->{type} } })
+        for my $pattern (@{ $self->hosters->{ $video_conf->{type} }->regexp })
         {
             while ($raw =~ /$pattern/mg)
             {
@@ -102,31 +84,47 @@ sub download_vid($$$)
             }
         }
         @vid_list = uniq @vid_list;
-        $log->msg('DATA_LOADED', "Fetched ". scalar(@vid_list) ." video ID's");
-        if (my $path = $data->{save})
+        $engine->log->msg('DATA_LOADED', "Fetched ". scalar(@vid_list) ." video ID's");
+        if (my $path = $video_conf->{save})
         {
             open(my $fh, '>', $path);
             print $fh "@vid_list";
             close $fh;
-            $log->msg('VIDEO_SAVED', "Video ID's saved to $path");
+            $engine->log->msg('VIDEO_SAVED', "Video ID's saved to $path");
         }
-        $data->{loaded} = 1;
+        $self->video_list(\@vid_list);
     }
+    $video_conf->{loaded} = 1;
     $lock->up;
+}
+#------------------------------------------------------------------------------------------------
+# Internal functions
+#------------------------------------------------------------------------------------------------
+sub _file_vid
+{
+    my ($self, undef, $task, $video_conf) = @_;
+    return if defined $task->{test};
 
     state $i = 0;
 
     my $video;
-    if ($data->{order} eq 'random')
+    if ($video_conf->{order} eq 'random')
     {
-        $video = ${ rand_set(set => \@vid_list) };
+        $video = ${ rand_set(set => $self->video_list) };
     }
-    else
+    elsif ($video_conf->{order} eq 'normal')
     {
+        my @vid_list = @{ $self->video_list };
         $i = 0 if ($i >= scalar @vid_list);
         $video = $vid_list[$i++];
     }
+
     return $video;
+}
+
+sub _download_vid
+{
+    _file_vid(@_);
 }
 
 1;

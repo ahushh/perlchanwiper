@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 $|=1;
 
-our $VERSION = '2.3.2';
+our $VERSION = '3.0.0';
 
 use v5.12;
 use utf8;
@@ -23,34 +23,35 @@ use List::Util   qw/reduce/;
 use File::Basename;
 #-----------------------------------------------------------------------------
 use PCW::Core::Utils qw/get_proxylist readfile/;
-use PCW::Core::Log;
+use PCW::Core::Data;
+use PCW::Core::DesuLog;
+use PCW::Core::OCR;
 
 #-----------------------------------------------------------------------------
 # Global variables
 #-----------------------------------------------------------------------------
-our %mode_config;
-our $chan_config;
-our $log_settings;
+our $mode_config;   #-- modes/*
+our $common_config; #-- config.pl
+our $chan_config;   #-- chans/*
 
-my @proxies; #-- list of proxies
-my @agents;  #-- list of user-agents
-my $engine;  #-- PCW::Engine::* object
-my $logging; #-- PCW::Core::Log object
+my %data = (
+            proxies => [],      #-- list of proxies
+            agents  => [],      #-- list of user-agents
+            engine  => 0,       #-- PCW::Engine::* object
+            logging => 0,       #-- PCW::Core::DesuLog object
+           );
 
 #-----------------------------------------------------------------------------
 # Config
 #-----------------------------------------------------------------------------
-my %cnf = (
+my %arguments = (
     chan       => '',
     mode       => '',
     verbose    => 0,
-    #useragents => File::Spec->catfile($Bin, 'UserAgents'),
     useragents => File::Spec->catfile('.', 'UserAgents'),
-    #proxy_file => File::Spec->catfile($Bin, 'proxy', 'no'),
     proxy_file => File::Spec->catfile('.', 'proxy', 'no'),
     proxy_type => 'http',
 
-    #common_config => File::Spec->catfile($Bin, 'config.pl'), #-- common config path
     common_config => File::Spec->catfile('.', 'config.pl'), #-- common config path
     mode_config   => '',                                     #-- mode config path
 
@@ -61,21 +62,21 @@ my %cnf = (
 
 #-----------------------------------------------------------------------------
 #-----------------------------------------------------------------------------
-sub parse_args()
+sub parse_args
 {
     my $help   = 0;
     my $desu   = 0;
     my $result = GetOptions(
-                            'chan=s'     => \$cnf{chan},
-                            'mode=s'     => \$cnf{mode},
-                            'proxy=s'    => \$cnf{proxy_file},
-                            'ua=s'       => \$cnf{useragents},
-                            'cconfig=s'  => \$cnf{common_config},
-                            'mconfig=s'  => \$cnf{mode_config},
-                            'loglevel=i' => \$cnf{loglevel},
-                            'logfile=s'  => \$cnf{logfile},
-                            'lognocolor' => \$cnf{lognocolor},
-                            'verbose'    => \$cnf{verbose},
+                            'chan=s'     => \$arguments{chan},
+                            'mode=s'     => \$arguments{mode},
+                            'proxy=s'    => \$arguments{proxy_file},
+                            'ua=s'       => \$arguments{useragents},
+                            'cconfig=s'  => \$arguments{common_config},
+                            'mconfig=s'  => \$arguments{mode_config},
+                            'loglevel=i' => \$arguments{loglevel},
+                            'logfile=s'  => \$arguments{logfile},
+                            'lognocolor' => \$arguments{lognocolor},
+                            'verbose'    => \$arguments{verbose},
                             'help|?'     => \$help,
                             'desu'       => \$desu,
                            );
@@ -84,126 +85,15 @@ sub parse_args()
         desu();
         exit 1;
     }
-    if ($help || !($cnf{mode} && $cnf{chan}))
+    if ($help || !($arguments{mode} && $arguments{chan}))
     {
         usage();
         exit 1;
     }
-    #$cnf{mode_config} = File::Spec->catfile($Bin, 'configs', "$cnf{mode}.pl")
-    $cnf{mode_config} = File::Spec->catfile('.', 'configs', "$cnf{mode}.pl")
-        unless $cnf{mode_config};
+    $arguments{mode_config} = File::Spec->catfile('.', 'modes', "$arguments{mode}.pl")
+        unless $arguments{mode_config};
 }
 
-#-----------------------------------------------------------------------------
-# Config checking
-#-----------------------------------------------------------------------------
-sub check_chan_config()
-{
-    for ( qw/post delete page zero_page thread/ )
-    {
-        Carp::croak("Chan config error: Option urls => '$_' must be specified at chans/$cnf{chan}.pl")
-                unless ($chan_config->{urls}{$_});
-    } #--------------------------------------------------------------------------
-    for ( qw/engine captcha_extension fields/ )
-    {
-        Carp::croak("Chan congig error: Option '$_' must be specified at chans/$cnf{chan}.pl")
-                unless ($chan_config->{$_});
-    } #--------------------------------------------------------------------------
-    Carp::croak("Chan config error: HOST must be specified at chans/$cnf{chan}.pl")
-            unless ($chan_config->{headers}{default}{Host});
-}
-
-sub check_user_error()
-{
-    Carp::croak("Chan config '$cnf{chan}' does not exist")
-        #unless($cnf{chan} || -e File::Spec->catfile($Bin, 'chans', "$cnf{chan}.pl"));
-        unless($cnf{chan} || -e File::Spec->catfile('.', 'chans', "$cnf{chan}.pl"));
-
-    Carp::croak("Common config '$cnf{common_config}' does not exist")
-        unless($cnf{common_config} || -e $cnf{common_config});
-
-    my $modes_list = join('|', map { m|/(\w+)\.pm|; $1 } glob("PCW/Modes/*.pm") );
-    Carp::croak("Mode '$cnf{mode}' does not exist")
-        unless($cnf{mode} =~ /$modes_list/i);
-
-    Carp::croak("Mode '$cnf{mode}' config does not exist")
-        unless(-e $cnf{mode_config});
-
-    Carp::croak("Proxylist '$cnf{proxy_file}' does not exist")
-        unless($cnf{proxy_file} && (-e $cnf{proxy_file} || $cnf{proxy_file} =~ /http/) );
-
-    Carp::croak("Proxy type '$cnf{proxy_type}' is not specified")
-        unless($cnf{proxy_type});
-
-    Carp::croak("Useragents list '$cnf{useragents}' does not exist")
-        unless($cnf{useragents} && -e $cnf{useragents});
-}
-
-sub check_image_config()
-{
-    my $img_mode = $mode_config{img_data}{mode} . '_img';
-    return if $img_mode =~ /no_img/;
-    unless ($mode_config{img_data}{mode} eq 'captcha' || $mode_config{img_data}{mode} eq 'rand')
-    {
-        Carp::croak "Image path not defined!" unless $mode_config{img_data}{path};
-        if (ref($mode_config{img_data}{path}) eq 'ARRAY')
-        {
-            for (@{ $mode_config{img_data}{path} })
-            {
-                Carp::croak "'$_' doesn't exist!" unless (-e $_);
-                Carp::croak "'$_' is empty!"      if     (-z $_);
-            }
-        }
-        else
-        {
-            Carp::croak $mode_config{img_data}{path} . " doesn't exist!"
-            unless (-e $mode_config{img_data}{path});
-        }
-    }
-
-    eval {
-        use PCW::Data::Images qw/make_pic/;
-        make_pic($engine, {test => 1}, $mode_config{img_data});
-    };
-    if ($@)
-    {
-        Carp::croak sprintf "Image mode '%s' doesn't exist!", $img_mode;
-    }
-
-    if ($mode_config{img_data}{max_size})
-    {
-        Carp::croak "The file size greaten then max size allowed!"
-                if int((-s $mode_config{img_data}{path})/1024) > $mode_config{img_data}{max_size};
-    }
-    if ($mode_config{img_data}{mode} eq 'dir' and !$mode_config{img_data}{types} || !(@{ $mode_config{img_data}{types} }))
-    {
-        Carp::croak "Allowed file types not specified!"
-    }
-    Carp::croak sprintf("Image altering method '%s' doesn't exist", $mode_config{img_data}{altering}{mode})
-            if $mode_config{img_data}{altering}{mode} !~ /randnums|randbytes|convert/;
-}
-
-sub check_video_config()
-{
-    my $vid_mode = $mode_config{vid_data}{mode} . '_vid';
-    return if $vid_mode =~ /no_vid/;
-    eval {
-        use PCW::Data::Video qw/make_vid/;
-        make_vid($engine, {task => 1}, $mode_config{vid_data});
-    };
-    if ($@)
-    {
-        Carp::croak sprintf "Video mode '%s' doesn't exist!", $mode_config{vid_mode}{mode};
-    }
-}
-
-sub check_captcha_config()
-{
-    my $captcha_mode      = $mode_config{captcha_decode}{mode};
-    my $captcha_mode_path = File::Spec->catfile($Bin, 'OCR', "$captcha_mode.pm");
-    Carp::croak("Captcha decode method '$captcha_mode' does not exist at $captcha_mode_path")
-        unless (-e $captcha_mode_path);
-}
 
 #-----------------------------------------------------------------------------
 # Info
@@ -212,18 +102,18 @@ sub show_info()
 {
     say "Perl Chan Wiper v$VERSION";
     say "~" x 30;
-    say sprintf "Chan: %s %s", $cnf{chan}, ($chan_config->{description} ? "($chan_config->{description})" : "");
+    say sprintf "Chan: %s %s", $arguments{chan}, ($chan_config->{description} ? "($chan_config->{description})" : "");
     say "Engine: "          . $chan_config->{engine};
-    say "Work mode: "       . $cnf{mode};
-    say "Mode config: "     . $cnf{mode_config};
-    say "Common config: "   . $cnf{common_config};
-    say "Proxies loaded: "  . scalar @proxies;
-    say "Browsers loaded: " . scalar @agents;
+    say "Work mode: "       . $arguments{mode};
+    say "Mode config: "     . $arguments{mode_config};
+    say "Common config: "   . $arguments{common_config};
+    say "Proxies loaded: "  . scalar @{ $data{proxies} };
+    say "Browsers loaded: " . scalar @{ $data{agents} };
     say "~" x 30;
-    say "Log level: ".       $cnf{loglevel};
-    say "Log file: ".        ($cnf{logfile}   || "STDOUT");
-    say "Colored logging: ". ($cnf{lognocolor} ? 'no'  : 'yes');
-    say "Verbose output: " . ($cnf{verbose}    ? 'yes' : 'no');
+    say "Log level: ".       $arguments{loglevel};
+    say "Log file: ".        ($arguments{logfile}   || "STDOUT");
+    say "Colored logging: ". ($arguments{lognocolor} ? 'no'  : 'yes');
+    say "Verbose output: " . ($arguments{verbose}    ? 'yes' : 'no');
     say "~" x 30;
 }
 
@@ -232,36 +122,34 @@ sub show_info()
 #-----------------------------------------------------------------------------
 sub load_configs()
 {
-    our ($img, $msg, $vid, $captcha_decode);
-    require $cnf{common_config} || die; #-- load $img, $msg, $vid, $captcha_decode
-    require $cnf{mode_config}   || die; #-- load %mode_config
-
-    $mode_config{img_data} = $img;
-    $mode_config{msg_data} = $msg;
-    $mode_config{vid_data} = $vid;
-    $mode_config{captcha_decode} = $captcha_decode;
+    require $arguments{common_config} || die; #-- load $common_config
+    require $arguments{mode_config}   || die; #-- load $mode_config
 }
 
 sub load_proxies()
 {
-    @proxies = get_proxylist($cnf{proxy_file}, $cnf{proxy_type});
+    my @proxies    = get_proxylist($arguments{proxy_file}, $arguments{proxy_type});
+    $data{proxies} = \@proxies;
 }
 
 sub load_agents()
 {
-    @agents = readfile($cnf{useragents});
+    my @agents = readfile($arguments{useragents});
+    $data{agents} = \@agents;
 }
 
 sub load_chan()
 {
-    #my $package = File::Spec->catfile($Bin, 'chans', "$cnf{chan}.pl");
-    my $package = File::Spec->catfile('.', 'chans', "$cnf{chan}.pl");
+    my $package = File::Spec->catfile('.', 'chans', "$arguments{chan}.pl");
     require "$package"; #-- load $chan_config
 }
 
 sub load_logging()
 {
-    $logging = PCW::Core::Log->new( file => $cnf{logfile}, level => $cnf{loglevel}, colored => !$cnf{lognocolor}, settings => $log_settings );
+    $data{logging} = PCW::Core::DesuLog->new( file     => $arguments{logfile},
+                                              level    => $arguments{loglevel},
+                                              colored  => !$arguments{lognocolor},
+                                              settings => $common_config->{log_settings} );
 }
 
 sub load_engine()
@@ -269,21 +157,39 @@ sub load_engine()
     my $package = "PCW::Engine::". $chan_config->{engine};
     eval("use $package");
     Carp::croak($@) if $@;
-    $engine = $package->new(%$chan_config, agents => \@agents, log => $logging, verbose => $cnf{verbose});
+    $data{engine} = $package->new(chan_config   => $chan_config,
+                                  common_config => $common_config,
+                                  agents        => $data{agents},
+                                  log           => $data{logging},
+                                  verbose       => $arguments{verbose},
+                                  data => PCW::Core::Data->new(),
+                                  ocr  => PCW::Core::OCR->new(log => $data{logging}, config => $common_config->{captcha_decode}) );
 }
 
 sub load_mode()
 {
-    my $package = "PCW::Modes::$cnf{mode}";
+    my $package = "PCW::Modes::$arguments{mode}";
     eval("use $package");
     Carp::croak($@) if $@;
-    return $package->new(engine   => $engine,
-                         proxies  => \@proxies,
-                         conf     => \%mode_config,
-                         log      => $logging,
-                         verbose  => $cnf{verbose});
+    return $package->new(engine      => $data{engine},
+                         proxies     => $data{proxies},
+                         mode_config => $mode_config,
+                         log         => $data{logging},
+                         verbose     => $arguments{verbose});
 
 }
+
+sub load_all()
+{
+    load_configs();
+    load_proxies();
+    load_agents();
+    load_chan();
+    load_logging();
+    load_engine();
+    return load_mode();
+}
+
 #-----------------------------------------------------------------------------
 # Usage
 #-----------------------------------------------------------------------------
@@ -325,11 +231,11 @@ Usage: $0 --chan [chan] --mode [mode] ...
 PCW Options:
     --chan          Chan name (@chans)
     --mode          Work mode (@modes)
-    --proxy         Path to file or url which contains proxies (default is '$cnf{proxy_file}')
-    --proxytype     Default proxy protocol (default is '$cnf{proxy_type}')
-    --ua            User agents list file (default is '$cnf{useragents}')
-    --cconfig       Common config file (default is '$cnf{common_config}')
-    --mconfig       Mode config file (default is 'configs/\$mode_name.pl')
+    --proxy         Path to file or url which contains proxies (default is '$arguments{proxy_file}')
+    --proxytype     Default proxy protocol (default is '$arguments{proxy_type}')
+    --ua            User agents list file (default is '$arguments{useragents}')
+    --cconfig       Common config file (default is '$arguments{common_config}')
+    --mconfig       Mode config file (default is 'modes/\$mode_name.pl')
 
     --logfile       File for logging (STDOUT by default)
     --lognocolor    Disable colored log output
@@ -346,24 +252,8 @@ DESU
 }
 
 #-----------------------------------------------------------------------------
-# LOAD
+# MAIN CODE
 #-----------------------------------------------------------------------------
-sub load_all()
-{
-    check_user_error();
-    load_configs();      #-- load %mode_config
-    load_proxies();
-    load_agents();
-    load_chan();         #-- load $chan_config
-    check_chan_config();
-    load_logging();
-    load_engine();
-    check_captcha_config();
-    check_image_config();
-    check_video_config();
-    return load_mode();
-}
-
 parse_args();
 my $pcw = load_all();
 show_info();
@@ -379,10 +269,11 @@ while ($pcw->{is_running})
 {
     Coro::Timer::sleep 1
 }
+
 #-----------------------------------------------------------------------------
 # ON EXIT
 #-----------------------------------------------------------------------------
-sub show_stats($)
+sub show_stats
 {
     my %stats = %{ shift() };
     say "~" x 30;
@@ -392,19 +283,19 @@ sub show_stats($)
     }
 }
 
-given ($cnf{mode})
+given ($arguments{mode})
 {
-    when ('ProxyChecker')
-    {
-        show_stats $pcw->{stats};
-        my @p = @{ $pcw->{checked} };
-        say $mode_config{save} ? sprintf("There are %d good proxies.", scalar @p) : "Good proxies: @p";
-    }
-    when ('AutoBump')
-    {
-        show_stats $pcw->{stats}{bump};
-        show_stats $pcw->{stats}{delete};
-    }
+    # when ('ProxyChecker')
+    # {
+    #     show_stats $pcw->{stats};
+    #     my @p = @{ $pcw->{checked} };
+    #     say $mode_config->{save} ? sprintf("There are %d good proxies.", scalar @p) : "Good proxies: @p";
+    # }
+    # when ('AutoBump')
+    # {
+    #     show_stats $pcw->{stats}{bump};
+    #     show_stats $pcw->{stats}{delete};
+    # }
     default
     {
         show_stats $pcw->{stats};

@@ -8,6 +8,8 @@ system 'apt-get'; #-- check if apt-get is installed
 my $deb_cmd = ($? ? 'aptitude' : 'apt-get' ) . ' install';
 
 my @base = qw/
+Moo
+Moo::Role
 YAML
 AnyEvent
 Coro
@@ -53,7 +55,8 @@ my %H = (
                                                            libstring-shellquote-perl
                                                            libfile-which-perl
                                                            /
-                                                         ]
+                                                         ],
+                                      $sudo .'cpan'   => [ 'Moo', 'Moo::Role'      ],
                                      },
                      webui        => {
                                       $sudo .$deb_cmd => [ 'libmojolicious-perl' ],
@@ -84,7 +87,8 @@ my %H = (
                                                             perl-string-shellquote
                                                             perl-file-which
                                                             /
-                                                          ]
+                                                          ],
+                                      $sudo .'cpan'   => [ 'Moo', 'Moo::Role'      ],
                                      },
                      webui        => { $sudo .'cpan' => [ @webui        ] },
                      proxychecker => { $sudo .'cpan' => [ @proxychecker ] },
@@ -110,8 +114,8 @@ pod2usage(-verbose => 2) if !$OS or !(map { $OS =~ /^$_$/ } keys(%H));
 my @parts = ();
 my %parts = (
              base         => 'Would you like to install base modules (they all are necessary)? [y/n] ',
-             webui        => 'Modules for web-interface? [y/n] ',
-             proxychecker => 'Modules for proxychecker? [y/n] ',
+             #webui        => 'Modules for web-interface? [y/n] ',
+             #proxychecker => 'Modules for proxychecker? [y/n] ',
             );
 
 for my $p (keys %{ $H{$OS} } )

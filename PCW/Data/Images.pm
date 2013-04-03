@@ -1,12 +1,19 @@
 package PCW::Data::Images;
 
 use v5.12;
+use Moo;
 use utf8;
-use Carp;
+use Carp qw/croak/;
 use autodie;
 
-use Exporter 'import';
-our @EXPORT_OK = qw/make_pic/;
+has 'image_list' => (
+    is => 'rw',
+);
+
+has 'loaded' => (
+    is      => 'rw',
+    default => sub { 0 },
+);
 
 #------------------------------------------------------------------------------------------------
 use File::Basename;
@@ -20,106 +27,109 @@ use Data::Random       qw/rand_set rand_image/;
 use PCW::Core::Utils   qw/random shellquote readfile/;
 
 use Coro;
-my $lock = Coro::Semaphore->new;
+our $lock = Coro::Semaphore->new;
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub make_pic($$$)
+sub fetch
 {
-    my ($engine, $task, $conf) = @_;
-    my $img_mode = $conf->{mode} . '_img';
-    Carp::croak sprintf "Image mode '%s' doesn't exist!\n", $conf->{mode}
-            unless exists &{ $img_mode };
-    my $create_img = \&{ $img_mode };
-    return &$create_img($engine, $task, $conf);
+    my ($self, $engine, $task, $img_conf) = @_;
+    return if defined $task->{test};
+    my $function   = '_' . $img_conf->{mode} . '_img';
+    croak "Image mode not defined!" unless $img_conf->{mode};
+    croak sprintf "Image mode '%s' doesn't exist!", $img_conf->{mode}
+            unless exists &{ $function };
+
+    $self->load($engine,$task,$img_conf) unless $self->loaded;
+    my $create_img = \&{ $function };
+    my $image_path = &$create_img($self, $engine, $task, $img_conf);
+    $img_conf->{altering} ? 
+        $self->_img_altering($engine, $image_path, $img_conf->{altering}) :
+        $image_path;
+}
+
+sub load
+{
+    my ($self, $engine, $task, $img_conf) = @_;
+    return if $img_conf->{mode} ne 'dir';
+    my $dirs = $img_conf->{path};
+
+    $lock->down;
+    my @img_list;
+    my @types = @{ $img_conf->{types} };
+    my $rule =  File::Find::Rule->new;
+    $rule->size("<=". $img_conf->{max_size}) if $img_conf->{max_size};
+    $rule->name(map { "*.$_" } @types);
+    $rule->maxdepth(1) unless $img_conf->{recursively};
+    @img_list = $rule->file()->in(@$dirs);
+
+    @img_list = grep { basename($_) =~ /$img_conf->{regexp}/ } @img_list if $img_conf->{regexp};
+    $engine->log->msg('DATA_LOADED', scalar(@img_list)." images loaded.");
+    if (@img_list)
+    {
+        $img_conf->{loaded} = 1;
+        $self->image_ist(\@img_list);
+    }
+    $lock->up;
 }
 
 #------------------------------------------------------------------------------------------------
 # Internal functions
 #------------------------------------------------------------------------------------------------
-sub captcha_img($$$)
+sub _captcha_img
 {
-    my (undef, $task, $data) = @_;
-    return if defined $task->{test};
-    return img_altering($task->{path_to_captcha}, $data->{altering})
-        if $data->{altering};
+    my ($self, undef, $task, $img_conf) = @_;
     return $task->{path_to_captcha};
 }
 
-sub rand_img($$$)
+sub _rand_img
 {
-    my (undef, $task, $data) = @_;
-    return if defined $task->{test};
+    my ($self, undef, $task, $img_conf) = @_;
     my ($fh, $filename) = tempfile(UNLINK => 1, SUFFIX => ".png");
-    my %opt = %{ $data->{args} } if $data->{args};
+    my %opt = %{ $img_conf->{args} } if $img_conf->{args};
     print $fh rand_image(%opt);
     close $fh;
     return $filename;
 }
 
-sub single_img($)
+sub _single_img
 {
-    my (undef, $task, $data) = @_;
-    return if defined $task->{test};
-    my $path_to_img = $data->{path};
-
-    return img_altering($path_to_img, $data->{altering})
-        if $data->{altering};
-    return $path_to_img;
+    my ($self, undef, $task, $img_conf) = @_;
+    return $img_conf->{path};
 }
 
-sub dir_img($)
+sub _dir_img
 {
-    my ($engine, $task, $data) = @_;
-    return if defined $task->{test};
-    my $dirs = $data->{path};
-    my $log  = $engine->{log};
+    my ($self, $engine, $task, $img_conf) = @_;
 
-    state @img_list;
-    $lock->down;
-    if (!@img_list or !$data->{loaded})
-    {
-        my @types = @{ $data->{types} };
-        my $rule =  File::Find::Rule->new;
-        $rule->size("<=". $data->{max_size}) if $data->{max_size};
-        $rule->name(map { "*.$_" } @types);
-        $rule->maxdepth(1) unless $data->{recursively};
-        @img_list = $rule->file()->in(@$dirs);
-       
-        @img_list = grep { basename($_) =~ /$data->{regexp}/ } @img_list if $data->{regexp};
-        $log->msg('DATA_LOADED', scalar(@img_list)." images loaded.");
-        return undef unless @img_list;
-        $data->{loaded} = 1;
-    }
-    $lock->up;
     state $i = 0;
 
     my $path_to_img;
-    if ($data->{order} eq 'random')
+    if ($img_conf->{order} eq 'random')
     {
-        $path_to_img = ${ rand_set(set => \@img_list) };
+        $path_to_img = ${ rand_set(set => $self->image_list) };
     }
     else
     {
-        $i = 0 if ($i >= scalar @img_list);
-        $path_to_img = $img_list[$i++];
+        # don't copy!
+        my @imgs = @{ $self->image_list };
+        $i = 0 if ($i >= scalar @imgs);
+        $path_to_img = $imgs[$i++];
     }
-    return img_altering($path_to_img, $data->{altering})
-        if $data->{altering};
     return $path_to_img;
 }
 
-sub img_altering($)
+sub _img_altering
 {
-    my ($full_name, $conf) = @_;
+    my ($self, $engine, $full_name, $img_conf) = @_;
     my ($name, $path, $suffix) = fileparse($full_name, 'png', 'jpeg', 'jpg', 'gif', 'bmp');
 
     unless ($suffix)
     {
-        warn "$full_name is not an image file. Skipping altering...";
+        $engine->log->msg('DATA_LOADED', " $full_name is not an image file. ");
         return $full_name;
     }
 
-    my $mode = $conf->{mode};
+    my $mode = $img_conf->{mode};
     my ($fh, $filename) = tempfile(UNLINK => 1, SUFFIX => ".$suffix");
     binmode $fh;
 
@@ -137,30 +147,30 @@ sub img_altering($)
         when ('randnums')
         {
             my $img    = readfile($full_name);
-            my $digits = join '', map {int rand 10} &$interpolate($conf->{number_nums});
+            my $digits = join '', map {int rand 10} &$interpolate($img_conf->{number_nums});
             print $fh $img;
             print $fh $digits;
-            print $fh $conf->{sign} if $conf->{sign};
+            print $fh $img_conf->{sign} if $img_conf->{sign};
             close $fh;
         }
         when ('randbytes')
         {
             my $img = readfile($full_name);
             print $fh $img;
-            print $fh reduce { $a . chr(int(rand() * 256)) } ('', 1..&$interpolate($conf->{number_bytes}));
-            print $fh $conf->{sign} if $conf->{sign};
+            print $fh reduce { $a . chr(int(rand() * 256)) } ('', 1..&$interpolate($img_conf->{number_bytes}));
+            print $fh $img_conf->{sign} if $img_conf->{sign};
             close $fh;
         }
         when ('convert')
         {
             close $fh;
-            my $convert = $conf->{convert} || which('convert');
-            my $args    = &$interpolate($conf->{args});
+            my $convert = $img_conf->{convert} || which('convert');
+            my $args    = &$interpolate($img_conf->{args});
             system("$convert $args");
-            if ($conf->{sign})
+            if ($img_conf->{sign})
             {
                 open my $fh1, '>>', $filename;
-                print $fh $conf->{sign};
+                print $fh $img_conf->{sign};
                 close $fh;
             }
         }
