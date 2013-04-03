@@ -33,20 +33,19 @@ use Coro::LWP;
 eval("use LWP::Protocol::socks;");
 warn "LWP::Protocol::socks not installed. Skipping..." if $@;
 
-sub get_yacaptcha($$)
+sub get_yacaptcha
 {
     my ($proxy, $key) = @_;
     my $img_url = 'http://i.captcha.yandex.net/image?key='. $key;
     my $ua = LWP::UserAgent->new(
     'agent' => 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US) AppleWebKit/A.B (KHTML, like Gecko) Chrome/X.Y.Z.W Safari/A.B.',
                                 );
-    $ua->proxy([qw/http https/] => $proxy) if $proxy !~ 'no_proxy';
-    $ua->cookie_jar( {} );
+    $ua->proxy([qw/http https/] => $proxy) if $proxy and $proxy !~ 'no_proxy';
     my $response = $ua->get($img_url);
     return $response;
 }
 
-sub get_recaptcha($$)
+sub get_recaptcha
 {
     my ($proxy, $key) = @_;
     my $key_url = 'https://www.google.com/recaptcha/api/challenge?k=';
@@ -65,8 +64,7 @@ sub get_recaptcha($$)
                                  'agent'           => 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US) AppleWebKit/A.B (KHTML, like Gecko) Chrome/X.Y.Z.W Safari/A.B.',
                                  'default_headers' => HTTP::Headers->new($google_headers),
                                 );
-    $ua->proxy([qw/http https/] => $proxy) if $proxy !~ 'no_proxy';
-    $ua->cookie_jar( {} );
+    $ua->proxy([qw/http https/] => $proxy) if $proxy and $proxy !~ 'no_proxy';
     my $response = $ua->get($key_url . $key);
 
     return undef
@@ -94,13 +92,13 @@ sub with_coro_timeout(&$$)
 }
 
 #------------------------------------------------------------------------------------------------
-# PROXY
+# GET PROXIES
 #------------------------------------------------------------------------------------------------
-use Coro::LWP;      #-- без подключения этого модуля начинается какая-то хуете с LWP::Simple::get()
+use Coro::LWP;      #-- LWP::Simple::get() doesn't work properly without this import
 use LWP::Simple     qw/get/;
 use List::MoreUtils qw/uniq/;
 
-sub get_proxylist($$)
+sub get_proxylist
 {
     my ($path, $default_proxy_type) = @_;
 
@@ -140,7 +138,7 @@ sub get_proxylist($$)
 #------------------------------------------------------------------------------------------------
 # RANDOM NUMBER
 #------------------------------------------------------------------------------------------------
-sub random($$)
+sub random
 {
     my ($min, $max) = @_;
     return $min + int(rand($max - $min + 1));
@@ -151,7 +149,7 @@ sub random($$)
 #------------------------------------------------------------------------------------------------
 use HTML::Entities;
 
-sub html2text($)
+sub html2text
 {
     my $html = shift;
     decode_entities($html);
@@ -167,11 +165,11 @@ sub html2text($)
 }
 
 #------------------------------------------------------------------------------------------------
-# CREATE A TEMP FILE AND RETURN ITS PATH
+# SAVE DATA TO THE TEMPORARY FILE
 #------------------------------------------------------------------------------------------------
 use File::Temp qw/tempfile/;
 
-sub save_file($$)
+sub save_file
 {
     my ($content, $type) = @_;
     my ($fh, $filename) = tempfile(UNLINK => 1, SUFFIX => ".$type");
@@ -183,7 +181,7 @@ sub save_file($$)
 #------------------------------------------------------------------------------------------------
 # FIND COOKIES IN THE HEADER STRING
 #------------------------------------------------------------------------------------------------
-sub parse_cookies($$)
+sub parse_cookies
 {
     my ($list_of_nedeed_cookies, $headers) = @_;
     my $cookies;
@@ -198,7 +196,7 @@ sub parse_cookies($$)
 #------------------------------------------------------------------------------------------------
 # MERGE HASHES
 #------------------------------------------------------------------------------------------------
-sub merge_hashes($$)
+sub merge_hashes
 {
     my ($content, $fields) = @_;
     my %gen_content;
@@ -211,7 +209,7 @@ sub merge_hashes($$)
 }
 
 #------------------------------------------------------------------------------------------------
-# REPLACE THE ARRAY REF WITH A RANDOM SCALAR
+# REPLACE THE ARRAY REFERENCES WITH A RANDOM SCALAR
 #------------------------------------------------------------------------------------------------
 use Data::Random qw/rand_set/;
 
@@ -234,14 +232,14 @@ sub unrandomize($)
 }
 
 #------------------------------------------------------------------------------------------------
-# MEASURE EXECUTION TIME OF CODE 
+# MEASURE EXECUTION TIME OF THE CODE
 #------------------------------------------------------------------------------------------------
 use Time::HiRes qw/time/;
 
 sub took(&$;$)
 {
     my ($code, $rtime, $point) = @_;
-    $point  = 3 unless $point;
+    $point ||= 3;
     $$rtime = time;
     my @ret = &$code;
     $$rtime = sprintf "%.${point}f", time - $$rtime;
@@ -251,7 +249,7 @@ sub took(&$;$)
 #------------------------------------------------------------------------------------------------
 # CROSS PLATFORM SHELL QUOTE
 #------------------------------------------------------------------------------------------------
-sub shellquote($)
+sub shellquote
 {
     my $str = shift;
     if ($^O =~ /linux/)
@@ -271,9 +269,9 @@ sub shellquote($)
 }
 
 #------------------------------------------------------------------------------------------------
-# JUST READ FILE
+# JUST READING FILE
 #------------------------------------------------------------------------------------------------
-sub readfile($;$)
+sub readfile
 {
     my ($path, $enc) = @_;
     open my $fh, '<'. ($enc ? ":$enc" : ''), $path;
@@ -284,9 +282,9 @@ sub readfile($;$)
 }
 
 #------------------------------------------------------------------------------------------------
-# PARTIAL FUNCTION APPLICATION
+# EMULATE PARTIAL FUNCTION APPLICATION
 #------------------------------------------------------------------------------------------------
-sub curry($@)
+sub curry
 {
     my ($code, @argv) = (shift, @_);
     return sub { &$code(@argv, @_) };
@@ -294,7 +292,7 @@ sub curry($@)
 
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub get_page($$$$)
+sub get_page
 {
     my ($engine, $get_task, $cnf, $page) = @_;
     my $log          = $engine->{log};
@@ -312,7 +310,7 @@ sub get_page($$$$)
     return %t;
 }
 
-sub get_thread($$$$)
+sub get_thread
 {
     my ($engine, $get_task, $cnf, $thread) = @_;
     my $log            = $engine->{log};
@@ -330,7 +328,7 @@ sub get_thread($$$$)
     return %r;
 }
 
-sub get_posts_bodies($$$)
+sub get_posts_bodies
 {
     my ($engine, $proxy, $cnf) =  @_;
     my $log    = $engine->{log};
@@ -398,7 +396,7 @@ sub get_posts_bodies($$$)
     return %replies;
 }
 
-sub get_posts_ids($$$)
+sub get_posts_ids
 {
     my ($engine, $proxy, $cnf) =  @_;
     my $log    = $engine->{log};

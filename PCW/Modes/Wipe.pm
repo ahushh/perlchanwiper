@@ -1,11 +1,41 @@
 package PCW::Modes::Wipe;
 
 use v5.12;
+use Moo;
 use utf8;
 use autodie;
-use Carp;
 
-use base 'PCW::Modes::Base';
+extends 'PCW::Modes::Base';
+
+has 'start_time' => (
+    is => 'rw',
+);
+
+has 'failed_proxy' => (
+    is => 'rw',
+);
+
+has 'stats' => (
+    is => 'rw',
+);
+
+has 'get_captcha_callback' => (
+    is => 'rw',
+);
+
+has 'prepare_data_callback' => (
+    is => 'rw',
+);
+
+has 'handle_captcha_callback' => (
+    is => 'rw',
+);
+
+has 'make_post_callback' => (
+    is => 'rw',
+);
+
+with 'PCW::Roles::Modes::Posting';
 
 #------------------------------------------------------------------------------------------------
 # Importing Coro packages
@@ -28,375 +58,219 @@ use File::Basename;
 #------------------------------------------------------------------------------------------------
 # Importing internal PCW packages
 #------------------------------------------------------------------------------------------------
-use PCW::Core::Utils   qw/with_coro_timeout/;
-use PCW::Core::Captcha qw/captcha_report_bad/;
-
+use PCW::Core::Utils qw/with_coro_timeout/;
 #------------------------------------------------------------------------------------------------
-# Local variables
-#------------------------------------------------------------------------------------------------
-my $watchers  = {};
-my $queue     = {};
-
-#------------------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------------------
-# sub new($%)
-# {
-# }
-#------------------------------------------------------------------------------------------------
-#-----------------------------------------  WIPE GET --------------------------------------------
-#------------------------------------------------------------------------------------------------
-#-- Coro callback
-my $cb_wipe_get = unblock_sub
+my $go_to_bed_callback = unblock_sub
 {
     my ($msg, $task, $self) = @_;
+    $self->coro_queue->{get_captcha}->put({ proxy => $task->{proxy} });
+};
 
-    # DESU
-    #my $new_task = {proxy => $task->{proxy} };
-    #$queue->{get}->put($new_task);
-    #return;
-    # DESU
-    
+my $get_captcha_callback = unblock_sub
+{
+    my ($msg, $task, $self) = @_;
     return unless @_;
-    my $log = $self->{log};
-
     given ($msg)
     {
         when ('success')
         {
-            $self->{failed_proxy}{ $task->{proxy} } = 0;
-            $task->{captcha_received_at} = Time::HiRes::time;
-            $queue->{prepare}->put($task);
+            $self->failed_proxy->{ $task->{proxy} } = 0;
+            $self->coro_queue->{handle_captcha}->put($task);
+        }
+        when ('banned')
+        {
+            $self->failed_proxy->{ $task->{proxy} }++;
         }
         default
         {
-            $self->{failed_proxy}{ $task->{proxy} }++;
-            my $errors = $self->{failed_proxy}{ $task->{proxy} };
-            my $limit  = $self->{conf}{get_attempts};
+            $self->failed_proxy->{ $task->{proxy} }++;
+            my $errors = $self->failed_proxy->{ $task->{proxy} } || 0;
+            my $limit  = $self->mode_config->{attempts}{get_captcha};
             if ($errors < $limit)
             {
-                my $new_task = {proxy => $task->{proxy} };
-                $log->pretty_proxy('GET_CB', 'red', $task->{proxy}, 'GET CB', "$msg: push into the GET queue ($errors/$limit)");
-                $queue->{get}->put($new_task);
+                $self->log->pretty_proxy('GET_CAPTCHA_CB', 'red', $task->{proxy}, 'GET CB', "$msg: do get_captcha again ($errors/$limit)");
+                $self->coro_queue->{get_captcha}->put({ proxy => $task->{proxy} });
             }
             else
             {
-                $log->pretty_proxy('GET_CB', 'red', $task->{proxy}, 'GET CB', "$msg: reached the error limit; threw away this proxy ($errors/$limit)");
+                $self->log->pretty_proxy('GET_CAPTCHA_CB', 'red', $task->{proxy}, 'GET CB', "$msg: reached the error limit ($errors/$limit)");
             }
         }
     }
 };
 
-sub wipe_get($$)
-{
-    my ($self, $task) = @_;
-    my $engine = $self->{engine};
-    my $log    = $self->{log};
-    async {
-        my $coro = $Coro::current;
-        $coro->desc('sleeping');
-        $coro->{task} = $task;
-
-        if ($task->{run_at})
-        {
-            my $now = Time::HiRes::time;
-            $log->pretty_proxy('MODE_SLEEP', 'green', $task->{proxy}, 'GET',
-                               sprintf("sleep %d...", $self->{conf}{flood_limit}));
-            Coro::Timer::sleep( int($task->{run_at} - $now) );
-        }
-
-        $coro->desc('get');
-        $coro->on_destroy($cb_wipe_get);
-
-        my $status = 
-        with_coro_timeout {
-            $engine->get($task, $self->{conf});
-        } $coro, $self->{conf}{get_timeout};
-        $coro->cancel($status, $task, $self);
-    };
-    cede;
-}
-
-#------------------------------------------------------------------------------------------------
-#--------------------------------------  WIPE PREPARE -------------------------------------------
-#------------------------------------------------------------------------------------------------
-#-- Coro callback
-my $cb_wipe_prepare = unblock_sub
+my $prepare_data_callback = unblock_sub
 {
     my ($msg, $task, $self) = @_;
-    return unless @_;
-    my $log = $self->{log};
+    $self->coro_queue->{make_post}->put($task);
+};
 
+my $handle_captcha_callback = unblock_sub
+{
+    my ($msg, $task, $self) = @_;
     given ($msg)
     {
         when ('success')
         {
-            $queue->{post}->put($task);
-            $self->{failed_proxy}{ $task->{proxy} } = 0;
+            $self->coro_queue->{prepare_data}->put($task);
         }
         when ('no_text')
         {
-            captcha_report_bad($self->{engine}{ocr}, $self->{log}, $self->{conf}{captcha_decode}, $task->{path_to_captcha});
-            if ($self->{conf}{wcap_retry} || $self->{conf}{loop})
-            {
-                my $new_task = {proxy => $task->{proxy} };
-                $queue->{get}->put($new_task);
-            }
+            $self->engine->ocr->report_bad($task->{path_to_captcha});
+            $self->coro_queue->{get_captcha}->put({ proxy => $task->{proxy} });
         }
-        when (/no_text|error/)
+        when ('error')
         {
-            $self->{failed_proxy}{ $task->{proxy} }++;
-            if ($self->{conf}{wcap_retry} || $self->{conf}{loop})
+            # if ($self->mode_config->{wrong_captcha_retry} || $self->mode_config->{loop})
+            if ($self->mode_config->{wrong_captcha_retry} || $self->mode_config->{loop})
             {
-                my $errors = $self->{failed_proxy}{ $task->{proxy} };
-                my $limit  = $self->{conf}{prepare_attempts};
+                my $errors = $self->failed_proxy->{ $task->{proxy} } || 0;
+                my $limit  = $self->mode_config->{attempts}{prepare_data};
                 if ($errors < $limit)
                 {
-                    my $new_task = {proxy => $task->{proxy} };
-                    $log->pretty_proxy('PREP_CB', 'red', $task->{proxy}, 'PREPARE CB', "$msg: push into the GET queue ($errors/$limit)");
-                    $queue->{get}->put($new_task);
+                    $self->log->pretty_proxy('PREPARE_DATA_CB', 'red', $task->{proxy}, 'PREPARE CB', "$msg: do handle_captcha again ($errors/$limit)");
+                    $self->coro_queue->{get_captcha}->put({ proxy => $task->{proxy} });
                 }
                 else
                 {
-                    $log->pretty_proxy('PREP_CB', 'red', $task->{proxy}, 'PREPARE CB',
-                                       "$msg: reached the error limit; threw away this proxy ($errors/$limit)");
+                   $self->log->pretty_proxy('PREPARE_DATA_CB', 'red', $task->{proxy}, 'PREPARE CB',
+                                            "$msg: reached the error limit ($errors/$limit)");
                 }
             }
         }
     }
 };
 
-sub wipe_prepare($$$)
-{
-    my ($self, $task) = @_;
-    my $log = $self->{log};
-    my $engine = $self->{engine};
-    async {
-        my $coro = $Coro::current;
-        $coro->desc('prepare');
-        if ($self->{conf}{captcha_lifetime} != 0 and
-            $task->{captcha_received_at} + $self->{conf}{captcha_lifetime} <= Time::HiRes::time)
-        {
-            $log->pretty_proxy('PREPARE', 'yellow', $task->{proxy}, 'PREPARE', "Captcha has expired. Retrying...");
-            $queue->{get}->put($task);
-            $coro->cancel();
-        }
-        $coro->{task} = $task;
-        $coro->on_destroy($cb_wipe_prepare);
-        my $status =
-        with_coro_timeout {
-            $engine->prepare($task, $self->{conf});
-        } $coro, $self->{conf}{prepare_timeout};
-        $coro->cancel($status, $task, $self);
-    };
-    cede;
-}
-
-#------------------------------------------------------------------------------------------------
-#----------------------------------------  WIPE POST  -------------------------------------------
-#------------------------------------------------------------------------------------------------
-#-- Coro callback
-my $cb_wipe_post = unblock_sub
+my $make_post_callback = unblock_sub
 {
     my ($msg, $task, $self) = @_;
     return unless @_;
-    my $log = $self->{log};
-
-    $self->{stats}{total}++;
-    my $new_task = {};
+    my $now = Time::HiRes::time;
+    $self->stats->{total_sent}++;
     given ($msg)
     {
         when ('success')
         {
-            $self->{stats}{OCR_accuracy} = sprintf("%d%", 100 * $self->{stats}{posted} / ($self->{stats}{wrong_captcha} + $self->{stats}{posted}))
-                if ($self->{stats}{wrong_captcha} + $self->{stats}{posted});
+            #-- Update stats
+            $self->stats->{posted}++;
+            $self->stats->{OCR_accuracy} = sprintf("%d%", 100 * $self->stats->{posted} / ($self->stats->{wrong_captcha} + $self->stats->{posted}))
+                if ($self->stats->{wrong_captcha} + $self->stats->{posted});
+
             #-- Move successfully recognized captcha into the specified dir
-            if ($self->{conf}{save_captcha} && $task->{path_to_captcha})
+            if ($self->mode_config->{save_captcha} && $task->{path_to_captcha})
             {
                 my ($name, $path, $suffix) = fileparse($task->{path_to_captcha}, 'png', 'jpeg', 'jpg', 'gif');
-                my $dest = File::Spec->catfile($self->{conf}{save_captcha}, $task->{captcha_text} ."--". time .".$suffix");
+                my $dest = File::Spec->catfile($self->mode_config->{save_captcha}, $task->{captcha_text} ."--". time .".$suffix");
                 move $task->{path_to_captcha}, $dest;
-                $log->msg('POST_CB', "move $task->{path_to_captcha} to $dest");
+                $self->log->msg('MAKE_POST_CB', "moved $task->{path_to_captcha} to $dest");
             }
-            $self->{stats}{posted}++;
-
-            if ($self->{conf}{flood_limit} && $self->{conf}{loop})
+            #-- Sleep
+            if ($self->mode_config->{loop})
             {
-                my $now = Time::HiRes::time;
-                $new_task->{run_at} = $now + $self->{conf}{flood_limit};
+                my $time;
+                if ($task->{content}{ $self->engine->chan_config->{fields}{post}{_thread} })
+                {
+                    $time = $self->engine->chan_config->{reply_delay};
+                }
+                else
+                {
+                    $time = $self->engine->chan_config->{new_thread_delay};
+                }
+                $self->coro_queue->{sleep}->put({ proxy => $task->{proxy}, run_at => $now+$time, time => $time });
             }
         }
         when ('wrong_captcha')
         {
-            $self->{stats}{wrong_captcha}++;
-            $self->{stats}{OCR_accuracy} = sprintf("%d%", 100 * $self->{stats}{posted} / ($self->{stats}{wrong_captcha} + $self->{stats}{posted}))
-                if ($self->{stats}{wrong_captcha} + $self->{stats}{posted});
-            captcha_report_bad($self->{engine}{ocr}, $self->{log}, $self->{conf}{captcha_decode}, $task->{path_to_captcha});
-            if ($self->{conf}{wcap_retry})
-            {
-                $log->pretty_proxy('POST_CB', 'yellow', $task->{proxy}, 'POST CB', "$msg: bad captcha, push into the GET queue");
-                $new_task->{proxy} = $task->{proxy};
-                $queue->{get}->put($new_task);
-                return;
-            }
-        }
-        when ('critical_error')
-        {
-            $log->msg("ERROR", "WTF?! A critical chan error has occured!", '', 'red');
-            $log->pretty_proxy('POST_CB', 'red', $task->{proxy}, 'POST CB', "$msg: push into the POST queue");
-            $queue->{get}->put($new_task);
-            return;
-        }
-        when ('flood')
-        {
-            $self->{stats}{error}++;
-            if ($self->{conf}{flood_limit} && $self->{conf}{loop})
-            {
-                my $now = Time::HiRes::time;
-                $new_task->{run_at} = $now + $self->{conf}{flood_limit};
-            }
-        }
-        default
-        {
-            $self->{stats}{error}++;
-        }
-    }
+            $self->engine->ocr->report_bad($task->{path_to_captcha});
+            $self->stats->{wrong_captcha}++;
+            $self->stats->{OCR_accuracy} = sprintf("%d%", 100 * $self->stats->{posted} / ($self->stats->{wrong_captcha} + $self->stats->{posted}))
+                if ($self->stats->{wrong_captcha} + $self->stats->{posted});
 
-    if ($msg =~ /net_error|timeout|unknown/)
-    {
-        $self->{failed_proxy}{ $task->{proxy} }++;
-        my $errors = $self->{failed_proxy}{ $task->{proxy} };
-        my $limit  = $self->{conf}{post_attempts};
-        if ($errors < $limit)
-        {
-            if ($self->{conf}{on_spot_retrying})
+            if ($self->mode_config->{wrong_captcha_retry} || $self->mode_config->{loop})
             {
-                $log->pretty_proxy('POST_CB', 'red', $task->{proxy}, 'POST CB', "$msg: try to send a post again ($errors/$limit)");
-                #-- TODO: игнорируется max_pst_thrs, а не должно
-                Coro::Timer::sleep 1;
-                $self->wipe_post($task);
+                $self->log->pretty_proxy('MAKE_POST_CB', 'yellow', $task->{proxy}, 'POST CB', "$msg: request captcha again");
+                $self->coro_queue->{get_captcha}->put({ proxy => $task->{proxy} });
+            }
+        }
+        when ('too_fast')
+        {
+            #-- Sleep
+            if ($self->mode_config->{loop})
+            {
+                my $time;
+                if ($task->{content}{ $self->engine->chan_config->{fields}{post}{_thread} })
+                {
+                    $time = $self->engine->chan_config->{reply_delay};
+                }
+                else
+                {
+                    $time = $self->engine->chan_config->{new_thread_delay};
+                }
+                $self->coro_queue->{sleep}->put({ proxy => $task->{proxy}, run_at => $now+$time, time => $time });
+            }
+        }
+        when ('same_message')
+        {
+        }
+        when (/net_error|timeout|unknown/)
+        {
+            $self->stats->{error}++;
+            $self->failed_proxy->{ $task->{proxy} }++;
+            my $errors = $self->failed_proxy->{ $task->{proxy} } || 0;
+            my $limit  = $self->mode_config->{attempts}{make_post};
+            if ($errors < $limit)
+            {
+                $self->log->pretty_proxy('MAKE_POST_CB', 'red', $task->{proxy}, 'POST CB', "$msg: do make_post again ($errors/$limit)");
+                $self->coro_queue->{make_post}->put($task);
                 return;
             }
             else
             {
-                $queue->{post}->put($task);
-                return;
+                $self->log->pretty_proxy('MAKE_POST_CB', 'red', $task->{proxy}, 'POST CB', "$msg: reached the error limit ($errors/$limit)");
             }
+
         }
-        else
+        when ('banned')
         {
-            $log->pretty_proxy('POST_CB', 'red', $task->{proxy}, 'POST CB', "$msg: reached the error limit; threw away this proxy ($errors/$limit)");
+        }
+        default
+        {
+            $self->log->pretty_proxy('MAKE_POST_CB', 'red', $task->{proxy}, 'POST CB', "$msg: something bad has occured");
         }
     }
-    else
-    {
-        $self->{failed_proxy}{ $task->{proxy} } = 0;
-        if ($self->{conf}{loop})
-        {
-            $new_task->{proxy} = $task->{proxy};
-            $queue->{get}->put($new_task);
-        }
-    }
+
     #-- Delete temporary files
     unlink($task->{path_to_captcha})
-        if !$self->{conf}{save_captcha} && $task->{path_to_captcha} && -e $task->{path_to_captcha};
+        if $task->{path_to_captcha} && -e $task->{path_to_captcha};
     unlink($task->{file_path})
-        if $self->{conf}{img_data}{altering} && $task->{file_path} && -e $task->{file_path};
+        if $self->engine->common_config->{image}{altering} && $task->{file_path} && -e $task->{file_path};
 };
 
-sub wipe_post($$)
+sub BUILDARGS
 {
-    my ($self, $task) = @_;
-    my $log = $self->{log};
-    my $engine = $self->{engine};
-    async {
-        my $coro = $Coro::current;
-        $coro->desc('post');
-        if ($self->{conf}{captcha_lifetime} != 0 and
-            $task->{captcha_received_at} + $self->{conf}{captcha_lifetime} <= Time::HiRes::time)
-        {
-            $log->pretty_proxy('POST', 'yellow', $task->{proxy}, 'POST', "Captcha has expired. Retrying...");
-            $queue->{get}->put($task);
-            $coro->cancel();
-        }
-        $coro->{task} = $task;
-        $coro->on_destroy($cb_wipe_post);
-
-        my $status =
-        with_coro_timeout {
-            $engine->post($task, $self->{conf});
-        } $coro, $self->{conf}{post_timeout};
-        $coro->cancel($status, $task, $self);
-    };
-    cede;
+    my ($class, @args) = @_;
+    return {
+            @args,
+            get_captcha_callback    => $get_captcha_callback,
+            prepare_data_callback   => $prepare_data_callback,
+            handle_captcha_callback => $handle_captcha_callback,
+            make_post_callback      => $make_post_callback,
+            go_to_bed_callback      => $go_to_bed_callback,
+           };
 }
 
-#------------------------------------------------------------------------------------------------
-# Web UI
-#------------------------------------------------------------------------------------------------
-sub send_posts($)
-{
-    my $self  = shift;
-    my $log   = $self->{log};
-    unless ($self->{is_running})
-    {
-        $log->msg('ERROR', "Not running!", 'ERROR', 'red');
-        return;
-    }
-    my @post_coro = grep { $_->desc eq 'post'    } Coro::State::list;
-    my $thrs_available = -1;
-    if ($self->{conf}{max_pst_thrs})
-    {
-        my $n = $self->{conf}{max_pst_thrs} - scalar @post_coro;
-        $thrs_available = $n > 0 ? $n : 0;
-    }
-    $log->msg('WIPE_STRIKE', "#~~~ ". scalar($queue->{post}->size) ." ready rounds. Strike! ~~~#");
-    $self->wipe_post($queue->{post}->get)
-        while $queue->{post}->size && $thrs_available--;
-}
-
-sub start_posing($)
-{
-}
-
-sub stop_posing($)
-{
-}
 #------------------------------------------------------------------------------------------------
 #---------------------------------------  MAIN WIPE  --------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub init($)
+sub start
 {
     my $self = shift;
-    my $log  = $self->{log};
-    $log->msg('MODE_STATE', "Initialization... ");
-    $self->_base_init();
-    $self->_init_base_watchers();
-    $self->_run_custom_watchers($watchers, $queue);
-    $self->_init_custom_watchers($watchers, $queue);
-}
-
-sub re_init_all_watchers($)
-{
-    my $self = shift;
-    $_->cancel for (grep {$_->desc =~ /custom-watcher/ } Coro::State::list);
-    for ( keys(%$watchers) )
-    {
-        $watchers->{$_} = undef;
-    }
-    $self->_init_base_watchers();
-    $self->_run_custom_watchers($watchers, $queue);
-    $self->_init_custom_watchers($watchers, $queue);
-}
-
-sub start($)
-{
-    my $self = shift;
-    my $log  = $self->{log};
-    return unless $self->{is_running};
-    $log->msg('MODE_STATE', "Starting wipe mode...");
+    return unless $self->is_running;
+    $self->log->msg('MODE_STATE', "Starting wipe mode...");
     async {
-        $queue->{get}->put({ proxy => $_ }) for (@{ $self->{proxies} });
-        while ($self->{is_running})
+        $Coro::current->desc('loop');
+        $self->coro_queue->{get_captcha}->put({ proxy => $_ }) for (@{ $self->proxies });
+        while ($self->is_running)
         {
             Coro::Timer::sleep 1;
         }
@@ -404,200 +278,135 @@ sub start($)
     cede;
 }
 
-sub stop($)
+sub _base_init
 {
     my $self = shift;
-    my $log  = $self->{log};
-    $log->msg('MODE_STATE', "Stopping wipe mode...");
-    $_->cancel for (grep {$_->desc =~ /custom-watcher|get|prepare|post|sleeping/ } Coro::State::list);
-    for ( (keys(%$watchers), keys(%$queue)) )
+    $self->is_running(1);
+    $self->start_time(time);
+    $self->failed_proxy({});
+    $self->stats({error => 0, posted => 0, wrong_captcha => 0, total_sent => 0, speed => 0, OCR_accuracy => 0 });
+    for ((qw/sleep get_captcha prepare_data handle_captcha make_post/))
     {
-        $watchers->{$_} = undef;
-        $queue->{$_}    = undef;
+        $self->coro_queue->{$_} = Coro::Channel->new();
     }
-    $self->{is_running} = 0;
 }
 
-sub _base_init($)
+sub _init_base_watchers
 {
     my $self = shift;
-    $self->{is_running}   = 1;
-    $self->{start_time}   = time;
-    $self->{failed_proxy} = {};
-    $self->{stats}    = {error => 0, posted => 0, wrong_captcha => 0, total => 0, speed => '', OCR_accuracy => '' };
-    $queue->{get}     = Coro::Channel->new();
-    $queue->{prepare} = Coro::Channel->new();
-    $queue->{post}    = Coro::Channel->new();
-}
-
-sub _init_base_watchers($)
-{
-    my $self = shift;
-    my $log  = $self->{log};
     #-- Timeout watcher
-    $watchers->{timeout} =
-        AnyEvent->timer(after => 0.5, interval => 1, cb =>
+    $self->watchers->{timeout} =
+        AnyEvent->timer(after => 0, interval => 5, cb =>
                         sub
                         {
-                            my @get_coro      = grep { $_->desc eq 'get'     } Coro::State::list;
-                            my @prepare_coro  = grep { $_->desc eq 'prepare' } Coro::State::list;
-                            my @post_coro     = grep { $_->desc eq 'post'    } Coro::State::list;
+                            my @sleep_coros          = grep { $_->desc eq 'sleep'     } Coro::State::list;
+                            my @get_captcha_coros    = grep { $_->desc eq 'get_captcha'     } Coro::State::list;
+                            my @prepare_data_coros   = grep { $_->desc eq 'prepare_data' } Coro::State::list;
+                            my @make_post_coros      = grep { $_->desc eq 'make_post'    } Coro::State::list;
+                            my @handle_captcha_coros = grep { $_->desc eq 'handle_captcha'} Coro::State::list;
 
-                            for my $coro (@post_coro, @prepare_coro, @get_coro)
+                            $self->log->msg('ERROR', sprintf "run: %d sleep, %d get captcha, %d handle captcha, %d make post, %d prepare data coros.",
+                                            scalar @sleep_coros,
+                                            scalar @get_captcha_coros,
+                                            scalar @handle_captcha_coros,
+                                            scalar @make_post_coros,
+                                            scalar @prepare_data_coros);
+                            $self->log->msg('ERROR', sprintf "queue: %d sleep, %d get captcha, %d handle captcha, %d make post, %d prepare data coros.",
+                                            $self->coro_queue->{sleep}->size,
+                                            $self->coro_queue->{get_captcha}->size,
+                                            $self->coro_queue->{handle_captcha}->size,
+                                            $self->coro_queue->{make_post}->size,
+                                            $self->coro_queue->{prepare_data}->size);
+
+                            for my $coro (Coro::State::list)
                             {
                                 my $now = Time::HiRes::time;
                                 if ($coro->{timeout_at} && $now > $coro->{timeout_at})
                                 {
-                                    $log->pretty_proxy('MODE_TIMEOUT', 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
-                                    $coro->cancel('timeout', $coro->{task}, $self);
+                                   $self->log->pretty_proxy('MODE_TIMEOUT', 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
+                                   $coro->cancel();#'timeout', $coro->{task}, $self);
                                 }
                             }
                         }
                        );
-
-    #-- Speed measuring
-    $watchers->{speed} =
-        AnyEvent->timer(after => 5, interval => 5, cb =>
+    #-- Sleep watcher
+    $self->watchers->{sleep} =
+        AnyEvent->timer(after => 0.5, interval => 1, cb =>
                         sub
                         {
-                            my ($posted, $stime, $u) = ($self->{stats}{posted}, $self->{start_time}, $self->{conf}{speed});
-                            my $d;
-                            $d = 1    if $u eq 'second';
-                            $d = 60   if $u eq 'minute';
-                            $d = 3600 if $u eq 'hour';
-                            $self->{stats}{speed} = sprintf "%.3f posts per %s", ($posted / ((time - $stime)/$d)), $u;
+                            $self->go_to_bed($self->coro_queue->{sleep}->get)
+                                while $self->coro_queue->{sleep}->size;
                         }
                        );
 
-    #-- Get watcher
-    $watchers->{get} =
+
+    #-- Get captcha watcher
+    $self->watchers->{get_captcha} =
         AnyEvent->timer(after => 0.5, interval => 2, cb =>
                         sub
                         {
-                            my @post_coro     = grep { $_->desc eq 'post'    } Coro::State::list;
-                            #-- Масс постинг включен и во время него капчу скачивать не надо
-                            if ($self->{conf}{send}{mode} > 0 and @post_coro and
-                                $self->{conf}{send}{wait_for_all} == 2)
-                            {
-                                return;
-                            }
-                            my @get_coro       = grep { $_->desc eq 'get'     } Coro::State::list;
-                            my $thrs_available = $self->{conf}{max_cap_thrs} - scalar @get_coro;
-                            $self->wipe_get($queue->{get}->get)
-                                while $queue->{get}->size && $thrs_available--;
+                            my @get_captcha_coros = grep { $_->desc eq 'get_captcha' } Coro::State::list;
+                            my $thrs_available = $self->mode_config->{max_threads}{get_captcha} - scalar @get_captcha_coros;
+                            $thrs_available    = 0 if $thrs_available < 0;
+                            $self->get_captcha($self->coro_queue->{get_captcha}->get)
+                                while $self->coro_queue->{get_captcha}->size && $thrs_available--;
                         }
                        );
 
-    #-- Prepare watcher
-    $watchers->{prepare} =
+    #-- Prepare data watcher
+    $self->watchers->{prepare_data} =
         AnyEvent->timer(after => 2, interval => 2, cb =>
                         sub
                         {
-                            my @post_coro     = grep { $_->desc eq 'post'    } Coro::State::list;
-                            if ($self->{conf}{send}{mode} > 0 and @post_coro and
-                                $self->{conf}{send}{wait_for_all} >= 1)
-                            {
-                                return;
-                            }
-                            my @prepare_coro   = grep { $_->desc eq 'prepare' } Coro::State::list;
-                            my $thrs_available = -1;
-                            #-- Max post threads limit
-                            if ($self->{conf}{max_prp_thrs})
-                            {
-                                my $n = $self->{conf}{max_prp_thrs} - scalar @prepare_coro;
-                                $thrs_available = $n > 0 ? $n : 0;
-                            }
-
-                            $self->wipe_prepare($queue->{prepare}->get)
-                                while $queue->{prepare}->size && $thrs_available--;
+                            my @prepare_data_coros = grep { $_->desc eq 'prepare_data' } Coro::State::list;
+                            my $thrs_available = $self->mode_config->{max_threads}{prepare_data} - scalar @prepare_data_coros;
+                            $thrs_available    = 0 if $thrs_available < 0;
+                            $self->prepare_data($self->coro_queue->{prepare_data}->get)
+                                while $self->coro_queue->{prepare_data}->size && $thrs_available--;
                         }
                        );
 
-    #-- Post watcher
-    $watchers->{post} =
+    #-- Handle captcha watcher
+    $self->watchers->{handle_captcha} =
+        AnyEvent->timer(after => 2, interval => 2, cb =>
+                        sub
+                        {
+                            my @handle_captcha_coros = grep { $_->desc eq 'handle_captcha' } Coro::State::list;
+                            my $thrs_available = $self->mode_config->{max_threads}{handle_captcha} - scalar @handle_captcha_coros;
+                            $thrs_available    = 0 if $thrs_available < 0;
+                            $self->handle_captcha($self->coro_queue->{handle_captcha}->get)
+                                while $self->coro_queue->{handle_captcha}->size && $thrs_available--;
+                        }
+                       );
+
+    #-- Make post watcher
+    $self->watchers->{make_post} =
         AnyEvent->timer(after => 2, interval => 1, cb =>
                         sub
                         {
-                            my @get_coro      = grep { $_->desc eq 'get'     } Coro::State::list;
-                            my @prepare_coro  = grep { $_->desc eq 'prepare' } Coro::State::list;
-                            my @post_coro     = grep { $_->desc eq 'post'    } Coro::State::list;
-
-                            my $thrs_available = -1;
-                            #-- Max post threads limit
-                            if ($self->{conf}{max_pst_thrs})
+                            my @make_post_coros = grep { $_->desc eq 'make_post' } Coro::State::list;
+                            my $thrs_available = $self->mode_config->{max_threads}{make_post} - scalar @make_post_coros;
+                            $thrs_available    = 0 if $thrs_available < 0;
+                            given ($self->mode_config->{send}{mode})
                             {
-                                my $n = $self->{conf}{max_pst_thrs} - scalar @post_coro;
-                                $thrs_available = $n > 0 ? $n : 0;
-                            }
-                            if ($self->{conf}{send}{mode} == 1 or $self->{conf}{send}{mode} == 3)
-                            {
-                                if (
-                                    !@get_coro     && $queue->{get}->size     == 0 &&
-                                    !@prepare_coro && $queue->{prepare}->size == 0 &&
-                                    !@post_coro    && $queue->{post}->size
-                                   )
+                                when ('accumulate')
                                 {
-                                    $log->msg('WIPE_STRIKE', "#~~~ ". scalar($queue->{post}->size) ." ready rounds. Strike! ~~~#");
-                                    $self->wipe_post($queue->{post}->get)
-                                        while $queue->{post}->size && $thrs_available--;
-                                    $self->{conf}{send}{mode} = 0 if $self->{conf}{send}{mode} == 3;
+                                    if (scalar $self->coro_queue->{make_post}->size >= $self->mode_config->{send}{accumulate}{number})
+                                    {
+                                        $self->log->msg('WIPE_STRIKE', "#~~~ ".
+                                                                       scalar($self->coro_queue->{make_post}->size).
+                                                                       " ready rounds. FIRE FIRE FIRE!!! ~~~#", '', 'red');
+                                        $self->make_post($self->coro_queue->{make_post}->get)
+                                            while $self->coro_queue->{make_post}->size && $thrs_available--;
+                                    }
                                 }
-                            }
-                            elsif ($self->{conf}{send}{mode} == 2 or $self->{conf}{send}{mode} == 4)
-                            {
-                                if (!@post_coro && $queue->{post}->size >= $self->{conf}{send}{caps_accum})
+                                default
                                 {
-                                    $log->msg('WIPE_STRIKE', "#~~~ ". scalar($queue->{post}->size) ." ready rounds. Strike! ~~~#");
-                                    $self->wipe_post($queue->{post}->get)
-                                        while $queue->{post}->size && $thrs_available--;
-                                    $self->{conf}{send}{mode} = 0 if $self->{conf}{send}{mode} == 4;
+                                    $self->make_post($self->coro_queue->{make_post}->get)
+                                        while $self->coro_queue->{make_post}->size && $thrs_available--;
                                 }
-                            }
-                            elsif ($self->{conf}{send}{mode} == 5)
-                            {
-                                #-- ничего не делаем - ждем ручного подтверждения
-                                undef;
-                            }
-                            else
-                            {
-                                $self->wipe_post($queue->{post}->get)
-                                    while $queue->{post}->size && $thrs_available--;
                             }
                         }
                        );
-
-    #-- post limit
-    $watchers->{post_limit} =
-        AnyEvent->timer(after => 5, interval => 5, cb => sub
-                        {
-                            if ($self->{stats}{posted} >= $self->{conf}{post_limit})
-                            {
-                                $self->stop;
-                            }
-                        },
-                       ) if $self->{conf}{post_limit};
-    #-- Exit watchers
-    #-- BUG: Если ставить слишком малый interval, при одной прокси будет выходить когда не надо
-    $watchers->{exit} =
-        AnyEvent->timer(after => 5, interval => 5, cb =>
-                        sub
-                        {
-                            my @get_coro      = grep { $_->desc eq 'get'     } Coro::State::list;
-                            my @prepare_coro  = grep { $_->desc eq 'prepare' } Coro::State::list;
-                            my @post_coro     = grep { $_->desc eq 'post'    } Coro::State::list;
-                            my @sleep_coro    = grep { $_->desc eq 'sleeping'} Coro::State::list;
-
-                            if (!(scalar @get_coro)      &&
-                                !(scalar @post_coro)     &&
-                                !(scalar @prepare_coro)  &&
-                                !(scalar @sleep_coro)    &&
-                                !($queue->{get}->size)   &&
-                                !($queue->{post}->size)  &&
-                                !($queue->{prepare}->size))
-                            {
-                                $self->stop;
-                            }
-                        }
-                       ) if $self->{conf}{autoexit};
 }
 1;

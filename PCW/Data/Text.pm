@@ -2,10 +2,24 @@ package PCW::Data::Text;
 
 use v5.12;
 use utf8;
+use Carp qw/croak/;
+use Moo;
 use autodie;
 
-use Exporter 'import';
-our @EXPORT_OK = qw/make_text/;
+has 'text_list' => (
+    is      => 'rw',
+    default => sub { [] },
+);
+
+has 'post_list' => (
+    is      => 'rw',
+    default => sub { {} },
+);
+
+has 'loaded' => (
+    is      => 'rw',
+    default => sub { 0 },
+);
 
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
@@ -14,13 +28,47 @@ use Data::Random     qw/rand_set/;
 use PCW::Core::Utils qw/random took readfile get_posts_bodies/;
 
 use Coro;
-my $lock = Coro::Semaphore->new;
+our $lock = Coro::Semaphore->new;
 #------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------
-sub interpolate($$)
+sub fetch
+{
+    my ($self, $engine, $task, $msg_conf) = @_;
+    return if defined $task->{test};
+    $self->load($engine,$task,$msg_conf) unless $self->loaded;
+    my $text = $msg_conf->{text};
+
+    $text =~ s/#delirium#/delirium_msg($self, $engine, $task, $msg_conf->{delirium});/eg;
+    $text =~ s/#delimeter#/delimeter_msg($self, $engine, $task, $msg_conf->{delimeter});/eg;
+    $text =~ s/#post#/post_msg($self, $engine, $task, $msg_conf->{post});/eg;
+
+    my $after = $msg_conf->{after} || sub { $_[0] };
+    $text = &$after(_interpolate($text, $task));
+    $msg_conf->{maxlen} ? substr($text, 0, $msg_conf->{maxlen}) : $text;
+}
+
+sub load
+{
+    my ($self, $engine, $task, $msg_conf) = @_;
+    $lock->down;
+    if ($msg_conf->{text} =~ /delimeter/)
+    {
+        my $delimeter = $msg_conf->{delimeter}{delimeter} || '----';
+        $self->post_list = [ split /$delimeter/, readfile($msg_conf->{path}, 'utf8') ];
+        $engine->log->msg('DATA_LOADED', "loaded with ". scalar(@{$self->text_list}) ." pieces of text.");
+        $msg_conf->{loaded} = 1;
+    }
+    elsif ($msg_conf->{text} =~ /post/)
+    {
+        warn "Not implemented yet";
+    }
+    $lock->up;
+}
+
+#------------------------------------------------------------------------------------------------
+sub _interpolate
 {
     my ($text, $task) = @_;
-
     $text =~ s/%captcha%/$task->{captcha_text};/eg;
     $text =~ s/%proxy%/$task->{proxy};/eg;
     $text =~ s/%unixtime%/time;/eg;
@@ -32,122 +80,40 @@ sub interpolate($$)
     return $text;
 }
 
-sub make_text($$$)
-{
-    my ($engine, $task, $conf) = @_;
-    my $text = $conf->{text};
-
-    $text =~ s/#delirium#/delirium_msg($engine, $task, $conf->{delirium});/eg;
-    $text =~ s/#boundary#/boundary_msg($engine, $task, $conf->{boundary});/eg;
-    $text =~ s/#string#/string_msg($engine, $task, $conf->{string});/eg;
-    $text =~ s/#post#/post_msg($engine, $task, $conf->{post});/eg;
-    $text = substr($text, 0, $conf->{maxlen}) if $conf->{maxlen};
-
-    my $after = $conf->{after} || sub { $_[0] };
-    return &$after(interpolate($text, $task));
-}
-
 #------------------------------------------------------------------------------------------------
 # Internal functions
 #------------------------------------------------------------------------------------------------
-sub post_msg($$$)
+sub post_msg
 {
-    my ($engine, $task, $data) = @_;
-    return if defined $task->{test};
-    my $log = $engine->{log};
-    state %posts;
-    state $time = time;
-
-    my $config = $data->{posts} || $task->{post_cnf}{thread};
-    my $board  = $data->{board} || $task->{post_cnf}{board};
-    $lock->down;
-    if (!%posts or ($data->{update} && (time() - $time) >= $data->{update}))
-    {
-        my $get_task = { proxy  => ($data->{proxy} || $task->{proxy}) };
-        my $cnf      = { thread => $config, board => $board };
-        my $c = async {
-            my ($html, $status, $took);
-            %posts = get_posts_bodies($engine, 'no_proxy', $data->{posts});
-        };
-        $c->join();
-    }
-    $lock->up;
-    my $take = $data->{take};
-    my $c = async { &$take($engine, $task, $data, \%posts) };
-    return $c->join();
+    my ($self, $engine, $task, $msg_conf) = @_;
+    # my $take = $msg_conf->{take};
+    # my $c = async { &$take($engine, $task, $msg_conf, \%posts) };
+    # return $c->join();
+    warn "Not implemented yet";
 }
 
-sub boundary_msg($$$)
+sub delimeter_msg
 {
-    my ($engine, $task, $data) = @_;
-    return if defined $task->{test};
-    my $log      = $engine->{log};
-    my $boundary = $data->{boundary} || '----';
-    state @text;
+    my ($self, $engine, $task, $delimeter_conf) = @_;
     state $i = 0;
 
-    $lock->down;
-    if (!@text or !$data->{loaded})
-    {
-        @text = split /$boundary/, readfile($data->{path}, 'utf8');
-        $log->msg('DATA_LOADED', "loaded with ". scalar(@text) ." pieces of text.");
-        $data->{loaded} = 1;
-    }
-    $lock->up;
-
     my $msg;
-    if ($data->{order} eq 'random')
+    if ($delimeter_conf->{order} eq 'random')
     {
-        $msg = ${ rand_set(set => \@text) };
+        $msg = ${ rand_set(set => $self->text_list ) };
     }
     else
     {
-        $i = 0 if ($i >= scalar @text);
-        $msg = $text[$i++];
+        my @texts = @{ $self->text_list };
+        $i = 0 if ($i >= scalar @texts);
+        $msg = $texts[$i++];
     }
-    $msg = substr($msg, 0, $data->{maxlen}) if $data->{maxlen};
     return $msg;
 }
 
-sub string_msg($$$)
+sub delirium_msg
 {
-    my ($engine, $task, $data) = @_;
-    return if defined $task->{test};
-    my $log      = $engine->{log};
-    state @text;
-    state $i = 0;
-    $i = 0 if ($i >= scalar @text);
-
-    $lock->down;
-    if (!@text or !$data->{loaded})
-    {
-        @text = readfile($data->{path}, 'utf8');
-        $log->msg('DATA_LOADED', "loaded with ". scalar(@text) ." strings of text.");
-        $data->{loaded} = 1;
-    }
-    $lock->up;
-
-    my $num_str = $data->{num_str};
-
-    my $msg;
-    if ($data->{order} eq 'normal')
-    {
-        $i = 0 if ($i >= scalar @text);
-        $msg .= $text[$i++] while $num_str--;
-    }
-    else
-    {
-        my $j = random(0, scalar(@text) - $num_str);
-        $msg .= $text[$j++] while $num_str--;
-    }
-    $msg = substr($msg, 0, $data->{maxlen}) if $data->{maxlen};
-    return $msg;
-}
-
-sub delirium_msg($$$)
-{
-    my (undef, $task, $cnf) = @_;
-    return if defined $task->{test};
+    my ($self, undef, $task, $cnf) = @_;
     my $min_len_w = $cnf->{min_len_w} || 3;
     my $max_len_w = $cnf->{max_len_w} || 7;
     my $min_w     = $cnf->{min_w}     || 1;
@@ -203,7 +169,6 @@ sub delirium_msg($$$)
         my @dict = @{ $m{$_} };
         while ($template =~ s/$_/$dict[rand(scalar @dict)]/) {};
     }
-    $template = substr($template, 0, $cnf->{maxlen}) if $cnf->{maxlen};
     return $template;
 }
 

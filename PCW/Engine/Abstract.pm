@@ -1,223 +1,203 @@
 package PCW::Engine::Abstract;
 
 #------------------------------------------------------------------------------------------------
-# Абстрактный класс, предоставляющий интерфейс для модов (mode)
-#------------------------------------------------------------------------------------------------
 use v5.12;
+use Moo;
 use utf8;
-use Carp;
+use Carp qw/croak/;
 
 #------------------------------------------------------------------------------------------------
-# Constructor
-#------------------------------------------------------------------------------------------------
-# $classname, %config -> classname object
-# %config:
-#  (list of strings) => agents
-#  (integer)         => loglevel
-#  (boolean)         => verbose
-sub new($%)
-{
-    Carp::croak("This method is abstract and cannot be called directly.");
-}
+use POSIX qw/isdigit/;
+
+has 'agents' => (
+    is      => 'rw',
+    default => sub { ['Mozilla/5.0 (Windows; I; Windows NT 5.1; ru; rv:1.9.2.13) Gecko/20100101 Firefox/4.0'] },
+);
+
+has 'log' => (
+    is       => 'rw',
+    required => 1,
+);
+
+has 'verbose' => (
+    is   => 'rw',
+    required => 1,
+);
+
+has 'chan_config' => (
+    is   => 'rw',
+    required => 1,
+);
+
+has 'common_config' => (
+    is   => 'rw',
+    required => 1,
+);
+
+has 'ocr' => (
+    is   => 'rw',
+);
+
+has 'data' => (
+    is => 'rw',
+);
 
 #------------------------------------------------------------------------------------------------
 #----------------------------------  PRIVATE METHODS  -------------------------------------------
 #------------------------------------------------------------------------------------------------
+
 #------------------------------------------------------------------------------------------------
 # URL
 #------------------------------------------------------------------------------------------------
-# $self, %args -> (string)
-sub _get_post_url($%)
+sub _get_url_post
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
-# $self, %args -> (string)
-sub _get_delete_url($%)
+sub _get_url_delete
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
-# $self, %args -> (string)
-sub _get_captcha_url($%)
+sub _get_url_captcha
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
-# $self, %args -> (string)
-sub _get_page_url($%)
+sub _get_url_page
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
-# $self, %args -> (string)
-sub _get_thread_url($%)
+sub _get_url_thread
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
 #------------------------------------------------------------------------------------------------
 # HTML
 #------------------------------------------------------------------------------------------------
-# $self, $html -> %posts
-# %posts:
-#  (integer) => (string)
-sub get_all_replies($$)
+sub get_replies
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
-# $self, $html -> %posts
-# %posts:
-#  (integer) => (string)
-sub get_all_threads($$)
+sub get_threads
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
-# $self, %cnf -> (boolean)
-# %cnf:
-#  (integer) => thread
-#  (integer) => page
-#  (string)  => proxy
-sub is_thread_on_page($%)
+sub is_thread_on_page
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
 #------------------------------------------------------------------------------------------------
 # headers
 #------------------------------------------------------------------------------------------------
-sub _get_post_headers($%)
+sub _get_headers_post
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
-sub _get_captcha_headers($%)
+sub _get_headers_captcha
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
-sub _get_delete_headers($%)
+sub _get_headers_delete
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
-sub _get_default_headers($%)
+sub _get_headers_default
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
 #------------------------------------------------------------------------------------------------
 # Content
 #------------------------------------------------------------------------------------------------
-sub _get_post_content($%)
+sub _get_fields_post
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
-sub _get_delete_content($%)
+sub _get_fields_delete
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
-}
-
-#------------------------------------------------------------------------------------------------
-#----------------------------- CREATE POST, DELETE POST -----------------------------------------
-#------------------------------------------------------------------------------------------------
-#-- Create a new post on the board:
-# 1. GET     (included fetching captcha, cookies, headers and so on)
-# 2. PREPARE (create post-form data, recognize captcha, do another stuff)
-# 3. POST    (send request to server)
-# 4. ???
-# 5. PROFIT!
-#------------------------------------------------------------------------------------------------
-# GET
-#------------------------------------------------------------------------------------------------
-# $self, $task, $cnf -> $status_str
-# \%task:
-#  (string)               -> proxy           - proxy address
-#  (hash)                 -> content         - content, который был получен при скачивании капчи
-#  (string)               -> path_to_captcha - путь до файла с капчой
-#  (HTTP::Headers object) -> headers
-sub get($$$$)
-{
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
 #------------------------------------------------------------------------------------------------
-# PREPARE
+#--------------------------------------- MAIN METHODS -------------------------------------------
 #------------------------------------------------------------------------------------------------
-# $self, $task, $cnf -> $status_str
-# \%task:
-#  (string)               -> proxy           - proxy address
-#  (hash)                 -> content         - content, который был получен при скачивании капчи
-#  (string)               -> path_to_captcha - путь до файла с капчой
-#  (HTTP::Headers object) -> headers
-#  (string)               -> captcha_text    - recognized text
-#  (string)               -> file_path       - путь до файла, который отправляется на сервер
-sub prepare($$$$)
+
+#------------------------------------------------------------------------------------------------
+sub get_captcha
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
 #------------------------------------------------------------------------------------------------
-# POST
-#------------------------------------------------------------------------------------------------
-# $self, $response, $code, $task, $cnf -> $status_str
-sub _check_post_result($$$$$)
+sub prepare_data
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
-# $self, $task, $cnf -> $status_str
-sub post($$$$)
+#------------------------------------------------------------------------------------------------
+sub handle_captcha
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
+}
+
+#------------------------------------------------------------------------------------------------
+sub _check_post_result
+{
+    croak("This method is abstract and cannot be called directly.");
+}
+
+sub make_post
+{
+    croak("This method is abstract and cannot be called directly.");
 }
 
 #------------------------------------------------------------------------------------------------
 # DELETE
 #------------------------------------------------------------------------------------------------
-# $self, $response, $code, $task, $cnf -> $status_str
-sub _check_delete_result($$$$$)
+sub _check_delete_result
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
-# $self, $task, $cnf -> $status_str
-sub delete($$$$)
+sub delete_post
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
 #------------------------------------------------------------------------------------------------
 #----------------------------------------- BAN CHECK --------------------------------------------
 #------------------------------------------------------------------------------------------------
-# $self, $response, $code, $task, $cnf -> $status_str
-sub _check_ban_result($$$$$)
+sub _check_ban_result
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
-# $self, $task, $cnf -> $status_str
-sub ban_check($$$)
+sub ban_check
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
 #------------------------------------------------------------------------------------------------
 #----------------------------------  OTHER METHODS  ---------------------------------------------
 #------------------------------------------------------------------------------------------------
-# $self, $task, $cnf -> $response, $response, $headers, $status_line
-sub get_page($$$)
+sub get_page
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
-# $self, $task, $cnf -> $response, $response, $headers, $status_line
-sub get_thread($$$)
+sub get_thread
 {
-    Carp::croak("This method is abstract and cannot be called directly.");
+    croak("This method is abstract and cannot be called directly.");
 }
 
 1;
