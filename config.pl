@@ -18,7 +18,7 @@ our $log_settings = {
     # DATA_TAKE_IDS      => 3, #-- какой ID треда взят и сколько
     # DATA_VIDEO_SAVED   => 2, #-- куда сохранены видео
     #-- MODES IN GENERAL
-    MODE_TIEMOUT       => 2,
+    MODE_TIMEOUT       => 2,
     MODE_STATE         => 1, #-- start/stop/init
     MODE_CB            => 4, #-- дебаг
     MODE_SLEEP         => 3,
@@ -164,7 +164,7 @@ my $image = {
      path     => "extra/void.gif",    #-- путь к файлу
     #-- captcha mode
     #-- Постить изображение капчи
-    # mode => 'captcha',
+    mode => 'captcha',
     #-------------------------------------------------------------------------------------------------------
     #-- dir mode
     #-- Постить файлы из каталогов

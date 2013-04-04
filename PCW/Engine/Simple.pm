@@ -178,7 +178,7 @@ sub handle_captcha
 #------------------------------------------------------------------------------------------------
 sub _check_post_result
 {
-    my ($self, $response, $code, $task, $post_fields) = @_;
+    my ($self, $response, $task, $post_fields) = @_;
 
     while (my ($type, $errors) = each %{ $self->chan_config->{response}{post} })
     {
@@ -187,22 +187,22 @@ sub _check_post_result
         {
             when (/critical_error|banned|net_error/)                 { $color = 'red'   ; $loglvl = 'ENGINE_MAKE_POST_ERROR' }
             when (/same_message|too_fast|post_error|wrong_captcha/)  { $color = 'yellow'; $loglvl = 'ENGINE_MAKE_POST_ERROR' }
-            when (/success/)                                         { $color = 'green' ; $loglvl = 'ENGINE_MAKE_POST'     }
+            when (/success/)                                         { $color = 'green' ; $loglvl = 'ENGINE_MAKE_POST'       }
         }
 
         for (@$errors)
         {
-            if ($response =~ /$_/ || $code =~ /$_/)
+            if ($response->decoded_content =~ /$_/ or $response->content =~ /$_/ or $response->code =~ /$_/)
             {
                 $self->log->pretty_proxy($loglvl, $color, $task->{proxy}, 'MAKE POST',
-                            sprintf("[%s](%d){%s}", uc($type), $code, ($self->verbose ? html2text($response) : $_)));
+                            sprintf("[%s](%d){%s}", uc($type), $response->code, ($self->verbose ? html2text($response->decoded_content) : $_)));
                 return($type);
             }
         }
     }
-
+    
     $self->log->pretty_proxy('ENGINE_MAKE_POST_ERROR', 'yellow', $task->{proxy}, 'MAKE POST',
-        sprintf("[%s](%d){%s}", 'UNKNOWN', $code, ($self->verbose ? html2text($response) : 'unknown error')));
+        sprintf("[%s](%d){%s}", 'UNKNOWN', $response->code, ($self->verbose ? html2text($response->decoded_content) : 'unknown error')));
     return('unknown');
 }
 
@@ -214,7 +214,7 @@ sub make_post
         http_post(proxy   => $task->{proxy}  , url     => $post_url,
                   headers => $task->{headers}, content => $task->{content});
 
-    return $self->_check_post_result($response->{content}, $response->{code}, $task, $post_fields);
+    return $self->_check_post_result($response->{response}, $task, $post_fields);
 }
 
 #------------------------------------------------------------------------------------------------

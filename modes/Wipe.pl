@@ -23,7 +23,7 @@ our $mode_config = {
         mode           => 'plain',
         plain          => {},
         #-- накапливать капчи
-        mode           => 'accumulate',
+        #mode           => 'accumulate',
         accumulate     => {
             number     => 2,
         },
@@ -40,8 +40,8 @@ our $mode_config = {
     #-- максимальное колличество одновременного работающих потоков
     max_threads        => {
         make_post      => 100,
-        get_captcha    => 5,
-        prepare_data   => 1,
+        get_captcha    => 2,
+        prepare_data   => 9,
         handle_captcha => 1,
     },
     #-- пытаться отправить пост повторно, если капча была введена неправильно

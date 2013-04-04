@@ -4,6 +4,7 @@ use v5.12;
 use utf8;
 use Moo;
 use Carp qw/croak/;
+use Hash::Util "lock_keys";
 
 use PCW::Core::Utils qw/took curry/;
 use Data::Random     qw/rand_set/;

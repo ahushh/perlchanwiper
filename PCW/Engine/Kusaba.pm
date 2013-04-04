@@ -124,8 +124,6 @@ sub _get_fields_delete
 #------------------------------------------------------------------------------------------------
 #--------------------------------------- MAIN METHODS -------------------------------------------
 #------------------------------------------------------------------------------------------------
-
-#------------------------------------------------------------------------------------------------
 sub get_captcha
 {
     my ($self, $task, $post_fields) = @_;
@@ -142,7 +140,7 @@ sub get_captcha
         my $cap_headers = HTTP::Headers->new(%{ $self->_get_headers_captcha( $task->{post_fields} ) });
         my $took;
         my $response    = took { http_get(proxy => $task->{proxy}, url => $captcha_url, headers => $cap_headers) } \$took;
-        $captcha_img    = $response->{content};
+        $captcha_img    = $response->{response}->content;
 
         #-- Check result
         if ($response->{status} !~ /200/ or !$captcha_img or $captcha_img !~ /GIF|PNG|JFIF|JPEG|JPEH|JPG/i)
@@ -157,7 +155,7 @@ sub get_captcha
         #-- Obtaining cookies
         if ($self->chan_config->{captcha_cookies})
         {
-            my $saved_cookies = parse_cookies($self->chan_config->{captcha_cookies}, $response->{headers});
+            my $saved_cookies = parse_cookies($self->chan_config->{captcha_cookies}, $response->{response}->headers_as_string );
             if (!$saved_cookies)
             {
                 $self->log->pretty_proxy('ENGINE_GET_CAPTCHA_ERROR', 'red', $task->{proxy}, 'GET CAPTCHA', '[ERROR]{no cookies} (took $took sec.)');

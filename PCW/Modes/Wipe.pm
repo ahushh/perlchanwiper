@@ -4,6 +4,7 @@ use v5.12;
 use Moo;
 use utf8;
 use autodie;
+use Hash::Util "lock_keys";
 
 extends 'PCW::Modes::Base';
 
@@ -294,8 +295,8 @@ sub _base_init
 sub _init_base_watchers
 {
     my $self = shift;
-    #-- Timeout watcher
-    $self->watchers->{timeout} =
+    #-- Coros watcher
+    $self->watchers->{coros} =
         AnyEvent->timer(after => 0, interval => 5, cb =>
                         sub
                         {
@@ -317,7 +318,14 @@ sub _init_base_watchers
                                             $self->coro_queue->{handle_captcha}->size,
                                             $self->coro_queue->{make_post}->size,
                                             $self->coro_queue->{prepare_data}->size);
+                        }
+                       );
 
+    #-- Timeout watcher
+    $self->watchers->{timeout} =
+        AnyEvent->timer(after => 0, interval => 1, cb =>
+                        sub
+                        {
                             for my $coro (Coro::State::list)
                             {
                                 my $now = Time::HiRes::time;
