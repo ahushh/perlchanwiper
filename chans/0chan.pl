@@ -14,7 +14,7 @@
   response => {
                post => {
                         banned        => [403, 'CDN', 'possible proxy', 'BANNED', 'Blacklisted text detected.'],
-                        net_error     => ['Service Unavailable Connection', 502],
+                        net_error     => ['Service Unavailable Connection', 502, 500],
                         post_error    => [
                                           'your message is too long',
                                           'temporarily unavailable',
@@ -24,20 +24,19 @@
                                          ],
                         wrong_captcha => [
                                           'Неправильно введена капча',
-                                          'Неправильно введена капча',
-                                          'Your captcha timed out',
+                                          'captcha timed out',
                                          ],
                         same_message   => [
                                            'Flood detected',
                                           ],
                         too_fast       => [
-                                           'Вы постите очень часто',
+                                           'You are currently posting faster',
                                           ],
                         critical_error => [
                                            'Неправильный ID треда',
                                            'Требуется приложить файл для создания треда',
                                           ],
-                        success       => ['BuildThread()', 'Updating pages'],
+                        success       => ['BuildThread()', 'Updating pages', 'Website is currently unavailable'],
                        },
                delete => {
                           success        => ['Сообщение удалено.'],

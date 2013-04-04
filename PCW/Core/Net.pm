@@ -18,16 +18,12 @@ sub http_get
     my %p  = @_;
     my $ua = LWP::UserAgent->new();
     $ua->default_headers($p{headers}) if $p{headers};
-    $ua->proxy([qw/http https/] => $p{proxy}) if $p{proxy} !~ 'no_proxy';
-    $ua->cookie_jar( {} );
+    $ua->proxy([qw/http https/] => $p{proxy}) if $p{proxy} and $p{proxy} !~ 'no_proxy';
     my $response = $ua->get($p{url});
 
     my $status = $response->status_line;
     utf8::decode($status);
-    return { code     => $response->code,
-             content  => $response->decoded_content,
-             headers  => $response->headers_as_string,
-             status   => $status,
+    return { status   => $status,
              response => $response
            };
 }
@@ -43,15 +39,14 @@ sub http_post
     my $content_type = $p{content_type} || 'multipart/form-data';
 
     $content = \%{ $content };
-    #-- convert the content to bytes
+    #-- convert the content to bytes except files
     for (keys %$content)
     {
         utf8::encode($content->{$_}) unless (ref $content->{$_});
     }
     my $ua = LWP::UserAgent->new();
     $ua->default_headers($headers) if $headers;
-    $ua->cookie_jar( {} );
-    $ua->proxy([qw/http https/] => $proxy) if $proxy !~ 'no_proxy';
+    $ua->proxy([qw/http https/] => $proxy) if $proxy and $proxy !~ 'no_proxy';
     my $response = $ua->post(
                              $url,
                              'Content_Type' => $content_type,
@@ -60,10 +55,7 @@ sub http_post
 
     my $status = $response->status_line;
     utf8::decode($status);
-    return { code     => $response->code,
-             content  => $response->decoded_content,
-             headers  => $response->headers_as_string,
-             status   => $status,
+    return { status   => $status,
              response => $response
            };
 
