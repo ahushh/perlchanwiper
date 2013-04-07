@@ -45,7 +45,7 @@ sub _convert2tiff
 
 sub _get_ocr
 {
-    my ($self, $img) = @_;
+    my ($self, $ocr, $img) = @_;
     my $tiff = $self->_convert2tiff($img);
     my $cmd  =
         ( sprintf '%s %s %s',
@@ -53,10 +53,10 @@ sub _get_ocr
           shellquote($tiff),
           shellquote($tiff)
         ) .
-        ( defined $self->config->{lang}   ? (" -l "     . self->config->{lang})   : '' ) .
-        ( defined $self->config->{psm}    ? (" -psm "   . self->config->{psm})    : '' ) .
-        ( defined $self->config->{config} ? (" nobatch ". self->config->{config}) : '' ) .
-        ( $^O =~ /linux/                  ? " 2>/dev/null 1>&2"                   : ' > NUL' ) ;
+        ( defined $ocr->config->{lang}   ? (" -l "     . $ocr->config->{lang})   : '' ) .
+        ( defined $ocr->config->{psm}    ? (" -psm "   . $ocr->config->{psm})    : '' ) .
+        ( defined $ocr->config->{config} ? (" nobatch ". $ocr->config->{config}) : '' ) .
+        ( $^O =~ /linux/                  ? " 2>/dev/null 1>&2"                  : ' > NUL' ) ;
 
     my $err = `$cmd`;
     die "Error while getting tesseract OCR: $err" if $?;
@@ -68,13 +68,14 @@ sub solve
     my ($self, $ocr, $file_path) = @_;
     my $text;
     eval {
-        $text = $self->_get_ocr($file_path);
+        $text = $self->_get_ocr($ocr, $file_path);
     };
     if ($@)
     {
-        $self->log->msg('OCR_ERROR', $@, 'DECODE CAPTCHA', 'red');
+        $ocr->log->msg('OCR_ERROR', $@, 'DECODE CAPTCHA', 'red');
         return undef;
     }
+    chomp $text;
     return $text;
 
 }

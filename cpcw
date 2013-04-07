@@ -9,8 +9,6 @@ use autodie;
 use Carp;
 
 use File::Spec;
-use FindBin qw/$Bin/;
-use lib File::Spec->catfile($Bin, 'lib'), $Bin;
 binmode(STDOUT, ":utf8");
 
 #-----------------------------------------------------------------------------

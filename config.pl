@@ -164,7 +164,7 @@ my $image = {
      path     => "extra/void.gif",    #-- путь к файлу
     #-- captcha mode
     #-- Постить изображение капчи
-    mode => 'captcha',
+    #mode => 'captcha',
     #-------------------------------------------------------------------------------------------------------
     #-- dir mode
     #-- Постить файлы из каталогов
@@ -226,17 +226,17 @@ my $captcha_decode = {
     #-- например для отклонения текста капчи с латиницей и цифрами. Также удаляет пробелы
     #after  => sub { $_=shift; s/\s+//g; /[a-zA-Z0-9]/ ? "" : $_ }, 
     #-- antigate mode
-    # mode   => 'Antigate',
-    # key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
-    # opt    => {
-    #            is_russian =>   0,
-    #            phrase     =>   0,  #-- 1 if captcha text have 2-4 words
-    #            regsense   =>   0,  #-- 1 if that captcha text is case sensitive
-    #            numeric    =>   1,  #-- 1 if that captcha text contains only digits, 2 if captcha text have no digits
-    #            calc       =>   0,  #-- 1 if that digits on the captcha should be summed up
-    #            min_len    =>   6,  #-- minimum length of the captcha text (0..20)
-    #            max_len    =>   6,  #-- maximum length of the captcha text (0..20), 0 - no limits
-    #           },
+    mode   => 'Antigate',
+    key    => 'bdc525daac2c1c1a9b55a8cfaaf79792',
+    opt    => {
+               is_russian =>   1,
+               phrase     =>   0,  #-- 1 if captcha text have 2-4 words
+               regsense   =>   0,  #-- 1 if that captcha text is case sensitive
+               numeric    =>   1,  #-- 1 if that captcha text contains only digits, 2 if captcha text have no digits
+               calc       =>   0,  #-- 1 if that digits on the captcha should be summed up
+               min_len    =>   7,  #-- minimum length of the captcha text (0..20)
+               max_len    =>   7,  #-- maximum length of the captcha text (0..20), 0 - no limits
+              },
     #-------------------------------------------------------------------------------------------------------
     #-- captchabot mode
     # mode   => 'Captchabot',
@@ -249,23 +249,23 @@ my $captcha_decode = {
     #-------------------------------------------------------------------------------------------------------
     #-- hand mode
     #-- Ручной ввод капчи.
-    mode   => 'Hand',
-    imgv   => '/usr/bin/feh',             #-- путь до программы просмотра изображений
-    arg    => '-d --geometry 400x300 -Z', #-- аргументы
+    #mode   => 'Hand',
+    #imgv   => '/usr/bin/feh',             #-- путь до программы просмотра изображений
+    #arg    => '-d --geometry 400x300 -Z', #-- аргументы
     #-- gui hand mode
     #-- Ручной ввод капчи через GUI.
     #-- Необходим Gtk2
-    mode   => 'GUIhand',
+    #mode   => 'GUIhand',
     #-- Stub mode
     #-- Просто заглушка, всегда возвращающая заданный текст
-    mode => 'Stub',
-    stub => 'test captcha',
+    #mode => 'Stub',
+    #stub => 'test captcha',
     #-- tesseract OCR
     #-- Необходим convert (пакет ImageMagick) и сам tesseract
-    # mode   => 'Tesseract',
-    # lang   => 'rus',            #-- eng, rus, etc.
-    # config => 'englishletters', #-- название конфига для tesseract. см. README
-    # config => 'ruletters',
+    #mode   => 'Tesseract',
+    #lang   => 'rus',            #-- eng, rus, etc.
+    #config => 'englishletters', #-- название конфига для tesseract. см. README
+    #config => 'ruletters',
     # psm    => undef,            #-- только для версии 3.01, см. tesseract --help
 };
 

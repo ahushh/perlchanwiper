@@ -40,6 +40,7 @@ sub prepare_data
     my ($self, $task) = @_;
     async {
         my $coro = $Coro::current;
+        $coro->{task} = $task; 
         $coro->desc('prepare_data');
         $coro->on_destroy($self->prepare_data_callback);
 
@@ -57,6 +58,7 @@ sub handle_captcha
     my ($self, $task) = @_;
     async {
         my $coro = $Coro::current;
+        $coro->{task} = $task;
         $coro->desc('handle_captcha');
         $coro->on_destroy($self->handle_captcha_callback);
 
@@ -74,6 +76,7 @@ sub make_post
     my ($self, $task) = @_;
     async {
         my $coro = $Coro::current;
+        $coro->{task} = $task; 
         $coro->desc('make_post');
         $coro->on_destroy($self->make_post_callback);
 
