@@ -10,6 +10,7 @@
   threads_per_page   => 20,
   new_thread_delay   => 30*60,
   reply_delay        => 10,
+  captcha_enabled    => 1,
 
   response => {
                post => {

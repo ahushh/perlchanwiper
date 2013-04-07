@@ -153,7 +153,7 @@ sub handle_captcha
     $task->{content} = { ($task->{content} ? %{$task->{content}} : ()), %content };
 
     # добавить проверку на включенную капчу
-    if ($task->{path_to_captcha})
+    if ($self->chan_config->{captcha_enabled} and $task->{path_to_captcha})
     {
         my $took;
         my $captcha_text = took { $self->ocr->solve($task->{path_to_captcha}) } \$took;

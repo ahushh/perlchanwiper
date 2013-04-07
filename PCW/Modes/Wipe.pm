@@ -111,6 +111,10 @@ my $handle_captcha_callback = unblock_sub
     my ($msg, $task, $self) = @_;
     given ($msg)
     {
+        when ('timeout')
+        {
+            $self->engine->ocr->report_bad($task->{path_to_captcha});
+        }
         when ('success')
         {
             $self->coro_queue->{prepare_data}->put($task);
@@ -122,7 +126,6 @@ my $handle_captcha_callback = unblock_sub
         }
         when ('error')
         {
-            # if ($self->mode_config->{wrong_captcha_retry} || $self->mode_config->{loop})
             if ($self->mode_config->{wrong_captcha_retry} || $self->mode_config->{loop})
             {
                 my $errors = $self->failed_proxy->{ $task->{proxy} } || 0;
@@ -229,7 +232,6 @@ my $make_post_callback = unblock_sub
             {
                 $self->log->pretty_proxy('MAKE_POST_CB', 'red', $task->{proxy}, 'POST CB', "$msg: reached the error limit ($errors/$limit)");
             }
-
         }
         when ('banned')
         {
@@ -332,7 +334,7 @@ sub _init_base_watchers
                                 if ($coro->{timeout_at} && $now > $coro->{timeout_at})
                                 {
                                    $self->log->pretty_proxy('MODE_TIMEOUT', 'red', $coro->{task}{proxy}, uc($coro->{desc}), '[TIMEOUT]');
-                                   $coro->cancel();#'timeout', $coro->{task}, $self);
+                                   $coro->cancel('timeout', $coro->{task}, $self);
                                 }
                             }
                         }

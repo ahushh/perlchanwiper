@@ -32,17 +32,19 @@ our $mode_config = {
     save_captcha       => '',
     #-- таймаут
     timeout            => {
-        get_captcha    => 30,
+        get_captcha    => 10,
         prepare_data   => 90,
-        handle_captcha => 90,
+        handle_captcha => 60,
         make_post      => 90,
     },
-    #-- максимальное колличество одновременного работающих потоков
+    #-- максимальное количество работающих прокси; еще не сделано
+    #max_proxies        => 1,
+    #-- максимальное количество одновременного работающих потоков
     max_threads        => {
         make_post      => 100,
-        get_captcha    => 2,
+        get_captcha    => 1,
         prepare_data   => 9,
-        handle_captcha => 1,
+        handle_captcha => 5,
     },
     #-- пытаться отправить пост повторно, если капча была введена неправильно
     wrong_captcha_retry => 1,
